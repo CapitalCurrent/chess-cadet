@@ -12,7 +12,7 @@
  * Bump CACHE when you change a STABLE-named asset (e.g. a regenerated piece
  * PNG) and want every client to drop the old copy. Hashed bundles don't need it.
  */
-const CACHE = 'chess-cadet-v1';
+const CACHE = 'chess-cadet-v2';
 
 const PRECACHE = [
   './',
@@ -46,6 +46,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
+
+  // The ~44MB Maia model is cached by the worker in IndexedDB — don't also
+  // store it in Cache Storage (would double the footprint). Let it pass through.
+  if (req.url.endsWith('.onnx')) return;
 
   // App navigations -> network-first, cached shell as offline fallback.
   if (req.mode === 'navigate') {

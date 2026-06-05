@@ -4,6 +4,7 @@ import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import { newGame } from '../engine/chessEngine';
 import { bestMove, levelConfig, levelTier, initEngine } from '../engine/stockfishEngine';
+import { initMaia, ensureMaiaReady, maiaMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
 
 // Notation-only game. The board is DISPLAY ONLY — every move must be typed on
 // the keypad. A simple random-mover opponent replies (very beatable; a real
@@ -22,13 +23,31 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     const v = parseInt(localStorage.getItem('chess-cadet-level'), 10);
     return v >= 1 && v <= 20 ? v : 3;
   });
+  const [opponentType, setOpponentType] = useState(
+    () => localStorage.getItem('chess-cadet-opponent') || 'stockfish'
+  );
+  const [humanRating, setHumanRating] = useState(() => {
+    const v = parseInt(localStorage.getItem('chess-cadet-humanrating'), 10);
+    return v >= 1100 && v <= 1900 ? v : 1100;
+  });
+  const [maia, setMaia] = useState(getMaiaStatus); // { status, progress }
 
   useEffect(() => {
     localStorage.setItem('chess-cadet-level', String(level));
   }, [level]);
   useEffect(() => {
+    localStorage.setItem('chess-cadet-opponent', opponentType);
+  }, [opponentType]);
+  useEffect(() => {
+    localStorage.setItem('chess-cadet-humanrating', String(humanRating));
+  }, [humanRating]);
+  useEffect(() => {
     initEngine(); // warm up the Stockfish worker
   }, []);
+  useEffect(() => onMaiaStatus((status, progress) => setMaia({ status, progress })), []);
+  useEffect(() => {
+    if (opponentType === 'human') initMaia(); // warm up (loads from cache if present)
+  }, [opponentType]);
 
   const input = tokens.join('');
   const game = gameRef.current;
@@ -81,8 +100,14 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
       if (move) pushMove(move);
     };
 
+    // Human (Maia) opponent when selected AND the model is ready; otherwise the
+    // Stockfish practice bot fills in (incl. while Maia is still downloading or
+    // when offline without a cached model).
+    const useMaia = opponentType === 'human' && maia.status === 'ready';
     const t = setTimeout(() => {
-      if (Math.random() < cfg.blunder) {
+      if (useMaia) {
+        maiaMove(fenNow, humanRating, humanRating).then(apply).catch(() => apply(null));
+      } else if (Math.random() < cfg.blunder) {
         const ms = g.moves({ verbose: true });
         const m = ms.length ? ms[Math.floor(Math.random() * ms.length)] : null;
         apply(m ? m.from + m.to + (m.promotion || '') : null);
@@ -95,7 +120,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
       cancelled = true;
       clearTimeout(t);
     };
-  }, [fen, over, studentColor, level]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fen, over, studentColor, level, opponentType, humanRating, maia.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function submit() {
     if (!myTurn || !input) return;
@@ -133,6 +158,14 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
   // She still controls the same color; the engine is untouched.
   function flipView() {
     setFlipped((f) => !f);
+  }
+
+  function selectOpponent(type) {
+    setOpponentType(type);
+    if (type === 'human') initMaia();
+  }
+  function downloadMaia() {
+    ensureMaiaReady({ allowDownload: true });
   }
 
   function takeback() {
@@ -222,23 +255,90 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
         ))}
       </div>
 
-      {/* Difficulty */}
+      {/* Opponent picker */}
       <div className="flex items-center gap-2 mb-2">
         <span className="text-[11px] uppercase tracking-wide text-gold/50 font-bold whitespace-nowrap">
-          Level
+          Opponent
         </span>
-        <input
-          type="range"
-          min="1"
-          max="20"
-          value={level}
-          onChange={(e) => setLevel(Number(e.target.value))}
-          className="flex-1 accent-gold"
-        />
-        <span className="text-xs font-bold text-gold whitespace-nowrap w-28 text-right">
-          {level} · {levelTier(level)}
-        </span>
+        {[
+          { t: 'stockfish', label: '🤖 Practice Bot' },
+          { t: 'human', label: '🧒 Human' },
+        ].map((o) => (
+          <button
+            key={o.t}
+            onClick={() => selectOpponent(o.t)}
+            className={`flex-1 rounded-lg px-2 py-1 text-xs font-bold ring-1 ring-edge transition ${
+              opponentType === o.t ? 'bg-gold text-bg' : 'bg-surface text-gold/80'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
       </div>
+
+      {opponentType === 'stockfish' ? (
+        /* Stockfish difficulty */
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[11px] uppercase tracking-wide text-gold/50 font-bold whitespace-nowrap">
+            Level
+          </span>
+          <input
+            type="range"
+            min="1"
+            max="20"
+            value={level}
+            onChange={(e) => setLevel(Number(e.target.value))}
+            className="flex-1 accent-gold"
+          />
+          <span className="text-xs font-bold text-gold whitespace-nowrap w-28 text-right">
+            {level} · {levelTier(level)}
+          </span>
+        </div>
+      ) : (
+        /* Human (Maia) rating + model status */
+        <div className="mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wide text-gold/50 font-bold whitespace-nowrap">
+              Rating
+            </span>
+            <input
+              type="range"
+              min="1100"
+              max="1900"
+              step="100"
+              value={humanRating}
+              onChange={(e) => setHumanRating(Number(e.target.value))}
+              className="flex-1 accent-gold"
+            />
+            <span className="text-xs font-bold text-gold whitespace-nowrap w-20 text-right">{humanRating}</span>
+          </div>
+          <div className="mt-1.5 text-xs">
+            {maia.status === 'ready' ? (
+              <span className="text-grass font-bold">🧒 Human opponent ready — plays like a {humanRating} player.</span>
+            ) : maia.status === 'downloading' ? (
+              <div>
+                <div className="text-frost/70 mb-1">Downloading human opponent… {maia.progress}%</div>
+                <div className="h-1.5 rounded-full bg-edge overflow-hidden">
+                  <div className="h-full bg-gold transition-all" style={{ width: `${maia.progress}%` }} />
+                </div>
+              </div>
+            ) : maia.status === 'error' ? (
+              <span className="text-coral">Couldn’t load the human opponent — using the practice bot.</span>
+            ) : navigator.onLine ? (
+              <div>
+                <button onClick={downloadMaia} className="rounded-lg px-2.5 py-1 font-bold bg-grass text-bg active:translate-y-px">
+                  ⬇ Get human opponent (one-time ~44 MB)
+                </button>
+                <span className="ml-2 text-frost/50">Practice bot plays until it’s ready.</span>
+              </div>
+            ) : (
+              <span className="text-frost/60">
+                Connect to the internet once to download the human opponent. Using the practice bot for now.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Move list */}
       <div className="bg-surface rounded-xl ring-1 ring-edge p-2 mb-3 max-h-24 overflow-y-auto text-sm">
