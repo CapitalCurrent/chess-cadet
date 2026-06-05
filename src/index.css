@@ -35,3 +35,14 @@ button,
 .animate-float {
   animation: floatUp 0.3s ease-out both;
 }
+
+/* Slide a moved piece from its origin square to where it lands. Uses the
+   `translate:` property (not `transform:`) so it composes with the piece's
+   scale() transform. --slide-dx/dy are the start offset in cell-widths (%). */
+@keyframes pieceSlide {
+  from { translate: var(--slide-dx, 0) var(--slide-dy, 0); }
+  to { translate: 0 0; }
+}
+.piece-slide {
+  animation: pieceSlide 0.17s ease-out both;
+}

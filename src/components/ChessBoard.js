@@ -267,14 +267,25 @@ export default function ChessBoard({
                     {isLast && <div className="absolute inset-0 bg-gold/35 pointer-events-none" />}
                     {isHi && <div className="absolute inset-0 ring-4 ring-inset ring-grass/80 pointer-events-none" />}
                     {isSel && <div className="absolute inset-0 ring-4 ring-inset ring-frost pointer-events-none" />}
-                    {sq.piece && !isDragging && (
-                      <div
-                        className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                        style={{ transform: `scale(${set.scale || 1})`, filter: shadowFor(sq.piece.color) }}
-                      >
-                        {set.render(sq.piece.color, sq.piece.type)}
-                      </div>
-                    )}
+                    {sq.piece && !isDragging && (() => {
+                      // The piece that just landed slides in from its origin.
+                      const isMoved = lastMove && sq.name === lastMove.to;
+                      let slide = {};
+                      if (isMoved) {
+                        const f = squareToXY(lastMove.from, orientation);
+                        const tt = squareToXY(lastMove.to, orientation);
+                        slide = { '--slide-dx': `${(f.x - tt.x) * 100}%`, '--slide-dy': `${(f.y - tt.y) * 100}%` };
+                      }
+                      return (
+                        <div
+                          key={isMoved ? `mv-${lastMove.from}${lastMove.to}` : 'pc'}
+                          className={`absolute inset-0 flex items-center justify-center pointer-events-none${isMoved ? ' piece-slide' : ''}`}
+                          style={{ transform: `scale(${set.scale || 1})`, filter: shadowFor(sq.piece.color), ...slide }}
+                        >
+                          {set.render(sq.piece.color, sq.piece.type)}
+                        </div>
+                      );
+                    })()}
                     {isTarget && !sq.piece && (
                       <div className="absolute w-1/3 h-1/3 rounded-full bg-frost/50 pointer-events-none" />
                     )}

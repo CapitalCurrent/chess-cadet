@@ -3,7 +3,7 @@ import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import { newGame } from '../engine/chessEngine';
-import { topMoves, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine } from '../engine/stockfishEngine';
+import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
 
 // Notation-only game. The board is DISPLAY ONLY — every move must be typed on
@@ -108,6 +108,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     const t = setTimeout(() => {
       if (useMaia) {
         maiaMove(fenNow, humanRating, humanRating).then(apply).catch(() => apply(null));
+      } else if (Math.random() < weak.blunderChance) {
+        // Occasional realistic blunder: a natural-looking move from a shallow
+        // search that misses the tactic (hangs a piece / walks into a fork).
+        shallowMove(fenNow, { depth: weak.blunderDepth }).then(apply);
       } else {
         // Weakened Stockfish: choose a suboptimal-but-sensible move from its
         // top candidates (weaker levels lean toward the worse ones).

@@ -110,6 +110,30 @@ export function topMoves(fen, { multipv = 4, movetime = 500, skill = 20 } = {}) 
   return p;
 }
 
+function doShallow(fen, depth, skill) {
+  return new Promise((resolve) => {
+    active = resolve;
+    infoMoves = null;
+    worker.postMessage('setoption name MultiPV value 1');
+    worker.postMessage('setoption name Skill Level value ' + skill);
+    worker.postMessage('position fen ' + fen);
+    worker.postMessage('go depth ' + depth);
+  });
+}
+
+// Best move from a deliberately SHALLOW search (depth 1-2). It plays a natural,
+// locally-reasonable move but can't see 2-3 move tactics — so it blunders the
+// way a beginner does (hangs a piece, walks into a fork) rather than randomly.
+export function shallowMove(fen, { depth = 2, skill = 20 } = {}) {
+  const run = () =>
+    ensureReady()
+      .then(() => doShallow(fen, depth, skill))
+      .catch(() => null);
+  const p = queue.then(run, run);
+  queue = p.catch(() => {});
+  return p;
+}
+
 // ----- 20-level difficulty ladder ------------------------------------------
 // Skill Level 0..20 + a movetime cap (keeps every move responsive, <=1.5s) +
 // a deliberate blunder chance on the lowest levels so they feel beginner-y.
@@ -167,7 +191,12 @@ export function levelWeakening(level) {
   const multipv = Math.max(1, Math.round(1 + w * 11)); // 12 candidates .. 1
   const movetime = Math.max(150, Math.round(50 + ((n - 1) / 19) * 1450));
   const pBest = 0.15 + 0.85 * ((n - 1) / 19); // 0.15 (often picks worse) .. 1.0 (always best)
-  return { multipv, movetime, pBest, skill: 20 };
+  // Small, level-scaled chance of a realistic "missed tactic" blunder via a
+  // shallow search: ~25% at level 1, fading to 0 by level 11. The lowest levels
+  // use depth 1 (can hang a piece); a touch higher uses depth 2 (misses combos).
+  const blunderChance = n <= 10 ? 0.25 * ((11 - n) / 10) : 0;
+  const blunderDepth = n <= 2 ? 1 : 2;
+  return { multipv, movetime, pBest, skill: 20, blunderChance, blunderDepth };
 }
 
 // Walk the best-first candidate list, stopping at each rank with probability
