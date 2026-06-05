@@ -19,6 +19,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
   const [lastMove, setLastMove] = useState(null);
   const [studentColor, setStudentColor] = useState('w');
   const [flipped, setFlipped] = useState(false); // view-only board flip
+  const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
   const [level, setLevel] = useState(() => {
     const v = parseInt(localStorage.getItem('chess-cadet-level'), 10);
     return v >= 1 && v <= 20 ? v : 3;
@@ -153,13 +154,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     if (gameRef.current.isCheckmate()) rewardMove && rewardMove(10); // she delivered mate!
   }
 
-  // Move by dragging/tapping on the board (alternative to typing notation).
-  // ChessBoard only calls this with legal from/to; pawns auto-promote to queen.
-  function handleBoardMove(from, to) {
-    if (!myTurn) return;
+  // Apply a board move (optionally with a chosen promotion piece).
+  function applyBoardMove(from, to, promotion) {
     let move = null;
     try {
-      move = gameRef.current.move({ from, to, promotion: 'q' });
+      move = gameRef.current.move(promotion ? { from, to, promotion } : { from, to });
     } catch {
       move = null;
     }
@@ -169,6 +168,20 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     pushMove(move);
     rewardMove && rewardMove(0);
     if (gameRef.current.isCheckmate()) rewardMove && rewardMove(10);
+  }
+
+  // Move by dragging/tapping (alternative to typing). ChessBoard only calls this
+  // with legal from/to. A pawn reaching the last rank opens the promotion chooser.
+  function handleBoardMove(from, to) {
+    if (!myTurn) return;
+    const isPromo = gameRef.current
+      .moves({ square: from, verbose: true })
+      .some((m) => m.to === to && m.promotion);
+    if (isPromo) {
+      setPendingPromotion({ from, to });
+      return;
+    }
+    applyBoardMove(from, to);
   }
 
   function startNew(color) {
@@ -433,5 +446,38 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     </>
   );
 
-  return <PlayLayout board={board} panel={panel} />;
+  return (
+    <>
+      <PlayLayout board={board} panel={panel} />
+
+      {pendingPromotion && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPendingPromotion(null)}
+        >
+          <div className="bg-surface rounded-2xl ring-1 ring-edge p-4 animate-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="text-sm font-bold text-gold mb-3 text-center">Promote your pawn to…</div>
+            <div className="flex gap-2">
+              {['q', 'r', 'b', 'n'].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => {
+                    const p = pendingPromotion;
+                    setPendingPromotion(null);
+                    applyBoardMove(p.from, p.to, t);
+                  }}
+                  className="w-16 h-16 rounded-xl bg-bg ring-1 ring-edge hover:ring-gold active:translate-y-px flex items-center justify-center"
+                >
+                  <div className="w-12 h-12 flex items-center justify-center" style={{ transform: `scale(${pieceSet.scale || 1})` }}>
+                    {pieceSet.render(studentColor, t)}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 text-center text-[11px] text-frost/40">Tap a piece (or tap outside to cancel)</div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
