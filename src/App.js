@@ -8,6 +8,7 @@ import FreePlay from './components/FreePlay';
 import RewardBar from './components/RewardBar';
 import Settings from './components/Settings';
 import NotationGuide from './components/NotationGuide';
+import { VERSION } from './version';
 
 export default function App() {
   const { progress, rewardMove, breakStreak, finishLine } = useProgress();
@@ -46,7 +47,10 @@ export default function App() {
       <header className="sticky top-0 z-10 bg-bg/95 backdrop-blur border-b border-edge px-3 py-2">
         <div className="max-w-md md:max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-lg font-extrabold text-gold">♟️ Chess Cadet</h1>
+            <h1 className="text-lg font-extrabold text-gold flex items-baseline gap-1.5">
+              ♟️ Chess Cadet
+              <span className="text-[10px] font-bold text-frost/40">v{VERSION}</span>
+            </h1>
             <RewardBar progress={progress} />
           </div>
 
