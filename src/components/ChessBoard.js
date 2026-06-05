@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { newGame, legalTargets } from '../engine/chessEngine';
 import { getPieceSet } from '../pieces/pieceSets';
 import { getBoardTheme } from '../pieces/boardThemes';
-import { playMove, playCapture, playCheck } from '../utils/sounds';
+import { playMove, playCapture, playCheck, playCheckmate } from '../utils/sounds';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
@@ -120,7 +120,9 @@ export default function ChessBoard({
       if (prev.count !== null && count < prev.count) playCapture();
       else playMove();
       try {
-        if (newGame(fen).inCheck()) playCheck(); // bright chime layered on top
+        const g = newGame(fen);
+        if (g.isCheckmate()) playCheckmate(); // triumphant fanfare
+        else if (g.inCheck()) playCheck(); // bright chime layered on top
       } catch {
         /* ignore */
       }

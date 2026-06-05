@@ -97,6 +97,21 @@ export function playCheck() {
   tone({ freq: 1319, dur: 0.14, gain: 0.11, when: 0.09 });
 }
 
+// A short, triumphant rising fanfare for checkmate (C–E–G–C arpeggio).
+export function playCheckmate() {
+  if (muted) return;
+  const seq = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+  seq.forEach((f, i) =>
+    tone({
+      freq: f,
+      dur: i === seq.length - 1 ? 0.3 : 0.12,
+      gain: 0.15,
+      type: 'triangle',
+      when: i * 0.085,
+    }),
+  );
+}
+
 export function playCapture() {
   if (muted) return;
   thock({ freq: 150, dur: 0.09, type: 'triangle', gain: 0.18, drop: 0.42 });

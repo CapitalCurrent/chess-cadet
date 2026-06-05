@@ -23,9 +23,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     const v = parseInt(localStorage.getItem('chess-cadet-level'), 10);
     return v >= 1 && v <= 20 ? v : 3;
   });
-  const [opponentType, setOpponentType] = useState(
-    () => localStorage.getItem('chess-cadet-opponent') || 'stockfish'
-  );
+  const [opponentType, setOpponentType] = useState(() => {
+    const v = localStorage.getItem('chess-cadet-opponent');
+    return v === 'maia' || v === 'human' ? 'maia' : 'stockfish'; // 'human' = legacy Maia value
+  });
   const [humanRating, setHumanRating] = useState(() => {
     const v = parseInt(localStorage.getItem('chess-cadet-humanrating'), 10);
     return v >= 1100 && v <= 1900 ? v : 1100;
@@ -46,7 +47,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
   }, []);
   useEffect(() => onMaiaStatus((status, progress) => setMaia({ status, progress })), []);
   useEffect(() => {
-    if (opponentType === 'human') initMaia(); // warm up (loads from cache if present)
+    if (opponentType === 'maia') initMaia(); // warm up (loads from cache if present)
   }, [opponentType]);
 
   const input = tokens.join('');
@@ -104,7 +105,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     // Human (Maia) opponent when selected AND the model is ready; otherwise the
     // Stockfish practice bot fills in (incl. while Maia is still downloading or
     // when offline without a cached model).
-    const useMaia = opponentType === 'human' && maia.status === 'ready';
+    const useMaia = opponentType === 'maia' && maia.status === 'ready';
     // A little "thinking" pause so moves don't feel rushed — Maia (whose
     // inference is near-instant) gets a slightly longer one; both get jitter.
     const thinkDelay = (useMaia ? 550 : 300) + Math.random() * (useMaia ? 300 : 250);
@@ -172,7 +173,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
 
   function selectOpponent(type) {
     setOpponentType(type);
-    if (type === 'human') initMaia();
+    if (type === 'maia') initMaia();
   }
   function downloadMaia() {
     ensureMaiaReady({ allowDownload: true });
@@ -272,7 +273,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
         </span>
         {[
           { t: 'stockfish', label: '🤖 Practice Bot' },
-          { t: 'human', label: '🧒 Human' },
+          { t: 'maia', label: '🙂 Maia' },
         ].map((o) => (
           <button
             key={o.t}
@@ -306,7 +307,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
           </div>
         </div>
       ) : (
-        /* Human (Maia) rating + model status */
+        /* Maia rating + model status */
         <div className="mb-2">
           <div className="flex items-center gap-2">
             <span className="text-[11px] uppercase tracking-wide text-gold/50 font-bold whitespace-nowrap">
@@ -325,7 +326,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
           </div>
           <div className="mt-1.5 text-xs">
             {maia.status === 'ready' ? (
-              <span className="text-grass font-bold">🧒 Human opponent ready — plays like a {humanRating} player.</span>
+              <span className="text-grass font-bold">🙂 Maia is ready — plays like a {humanRating} player.</span>
             ) : maia.status === 'downloading' ? (
               <div>
                 <div className="text-frost/70 mb-1">Downloading human opponent… {maia.progress}%</div>
@@ -334,17 +335,17 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
                 </div>
               </div>
             ) : maia.status === 'error' ? (
-              <span className="text-coral">Couldn’t load the human opponent — using the practice bot.</span>
+              <span className="text-coral">Couldn’t load Maia — using the practice bot.</span>
             ) : navigator.onLine ? (
               <div>
                 <button onClick={downloadMaia} className="rounded-lg px-2.5 py-1 font-bold bg-grass text-bg active:translate-y-px">
-                  ⬇ Get human opponent (one-time ~44 MB)
+                  ⬇ Get Maia (one-time ~44 MB)
                 </button>
-                <span className="ml-2 text-frost/50">Practice bot plays until it’s ready.</span>
+                <span className="ml-2 text-frost/50">Practice bot plays until she’s ready.</span>
               </div>
             ) : (
               <span className="text-frost/60">
-                Connect to the internet once to download the human opponent. Using the practice bot for now.
+                Connect to the internet once to download Maia. Using the practice bot for now.
               </span>
             )}
           </div>
