@@ -91,3 +91,27 @@ export function levelTier(level) {
   if (level <= 19) return 'Expert';
   return 'Max';
 }
+
+// Approximate EFFECTIVE Elo per level — i.e. how strong it actually plays here,
+// factoring in the short movetime caps and the deliberate blunders at the bottom
+// (NOT nominal Stockfish "Skill Level" Elo, which would read much higher). These
+// are rough, kid-oriented buckets; treat them as ballpark, not exact ratings.
+const LEVEL_ELO = [
+  [250, 400], [400, 550], [550, 700], // 1-3 Beginner (blunder-heavy)
+  [700, 850], [850, 1000], [1000, 1150], [1150, 1300], // 4-7 Easy
+  [1300, 1450], [1450, 1600], [1600, 1750], [1750, 1900], // 8-11 Medium
+  [1900, 2050], [2050, 2200], [2200, 2350], [2350, 2500], // 12-15 Hard
+  [2500, 2650], [2650, 2800], [2800, 2950], [2950, 3100], // 16-19 Expert
+  [3000, 3300], // 20 Max
+];
+
+export function levelElo(level) {
+  const n = Math.max(1, Math.min(20, level));
+  return LEVEL_ELO[n - 1];
+}
+
+// "~550–700" (or "~3000+" at the top).
+export function levelEloLabel(level) {
+  const [lo, hi] = levelElo(level);
+  return level >= 20 ? `~${lo}+` : `~${lo}–${hi}`;
+}

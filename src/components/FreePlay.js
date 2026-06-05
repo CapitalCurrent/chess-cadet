@@ -3,7 +3,7 @@ import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import { newGame } from '../engine/chessEngine';
-import { bestMove, levelConfig, levelTier, initEngine } from '../engine/stockfishEngine';
+import { bestMove, levelConfig, levelTier, levelEloLabel, initEngine } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
 
 // Notation-only game. The board is DISPLAY ONLY — every move must be typed on
@@ -290,9 +290,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
             onChange={(e) => setLevel(Number(e.target.value))}
             className="flex-1 accent-gold"
           />
-          <span className="text-xs font-bold text-gold whitespace-nowrap w-28 text-right">
-            {level} · {levelTier(level)}
-          </span>
+          <div className="w-28 text-right whitespace-nowrap leading-tight">
+            <div className="text-xs font-bold text-gold">{level} · {levelTier(level)}</div>
+            <div className="text-[10px] text-gold/60">{levelEloLabel(level)} Elo</div>
+          </div>
         </div>
       ) : (
         /* Human (Maia) rating + model status */
