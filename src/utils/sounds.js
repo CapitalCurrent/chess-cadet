@@ -69,9 +69,32 @@ function noiseClick({ dur = 0.045, gain = 0.12, hp = 900 } = {}) {
   src.start(t);
 }
 
+function tone({ freq, dur = 0.12, type = 'sine', gain = 0.12, when = 0 }) {
+  const a = ac();
+  if (!a) return;
+  const t = a.currentTime + when;
+  const o = a.createOscillator();
+  const g = a.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination);
+  o.start(t);
+  o.stop(t + dur + 0.02);
+}
+
 export function playMove() {
   if (muted) return;
   thock({ freq: 210, dur: 0.07, type: 'sine', gain: 0.15, drop: 0.6 });
+}
+
+// A bright rising two-note chime when a move gives check.
+export function playCheck() {
+  if (muted) return;
+  tone({ freq: 988, dur: 0.12, gain: 0.12, when: 0 });
+  tone({ freq: 1319, dur: 0.14, gain: 0.11, when: 0.09 });
 }
 
 export function playCapture() {

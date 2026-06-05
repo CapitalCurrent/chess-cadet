@@ -105,6 +105,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     // Stockfish practice bot fills in (incl. while Maia is still downloading or
     // when offline without a cached model).
     const useMaia = opponentType === 'human' && maia.status === 'ready';
+    // A little "thinking" pause so moves don't feel rushed — Maia (whose
+    // inference is near-instant) gets a slightly longer one; both get jitter.
+    const thinkDelay = (useMaia ? 550 : 300) + Math.random() * (useMaia ? 300 : 250);
     const t = setTimeout(() => {
       if (useMaia) {
         maiaMove(fenNow, humanRating, humanRating).then(apply).catch(() => apply(null));
@@ -121,7 +124,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
           topMoves(fenNow, weak).then((cands) => apply(pickWeakened(cands, weak.pBest)));
         }
       }
-    }, 250);
+    }, thinkDelay);
 
     return () => {
       cancelled = true;
