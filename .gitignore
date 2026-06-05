@@ -1,0 +1,31 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# editor / OS
+.vscode/
+Thumbs.db
+
+# scratch / regenerated assets (Grok set workflow)
+Chess sets from grok/center_debug.png
+Chess sets from grok/_screenshot_small.jpg
+Chess sets from grok/Screenshot*.png
