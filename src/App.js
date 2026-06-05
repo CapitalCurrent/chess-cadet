@@ -7,6 +7,7 @@ import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
 import RewardBar from './components/RewardBar';
 import Settings from './components/Settings';
+import NotationGuide from './components/NotationGuide';
 
 export default function App() {
   const { progress, rewardMove, breakStreak, finishLine } = useProgress();
@@ -14,6 +15,7 @@ export default function App() {
   const [mode, setMode] = useState('learn'); // learn first, then drill
   const [restart, setRestart] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [pieceSetId, setPieceSetId] = useState(
     () => localStorage.getItem('chess-cadet-pieceset') || 'cburnett'
   );
@@ -90,6 +92,13 @@ export default function App() {
               ↻
             </button>
             <button
+              onClick={() => setGuideOpen(true)}
+              className="rounded-xl px-3 py-1.5 text-sm font-bold bg-surface text-grass ring-1 ring-edge"
+              title="Notation cheat sheet"
+            >
+              📝
+            </button>
+            <button
               onClick={() => setSettingsOpen(true)}
               className="rounded-xl px-3 py-1.5 text-sm font-bold bg-surface text-gold ring-1 ring-edge"
               title="Settings"
@@ -136,6 +145,8 @@ export default function App() {
         moveStyle={moveStyle}
         setMoveStyle={setMoveStyle}
       />
+
+      <NotationGuide open={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>
   );
 }
