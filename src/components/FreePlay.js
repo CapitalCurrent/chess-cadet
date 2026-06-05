@@ -153,6 +153,24 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     if (gameRef.current.isCheckmate()) rewardMove && rewardMove(10); // she delivered mate!
   }
 
+  // Move by dragging/tapping on the board (alternative to typing notation).
+  // ChessBoard only calls this with legal from/to; pawns auto-promote to queen.
+  function handleBoardMove(from, to) {
+    if (!myTurn) return;
+    let move = null;
+    try {
+      move = gameRef.current.move({ from, to, promotion: 'q' });
+    } catch {
+      move = null;
+    }
+    if (!move) return;
+    setFeedback({ kind: 'good', text: `${move.san} ✓` });
+    setTokens([]);
+    pushMove(move);
+    rewardMove && rewardMove(0);
+    if (gameRef.current.isCheckmate()) rewardMove && rewardMove(10);
+  }
+
   function startNew(color) {
     gameRef.current = newGame();
     setStudentColor(color);
@@ -206,6 +224,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
       fen={fen}
       orientation={viewOrientation}
       lastMove={lastMove}
+      movableColor={myTurn ? studentColor : null}
+      moveStyle={moveStyle}
+      onMove={handleBoardMove}
       pieceSet={pieceSet}
       boardTheme={boardTheme}
     />
@@ -387,7 +408,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
               {studentColor === 'w' ? 'White' : 'Black'} types:
             </div>
             <div className="flex-1 bg-bg rounded-xl ring-2 ring-edge px-3 py-2 min-h-[42px] flex items-center text-xl font-extrabold tracking-wider text-gold">
-              {input || <span className="text-gold/30">{myTurn ? 'type your move…' : 'waiting…'}</span>}
+              {input || <span className="text-gold/30">{myTurn ? 'type, or move on the board…' : 'waiting…'}</span>}
             </div>
           </div>
           <NotationKeypad
