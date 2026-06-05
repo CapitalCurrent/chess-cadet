@@ -1,0 +1,10 @@
+{
+  "short_name": "Chess Cadet",
+  "name": "Chess Cadet — Learn Openings & Notation",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0f1b2d",
+  "background_color": "#0f1b2d",
+  "orientation": "portrait"
+}
