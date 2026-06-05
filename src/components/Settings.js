@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PIECE_SETS, getPieceSet } from '../pieces/pieceSets';
 import { BOARD_THEMES, getBoardTheme } from '../pieces/boardThemes';
 import { THEME_PRESETS, activePresetId } from '../pieces/themePresets';
+import { isMuted, setMuted } from '../utils/sounds';
 
 export default function Settings({
   open,
@@ -14,6 +15,7 @@ export default function Settings({
   setMoveStyle,
 }) {
   const [showCustom, setShowCustom] = useState(false);
+  const [soundOn, setSoundOn] = useState(!isMuted());
   if (!open) return null;
 
   const activeId = activePresetId(pieceSetId, boardThemeId);
@@ -38,6 +40,22 @@ export default function Settings({
             ✕
           </button>
         </div>
+
+        {/* Sound */}
+        <div className="text-xs uppercase tracking-wide text-gold/50 font-bold mb-2">Sound</div>
+        <button
+          onClick={() => { const next = !soundOn; setSoundOn(next); setMuted(!next); }}
+          className={`w-full mb-4 rounded-xl p-2.5 ring-1 flex items-center justify-between transition ${
+            soundOn ? 'bg-gold/15 ring-gold' : 'bg-bg ring-edge'
+          }`}
+        >
+          <span className={`text-sm font-bold ${soundOn ? 'text-gold' : 'text-frost/80'}`}>
+            {soundOn ? '🔊 Move sounds on' : '🔇 Move sounds off'}
+          </span>
+          <span className={`text-xs font-bold ${soundOn ? 'text-gold' : 'text-frost/50'}`}>
+            {soundOn ? 'ON' : 'OFF'}
+          </span>
+        </button>
 
         {/* Move input style */}
         <div className="text-xs uppercase tracking-wide text-gold/50 font-bold mb-2">Move pieces by</div>

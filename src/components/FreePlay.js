@@ -108,14 +108,18 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     const t = setTimeout(() => {
       if (useMaia) {
         maiaMove(fenNow, humanRating, humanRating).then(apply).catch(() => apply(null));
-      } else if (Math.random() < weak.blunderChance) {
-        // Occasional realistic blunder: a natural-looking move from a shallow
-        // search that misses the tactic (hangs a piece / walks into a fork).
-        shallowMove(fenNow, { depth: weak.blunderDepth }).then(apply);
       } else {
-        // Weakened Stockfish: choose a suboptimal-but-sensible move from its
-        // top candidates (weaker levels lean toward the worse ones).
-        topMoves(fenNow, weak).then((cands) => apply(pickWeakened(cands, weak.pBest)));
+        const r = Math.random();
+        if (r < weak.hangChance) {
+          // Rare outright blunder — depth-1 search can hang a piece outright.
+          shallowMove(fenNow, { depth: 1 }).then(apply);
+        } else if (r < weak.hangChance + weak.tacticMissChance) {
+          // More common: a natural move from a depth-2 search that misses a tactic.
+          shallowMove(fenNow, { depth: 2 }).then(apply);
+        } else {
+          // Otherwise a suboptimal-but-sensible move from the top candidates.
+          topMoves(fenNow, weak).then((cands) => apply(pickWeakened(cands, weak.pBest)));
+        }
       }
     }, 250);
 

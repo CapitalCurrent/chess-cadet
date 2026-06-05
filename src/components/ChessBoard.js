@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { newGame, legalTargets } from '../engine/chessEngine';
 import { getPieceSet } from '../pieces/pieceSets';
 import { getBoardTheme } from '../pieces/boardThemes';
+import { playMove, playCapture } from '../utils/sounds';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
@@ -108,6 +109,19 @@ export default function ChessBoard({
   }, [fen]);
 
   const targets = useMemo(() => (selected ? legalTargets(fen, selected) : []), [fen, selected]);
+
+  // Play a move/capture sound when the position changes to a new move. Capture
+  // is inferred from a drop in piece count (works for every board that uses us).
+  const soundRef = useRef({ fen: null, count: null });
+  useEffect(() => {
+    const count = cells.reduce((a, c) => a + (c.piece ? 1 : 0), 0);
+    const prev = soundRef.current;
+    if (prev.fen !== null && prev.fen !== fen && lastMove) {
+      if (prev.count !== null && count < prev.count) playCapture();
+      else playMove();
+    }
+    soundRef.current = { fen, count };
+  }, [fen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleArrow(from, to, color) {
     setUserArrows((arr) => {

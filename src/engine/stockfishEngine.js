@@ -191,12 +191,13 @@ export function levelWeakening(level) {
   const multipv = Math.max(1, Math.round(1 + w * 11)); // 12 candidates .. 1
   const movetime = Math.max(150, Math.round(50 + ((n - 1) / 19) * 1450));
   const pBest = 0.15 + 0.85 * ((n - 1) / 19); // 0.15 (often picks worse) .. 1.0 (always best)
-  // Small, level-scaled chance of a realistic "missed tactic" blunder via a
-  // shallow search: ~25% at level 1, fading to 0 by level 11. The lowest levels
-  // use depth 1 (can hang a piece); a touch higher uses depth 2 (misses combos).
-  const blunderChance = n <= 10 ? 0.25 * ((11 - n) / 10) : 0;
-  const blunderDepth = n <= 2 ? 1 : 2;
-  return { multipv, movetime, pBest, skill: 20, blunderChance, blunderDepth };
+  // Two kinds of realistic mistake, via a shallow search that genuinely can't
+  // see the consequence (NOT random moves):
+  //  - missing a tactic (depth 2): subtle, common-beginner -> moderate chance.
+  //  - an outright hang (depth 1): jarring -> kept rare even at the bottom.
+  const tacticMissChance = n <= 12 ? 0.2 * ((13 - n) / 12) : 0; // ~20% @L1 -> 0 by L13
+  const hangChance = n <= 6 ? 0.06 * ((7 - n) / 6) : 0; //          ~6% @L1 -> 0 by L7
+  return { multipv, movetime, pBest, skill: 20, tacticMissChance, hangChance };
 }
 
 // Walk the best-first candidate list, stopping at each rank with probability
