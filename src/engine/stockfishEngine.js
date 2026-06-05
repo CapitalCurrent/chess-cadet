@@ -7,7 +7,8 @@
 
 let worker = null;
 let readyPromise = null;
-let active = null; // resolver for the in-flight bestMove
+let active = null; // resolver for the in-flight request
+let infoMoves = null; // when set, collect MultiPV candidate moves by rank
 let queue = Promise.resolve();
 
 function dispatch(line) {
@@ -16,11 +17,25 @@ function dispatch(line) {
     worker._readyResolve();
     worker._readyResolve = null;
   }
+  // While a MultiPV search runs, capture each line's top move by its rank.
+  if (infoMoves && line.indexOf('info ') === 0) {
+    const m = line.match(/ multipv (\d+) .* pv (\S+)/);
+    if (m) infoMoves[parseInt(m[1], 10)] = m[2];
+    return;
+  }
   if (line.indexOf('bestmove') === 0 && active) {
     const mv = line.split(/\s+/)[1];
     const resolve = active;
     active = null;
-    resolve(mv && mv !== '(none)' ? mv : null);
+    if (infoMoves) {
+      const ordered = Object.keys(infoMoves)
+        .sort((a, b) => a - b)
+        .map((k) => infoMoves[k]);
+      infoMoves = null;
+      resolve(ordered.length ? ordered : mv && mv !== '(none)' ? [mv] : []);
+    } else {
+      resolve(mv && mv !== '(none)' ? mv : null);
+    }
   }
 }
 
@@ -53,6 +68,8 @@ export function initEngine() {
 function doBestMove(fen, skill, movetime) {
   return new Promise((resolve) => {
     active = resolve;
+    infoMoves = null;
+    worker.postMessage('setoption name MultiPV value 1');
     worker.postMessage('setoption name Skill Level value ' + skill);
     worker.postMessage('position fen ' + fen);
     worker.postMessage('go movetime ' + movetime);
@@ -65,6 +82,29 @@ export function bestMove(fen, { skill = 20, movetime = 1000 } = {}) {
     ensureReady()
       .then(() => doBestMove(fen, skill, movetime))
       .catch(() => null);
+  const p = queue.then(run, run);
+  queue = p.catch(() => {});
+  return p;
+}
+
+function doTopMoves(fen, multipv, movetime, skill) {
+  return new Promise((resolve) => {
+    active = resolve;
+    infoMoves = {};
+    worker.postMessage('setoption name MultiPV value ' + multipv);
+    worker.postMessage('setoption name Skill Level value ' + skill);
+    worker.postMessage('position fen ' + fen);
+    worker.postMessage('go movetime ' + movetime);
+  });
+}
+
+// Returns the engine's best candidate moves, best-first (UCI strings). Used to
+// weaken play by deliberately choosing a worse-but-sensible move (never random).
+export function topMoves(fen, { multipv = 4, movetime = 500, skill = 20 } = {}) {
+  const run = () =>
+    ensureReady()
+      .then(() => doTopMoves(fen, multipv, movetime, skill))
+      .catch(() => []);
   const p = queue.then(run, run);
   queue = p.catch(() => {});
   return p;
@@ -114,4 +154,28 @@ export function levelElo(level) {
 export function levelEloLabel(level) {
   const [lo, hi] = levelElo(level);
   return level >= 20 ? `~${lo}+` : `~${lo}–${hi}`;
+}
+
+// ----- Weakening by suboptimal (NOT random) move selection ------------------
+// Ranking is always done at full skill so the candidate ORDER is accurate; the
+// weakness comes from how far down that ordered list we choose. Weaker levels
+// ask for more candidates and are more likely to take a worse (but still real,
+// engine-found) move — so low levels play passively/inaccurately, never nonsense.
+export function levelWeakening(level) {
+  const n = Math.max(1, Math.min(20, level));
+  const w = (20 - n) / 19; // 1 at level 1 -> 0 at level 20
+  const multipv = Math.max(1, Math.round(1 + w * 11)); // 12 candidates .. 1
+  const movetime = Math.max(150, Math.round(50 + ((n - 1) / 19) * 1450));
+  const pBest = 0.15 + 0.85 * ((n - 1) / 19); // 0.15 (often picks worse) .. 1.0 (always best)
+  return { multipv, movetime, pBest, skill: 20 };
+}
+
+// Walk the best-first candidate list, stopping at each rank with probability
+// pBest. High pBest -> almost always the best move; low pBest -> drifts toward
+// the weaker candidates. Returns a UCI move (or null if the list is empty).
+export function pickWeakened(candidates, pBest) {
+  if (!candidates || !candidates.length) return null;
+  let rank = 0;
+  while (rank < candidates.length - 1 && Math.random() > pBest) rank++;
+  return candidates[rank];
 }

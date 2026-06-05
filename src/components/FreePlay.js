@@ -3,7 +3,7 @@ import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import { newGame } from '../engine/chessEngine';
-import { bestMove, levelConfig, levelTier, levelEloLabel, initEngine } from '../engine/stockfishEngine';
+import { topMoves, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
 
 // Notation-only game. The board is DISPLAY ONLY — every move must be typed on
@@ -73,12 +73,13 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     checkEnd();
   }
 
-  // Opponent (Stockfish) replies on its turn. Low levels mix in deliberate
-  // blunders; if the engine ever fails it falls back to a random legal move.
+  // Opponent replies on its turn. Stockfish levels weaken by choosing a
+  // deliberately suboptimal (but never random) move from its top candidates;
+  // if the engine ever fails it falls back to a random legal move.
   useEffect(() => {
     if (over || game.turn() === studentColor) return;
     let cancelled = false;
-    const cfg = levelConfig(level);
+    const weak = levelWeakening(level);
     const g = gameRef.current;
     const fenNow = g.fen();
 
@@ -107,12 +108,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     const t = setTimeout(() => {
       if (useMaia) {
         maiaMove(fenNow, humanRating, humanRating).then(apply).catch(() => apply(null));
-      } else if (Math.random() < cfg.blunder) {
-        const ms = g.moves({ verbose: true });
-        const m = ms.length ? ms[Math.floor(Math.random() * ms.length)] : null;
-        apply(m ? m.from + m.to + (m.promotion || '') : null);
       } else {
-        bestMove(fenNow, { skill: cfg.skill, movetime: cfg.movetime }).then(apply);
+        // Weakened Stockfish: choose a suboptimal-but-sensible move from its
+        // top candidates (weaker levels lean toward the worse ones).
+        topMoves(fenNow, weak).then((cands) => apply(pickWeakened(cands, weak.pBest)));
       }
     }, 250);
 
