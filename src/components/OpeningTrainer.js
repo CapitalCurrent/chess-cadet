@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import { newGame, applySan, evaluateInput, coreSan, tryMove } from '../engine/chessEngine';
 import { moverAt, hasBranches } from '../data/openings';
+import { starsFor } from '../state/progress';
 
 const PIECE_WORDS = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight' };
 
@@ -47,7 +48,7 @@ function buildPosition(path) {
   return { fen: game.fen(), lastMove };
 }
 
-export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSet, boardTheme, moveStyle, focusBoard, onContinue, progress, rewardMove, breakStreak, finishLine }) {
+export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSet, boardTheme, moveStyle, focusBoard, onContinue, progress, rewardMove, breakStreak, finishLine, recordDrillRun }) {
   const student = opening.student;
   const [path, setPath] = useState([]); // nodes played so far (the chosen line)
   const [tokens, setTokens] = useState([]);
@@ -55,6 +56,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
   const [hint, setHint] = useState(0); // 0 none, 1 piece, 2 answer
   const [wrong, setWrong] = useState(0);
   const [doneRewarded, setDoneRewarded] = useState(false);
+  const cleanRef = useRef(true); // this Drill run used no hints and made no wrong moves
 
   // Reset everything when the opening or mode changes.
   useEffect(() => {
@@ -64,6 +66,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     setHint(0);
     setWrong(0);
     setDoneRewarded(false);
+    cleanRef.current = true;
   }, [opening.id, mode]);
 
   // The available next plies: children of the last played node, or the tree root.
@@ -139,13 +142,17 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     return () => clearTimeout(t);
   }, [mode, depth, finished, mover, student]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Completion reward (once).
+  // Completion reward (once). In Drill, also record the run toward mastery stars
+  // (clean = no hints, no wrong moves).
   useEffect(() => {
     if (finished && !doneRewarded) {
       finishLine(opening.id);
+      if (mode === 'drill' && recordDrillRun) recordDrillRun(opening.id, cleanRef.current);
       setDoneRewarded(true);
     }
-  }, [finished, doneRewarded, finishLine, opening.id]);
+  }, [finished, doneRewarded, finishLine, opening.id, mode, recordDrillRun]);
+
+  const masteryStars = starsFor(progress, opening.id);
 
   const input = tokens.join('');
 
@@ -171,6 +178,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
       // brief pause to celebrate, then move on
       setTimeout(() => playNode(target), 650);
     } else if (res.status === 'legal') {
+      cleanRef.current = false;
       breakStreak();
       setFeedback({
         kind: 'legal',
@@ -180,6 +188,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
       setWrong((w) => w + 1);
       if (wrong + 1 >= 1) setHint((h) => Math.max(h, 1));
     } else {
+      cleanRef.current = false;
       setFeedback({
         kind: 'illegal',
         text: "Hmm — that isn't a legal move here. Check your notation and try again!",
@@ -268,6 +277,19 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
           <div className="text-sm md:text-lg text-gold/70 mt-1">
             {hasBranches(opening) ? 'Tap ↻ Restart to try the other line!' : 'Tap ↻ Restart to play it again.'}
           </div>
+          {mode === 'drill' && (
+            <div className="mt-3">
+              <div className="text-2xl tracking-[0.2em] text-gold">
+                {'★'.repeat(masteryStars)}
+                <span className="text-frost/20">{'☆'.repeat(3 - masteryStars)}</span>
+              </div>
+              <div className="text-xs md:text-sm text-gold/70 mt-1">
+                {masteryStars >= 3
+                  ? 'Mastered! ⭐ You can always come back to practice.'
+                  : 'Drill it clean (no hints, no slips) to earn another star!'}
+              </div>
+            </div>
+          )}
           {onContinue && (
             <button
               onClick={() => onContinue(path.map((n) => n.san), opening.student)}
@@ -406,12 +428,12 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
                 Hint: move your <b>{PIECE_WORDS[target.san[0]] || 'Pawn'}</b>. {target.note}
               </span>
             ) : (
-              <button onClick={() => setHint(1)} className="text-frost/70 underline underline-offset-2">
+              <button onClick={() => { setHint(1); cleanRef.current = false; }} className="text-frost/70 underline underline-offset-2">
                 Need a hint?
               </button>
             )}
             {hint === 1 && (
-              <button onClick={() => setHint(2)} className="ml-2 text-frost/60 underline underline-offset-2">
+              <button onClick={() => { setHint(2); cleanRef.current = false; }} className="ml-2 text-frost/60 underline underline-offset-2">
                 show answer
               </button>
             )}

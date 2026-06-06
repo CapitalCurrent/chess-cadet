@@ -8,7 +8,18 @@ const DEFAULT = {
   bestStreak: 0,
   stars: 0, // bonus stars (e.g. spotting a check, no-hint moves)
   completed: {}, // openingId -> times finished
+  mastery: {}, // openingId -> { runs, cleanRuns, lastPracticed } (Drill mastery)
 };
+
+// Per-course mastery stars (0–3): 1★ drilled it, 2★ a clean run (no hints/errors),
+// 3★ three clean runs. Stars are additive — they NEVER lock or remove a course.
+export function starsFor(progress, openingId) {
+  const m = progress && progress.mastery && progress.mastery[openingId];
+  if (!m || !m.runs) return 0;
+  if (m.cleanRuns >= 3) return 3;
+  if (m.cleanRuns >= 1) return 2;
+  return 1;
+}
 
 export function loadProgress() {
   try {
@@ -72,5 +83,26 @@ export function useProgress() {
     [update]
   );
 
-  return { progress, rewardMove, breakStreak, finishLine };
+  // Record a completed Drill run of a course; `clean` = no hints and no wrong
+  // moves the whole way through (earns toward mastery stars).
+  const recordDrillRun = useCallback(
+    (openingId, clean) =>
+      update((p) => {
+        const m = (p.mastery && p.mastery[openingId]) || { runs: 0, cleanRuns: 0 };
+        return {
+          ...p,
+          mastery: {
+            ...p.mastery,
+            [openingId]: {
+              runs: m.runs + 1,
+              cleanRuns: m.cleanRuns + (clean ? 1 : 0),
+              lastPracticed: Date.now(),
+            },
+          },
+        };
+      }),
+    [update]
+  );
+
+  return { progress, rewardMove, breakStreak, finishLine, recordDrillRun };
 }

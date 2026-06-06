@@ -33,7 +33,7 @@ const MODES = [
 export default function App() {
   // rewardMove/breakStreak/finishLine still drive progress silently (the gems
   // reward bar was removed from the chrome; reinstate intentionally later).
-  const { progress, rewardMove, breakStreak, finishLine } = useProgress();
+  const { progress, rewardMove, breakStreak, finishLine, recordDrillRun } = useProgress();
   const [openingId, setOpeningId] = useState(OPENINGS[0].id);
   const [mode, setMode] = useState('learn'); // learn first, then drill
   const [restart, setRestart] = useState(0);
@@ -148,7 +148,7 @@ export default function App() {
             mode={mode}
             focusBoard={focusBoard}
             onContinue={continueVsComputer}
-            openingSwitcher={<OpeningPicker value={openingId} onChange={pickOpening} />}
+            openingSwitcher={<OpeningPicker value={openingId} onChange={pickOpening} progress={progress} />}
             pieceSet={pieceSet}
             boardTheme={boardTheme}
             moveStyle={moveStyle}
@@ -156,6 +156,7 @@ export default function App() {
             rewardMove={rewardMove}
             breakStreak={breakStreak}
             finishLine={finishLine}
+            recordDrillRun={recordDrillRun}
           />
         )}
       </main>
