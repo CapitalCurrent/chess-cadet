@@ -4,6 +4,7 @@ import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import Segmented from './nav/Segmented';
 import { IconUndo, IconFlip, IconRestart } from './icons';
+import { detectMotifs, motifsOfMove } from '../engine/tactics';
 import { newGame } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine, analyze } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, maiaBestMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
@@ -263,6 +264,23 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     }
   }
 
+  // SAN + whether the move is forcing (a capture or a check) — used to spot a
+  // missed tactic ("always look at captures and checks first").
+  function moveInfo(fen, uci) {
+    try {
+      const g = newGame(fen);
+      const m = g.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined });
+      if (!m) return { san: uci, capture: false, check: false };
+      return {
+        san: m.san,
+        capture: /x/.test(m.san) || (m.flags && /[ce]/.test(m.flags)),
+        check: /[+#]/.test(m.san),
+      };
+    } catch {
+      return { san: uci, capture: false, check: false };
+    }
+  }
+
   // Normalize an eval to a single number (centipawns); mate -> a big value.
   function scoreNum(c) {
     if (!c) return 0;
@@ -321,25 +339,72 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     }
     const loss = bestCp - herCp; // centipawns given up vs the best move
     if (loss <= 50) {
-      setCoachNote(
-        uci === cands[0].move
-          ? { kind: 'best', text: '⭐ Best move! Right on the money.' }
-          : { kind: 'good', text: '👍 Great move — among the best here.' }
-      );
+      const isBest = uci === cands[0].move;
+      const her = moveInfo(beforeFen, uci);
+      // A "tactic" = the clear standout winning forcing move (a spike above the
+      // alternatives), not a routine recapture where many moves are equal.
+      const spike = cands.length >= 2 ? scoreNum(cands[0]) - scoreNum(cands[1]) : 999;
+      const winning = scoreNum(cands[0]) >= 150;
+      const standout = isBest && winning && spike >= 150; // a real, decisive shot
+      if (isBest && /#/.test(her.san)) {
+        setCoachNote({ kind: 'best', text: '🏆 Checkmate! Brilliant finish!' });
+      } else if (standout) {
+        const motifs = detectMotifs(afterFen, uci.slice(0, 2), uci.slice(2, 4));
+        let text;
+        if (motifs.includes('fork')) text = `✦ Nice fork! ${her.san} attacks two pieces at once.`;
+        else if (motifs.includes('discovered')) text = `✦ Discovered attack! ${her.san} unleashes a piece from behind.`;
+        else if (motifs.includes('pin')) text = `✦ Nice pin! ${her.san} freezes a piece against a bigger one.`;
+        else if (her.capture) text = `💥 Nice tactic! ${her.san} wins material — well spotted!`;
+        else if (her.check) text = `💥 Strong — ${her.san} is a winning check!`;
+        else text = `💥 Sharp! ${her.san} is the winning move here.`;
+        setCoachNote({ kind: 'best', text });
+      } else if (isBest && her.check) {
+        setCoachNote({ kind: 'best', text: `👍 Strong check — ${her.san}!` });
+      } else if (isBest) {
+        setCoachNote({ kind: 'best', text: '⭐ Best move! Right on the money.' });
+      } else {
+        setCoachNote({ kind: 'good', text: '👍 Great move — among the best here.' });
+      }
     } else if (loss <= 150) {
       setCoachNote({ kind: 'good', text: '🙂 Good — a solid, safe move.' });
     } else {
-      const sug = await humanSuggestion(beforeFen);
-      if (loss <= 350) {
+      const best = moveInfo(beforeFen, cands[0].move);
+      const bestMotifs = motifsOfMove(beforeFen, cands[0].move);
+      // A big, winning best move she didn't take = a missed tactic — forcing
+      // (capture/check) OR a named quiet motif (fork/pin/discovery).
+      const missedTactic = bestCp >= 150 && loss >= 200 && (best.capture || best.check || bestMotifs.length);
+      const missedName = bestMotifs.includes('fork')
+        ? 'fork'
+        : bestMotifs.includes('discovered')
+        ? 'discovered attack'
+        : bestMotifs.includes('pin')
+        ? 'pin'
+        : null;
+      if (missedTactic && missedName) {
+        setCoachNote({ kind: 'warn', text: `💥 You missed a ${missedName}! ${best.san} was winning.` });
+      } else if (missedTactic && herCp > -50) {
         setCoachNote({
           kind: 'warn',
-          text: sug ? `🤔 A little loose — ${sug} keeps you better.` : '🤔 A little loose — there was a stronger move.',
+          text: `💥 You missed a tactic! ${best.san} wins material. Tip: always check captures & checks first.`,
+        });
+      } else if (missedTactic) {
+        setCoachNote({
+          kind: 'warn',
+          text: `💥 Ouch — ${best.san} won material there. Look for captures & checks before you move!`,
         });
       } else {
-        setCoachNote({
-          kind: 'warn',
-          text: sug ? `⚠️ Careful — that gives a lot away. Safer was ${sug}.` : '⚠️ Careful — that move loses ground.',
-        });
+        const sug = await humanSuggestion(beforeFen);
+        if (loss <= 350) {
+          setCoachNote({
+            kind: 'warn',
+            text: sug ? `🤔 A little loose — ${sug} keeps you better.` : '🤔 A little loose — there was a stronger move.',
+          });
+        } else {
+          setCoachNote({
+            kind: 'warn',
+            text: sug ? `⚠️ Careful — that gives a lot away. Safer was ${sug}.` : '⚠️ Careful — that move loses ground.',
+          });
+        }
       }
     }
   }
