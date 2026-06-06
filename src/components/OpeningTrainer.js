@@ -47,7 +47,7 @@ function buildPosition(path) {
   return { fen: game.fen(), lastMove };
 }
 
-export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSet, boardTheme, moveStyle, focusBoard, progress, rewardMove, breakStreak, finishLine }) {
+export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSet, boardTheme, moveStyle, focusBoard, onContinue, progress, rewardMove, breakStreak, finishLine }) {
   const student = opening.student;
   const [path, setPath] = useState([]); // nodes played so far (the chosen line)
   const [tokens, setTokens] = useState([]);
@@ -268,6 +268,14 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
           <div className="text-sm md:text-lg text-gold/70 mt-1">
             {hasBranches(opening) ? 'Tap ↻ Restart to try the other line!' : 'Tap ↻ Restart to play it again.'}
           </div>
+          {onContinue && (
+            <button
+              onClick={() => onContinue(path.map((n) => n.san), opening.student)}
+              className="cc-btn cc-btn-grass mt-4 w-full py-3 text-base md:text-lg"
+            >
+              ▶ Keep playing vs the computer
+            </button>
+          )}
         </div>
       ) : (
         <div className="cc-card p-3 md:p-4">

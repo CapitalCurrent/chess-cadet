@@ -37,6 +37,7 @@ export default function App() {
   const [openingId, setOpeningId] = useState(OPENINGS[0].id);
   const [mode, setMode] = useState('learn'); // learn first, then drill
   const [restart, setRestart] = useState(0);
+  const [playSeed, setPlaySeed] = useState(null); // { moves, color } for Continue vs Computer
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [pieceSetId, setPieceSetId] = useState(
@@ -69,8 +70,15 @@ export default function App() {
   const pieceSet = getPieceSet(pieceSetId);
   const boardTheme = getBoardTheme(boardThemeId);
 
-  const pickMode = (id) => { setMode(id); setRestart((r) => r + 1); };
+  // Tapping the Play tab directly = a normal game from the start (clear any seed).
+  const pickMode = (id) => { if (id === 'play') setPlaySeed(null); setMode(id); setRestart((r) => r + 1); };
   const pickOpening = (id) => { setOpeningId(id); setRestart((r) => r + 1); };
+  // Hand the current opening position over to Play vs the computer (Coach on).
+  const continueVsComputer = (moves, color) => {
+    setPlaySeed({ moves, color });
+    setMode('play');
+    setRestart((r) => r + 1);
+  };
 
   return (
     <div className="min-h-screen text-frost pb-24 md:pb-10">
@@ -130,6 +138,7 @@ export default function App() {
             boardTheme={boardTheme}
             moveStyle={moveStyle}
             focusBoard={focusBoard}
+            seed={playSeed}
             rewardMove={rewardMove}
           />
         ) : (
@@ -138,6 +147,7 @@ export default function App() {
             opening={opening}
             mode={mode}
             focusBoard={focusBoard}
+            onContinue={continueVsComputer}
             openingSwitcher={<OpeningPicker value={openingId} onChange={pickOpening} />}
             pieceSet={pieceSet}
             boardTheme={boardTheme}

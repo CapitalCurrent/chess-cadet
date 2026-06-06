@@ -5,21 +5,42 @@ import PlayLayout from './PlayLayout';
 import Segmented from './nav/Segmented';
 import { IconUndo, IconFlip, IconRestart } from './icons';
 import { newGame } from '../engine/chessEngine';
-import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine } from '../engine/stockfishEngine';
-import { initMaia, ensureMaiaReady, maiaMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
+import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine, analyze } from '../engine/stockfishEngine';
+import { initMaia, ensureMaiaReady, maiaMove, maiaBestMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
 
 // Notation-only game. The board is DISPLAY ONLY — every move must be typed on
 // the keypad. A simple random-mover opponent replies (very beatable; a real
 // engine can replace it later). The move list reinforces reading notation.
-export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, rewardMove }) {
-  const gameRef = useRef(newGame());
-  const [fen, setFen] = useState(gameRef.current.fen());
-  const [history, setHistory] = useState([]); // SAN strings
+// Build a game, optionally replaying a seed line (the opening she just drilled)
+// so "Continue vs Computer" picks up from that exact position.
+function seededGame(seed) {
+  const g = newGame();
+  if (seed && Array.isArray(seed.moves)) {
+    for (const san of seed.moves) {
+      try {
+        g.move(san);
+      } catch {
+        /* skip anything unexpected */
+      }
+    }
+  }
+  return g;
+}
+
+export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, seed, rewardMove }) {
+  const gameRef = useRef();
+  if (!gameRef.current) gameRef.current = seededGame(seed);
+  const [fen, setFen] = useState(() => gameRef.current.fen());
+  const [history, setHistory] = useState(() => gameRef.current.history()); // SAN strings
   const [tokens, setTokens] = useState([]);
   const [feedback, setFeedback] = useState(null);
   const [over, setOver] = useState(null); // { text }
-  const [lastMove, setLastMove] = useState(null);
-  const [studentColor, setStudentColor] = useState('w');
+  const [lastMove, setLastMove] = useState(() => {
+    const h = gameRef.current.history({ verbose: true });
+    const last = h[h.length - 1];
+    return last ? { from: last.from, to: last.to } : null;
+  });
+  const [studentColor, setStudentColor] = useState(() => (seed && seed.color) || 'w');
   const [flipped, setFlipped] = useState(false); // view-only board flip
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
   const [level, setLevel] = useState(() => {
@@ -34,6 +55,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   const [autoFlip, setAutoFlip] = useState(
     () => localStorage.getItem('chess-cadet-autoflip') !== 'off'
   ); // pass-and-play: rotate board to whoever is to move
+  const [coach, setCoach] = useState(
+    () => localStorage.getItem('chess-cadet-coach') === 'on'
+  ); // Spar: grade her moves + offer hints when playing the engine
+  const [coachNote, setCoachNote] = useState(null); // { kind, text }
   const [humanRating, setHumanRating] = useState(() => {
     const v = parseInt(localStorage.getItem('chess-cadet-humanrating'), 10);
     return v >= 1100 && v <= 1900 ? v : 1100;
@@ -52,6 +77,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   useEffect(() => {
     localStorage.setItem('chess-cadet-autoflip', autoFlip ? 'on' : 'off');
   }, [autoFlip]);
+  useEffect(() => {
+    localStorage.setItem('chess-cadet-coach', coach ? 'on' : 'off');
+  }, [coach]);
   useEffect(() => {
     initEngine(); // warm up the Stockfish worker
   }, []);
@@ -148,6 +176,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
 
   function submit() {
     if (!myTurn || !input) return;
+    const beforeFen = gameRef.current.fen();
     let move = null;
     try {
       move = gameRef.current.move(input);
@@ -162,12 +191,14 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     setFeedback({ kind: 'good', text: `${move.san} ✓` });
     setTokens([]);
     pushMove(move);
+    if (coachActive) gradeMove(beforeFen, move);
     rewardMove && rewardMove(0);
     if (gameRef.current.isCheckmate()) rewardMove && rewardMove(10); // she delivered mate!
   }
 
   // Apply a board move (optionally with a chosen promotion piece).
   function applyBoardMove(from, to, promotion) {
+    const beforeFen = gameRef.current.fen();
     let move = null;
     try {
       move = gameRef.current.move(promotion ? { from, to, promotion } : { from, to });
@@ -178,6 +209,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     setFeedback({ kind: 'good', text: `${move.san} ✓` });
     setTokens([]);
     pushMove(move);
+    if (coachActive) gradeMove(beforeFen, move);
     rewardMove && rewardMove(0);
     if (gameRef.current.isCheckmate()) rewardMove && rewardMove(10);
   }
@@ -197,21 +229,126 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   }
 
   function startNew(color) {
-    gameRef.current = newGame();
+    gameRef.current = seededGame(seed); // a seeded game restarts from the opening
     setStudentColor(color);
     setFlipped(false);
     setFen(gameRef.current.fen());
-    setHistory([]);
+    setHistory(gameRef.current.history());
     setTokens([]);
     setFeedback(null);
+    setCoachNote(null);
     setOver(null);
-    setLastMove(null);
+    const h = gameRef.current.history({ verbose: true });
+    const last = h[h.length - 1];
+    setLastMove(last ? { from: last.from, to: last.to } : null);
   }
 
   // Flip the board view only — a temporary peek from the opponent's side.
   // She still controls the same color; the engine is untouched.
   function flipView() {
     setFlipped((f) => !f);
+  }
+
+  // ── Coach (Spar) — grade her move by how it ranks among the engine's best ──
+  const coachActive = coach && !twoPlayer; // only meaningful vs an engine
+
+  function uciToSan(fen, uci) {
+    if (!uci) return '';
+    try {
+      const g = newGame(fen);
+      const m = g.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined });
+      return m ? m.san : uci;
+    } catch {
+      return uci;
+    }
+  }
+
+  // Normalize an eval to a single number (centipawns); mate -> a big value.
+  function scoreNum(c) {
+    if (!c) return 0;
+    if (typeof c.mate === 'number') return (c.mate >= 0 ? 1 : -1) * (100000 - Math.abs(c.mate) * 100);
+    return typeof c.cp === 'number' ? c.cp : 0;
+  }
+
+  // A human-level move suggestion: Maia at her rating (learnable) if loaded,
+  // otherwise Stockfish's best as a fallback. Returns SAN or null.
+  async function humanSuggestion(fen) {
+    if (maia.status === 'ready') {
+      try {
+        const mv = await maiaBestMove(fen, humanRating, humanRating);
+        if (mv) return uciToSan(fen, mv);
+      } catch {
+        /* fall through */
+      }
+    }
+    try {
+      const cands = (await analyze(fen, { multipv: 1, movetime: 400 })) || [];
+      if (cands.length) return uciToSan(fen, cands[0].move);
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+
+  // Grade her move by how much it dropped the evaluation (a real blunder check),
+  // NOT by whether it was the engine's exact best. Beginner-friendly: praise
+  // anything sound, only warn on genuine material/eval losses. Hints are
+  // human-level (Maia), not superhuman engine lines.
+  async function gradeMove(beforeFen, move) {
+    const uci = move.from + move.to + (move.promotion || '');
+    const afterFen = gameRef.current.fen();
+    setCoachNote({ kind: 'pending', text: '🎓 Coach is looking…' });
+    let cands = [];
+    try {
+      cands = (await analyze(beforeFen, { multipv: 5, movetime: 600 })) || [];
+    } catch {
+      cands = [];
+    }
+    if (!cands.length) return setCoachNote(null);
+    const bestCp = scoreNum(cands[0]);
+    const found = cands.find((c) => c.move === uci);
+    let herCp;
+    if (found) {
+      herCp = scoreNum(found);
+    } else {
+      let after = [];
+      try {
+        after = (await analyze(afterFen, { multipv: 1, movetime: 450 })) || [];
+      } catch {
+        after = [];
+      }
+      herCp = after.length ? -scoreNum(after[0]) : bestCp - 400;
+    }
+    const loss = bestCp - herCp; // centipawns given up vs the best move
+    if (loss <= 50) {
+      setCoachNote(
+        uci === cands[0].move
+          ? { kind: 'best', text: '⭐ Best move! Right on the money.' }
+          : { kind: 'good', text: '👍 Great move — among the best here.' }
+      );
+    } else if (loss <= 150) {
+      setCoachNote({ kind: 'good', text: '🙂 Good — a solid, safe move.' });
+    } else {
+      const sug = await humanSuggestion(beforeFen);
+      if (loss <= 350) {
+        setCoachNote({
+          kind: 'warn',
+          text: sug ? `🤔 A little loose — ${sug} keeps you better.` : '🤔 A little loose — there was a stronger move.',
+        });
+      } else {
+        setCoachNote({
+          kind: 'warn',
+          text: sug ? `⚠️ Careful — that gives a lot away. Safer was ${sug}.` : '⚠️ Careful — that move loses ground.',
+        });
+      }
+    }
+  }
+
+  async function showHint() {
+    const f = gameRef.current.fen();
+    setCoachNote({ kind: 'pending', text: '🎓 Thinking of a hint…' });
+    const sug = await humanSuggestion(f);
+    setCoachNote(sug ? { kind: 'hint', text: `💡 A move like ${sug} looks good.` } : null);
   }
 
   function selectOpponent(type) {
@@ -281,10 +418,14 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       <div className="md:flex-1 md:min-h-0 md:overflow-y-auto md:-mr-1 md:pr-1">
       {/* Match setup — opponent, side, and difficulty grouped in one card */}
       <div className="cc-card p-3 mb-3 space-y-3">
+        {seed && (
+          <div className="text-sm font-bold text-grass">▶ Continuing from your opening — play it out!</div>
+        )}
         <Segmented options={opponentOptions} value={opponentType} onChange={selectOpponent} size="sm" />
 
-        {/* Play-as side (engine modes only — both colors are played in pass-and-play) */}
-        {!twoPlayer && (
+        {/* Play-as side (engine modes only; hidden in pass-and-play and when
+            continuing a seeded opening, where her color is fixed) */}
+        {!twoPlayer && !seed && (
           <Segmented
             options={[
               { id: 'w', label: '♔ White' },
@@ -340,6 +481,21 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
         ) : (
           <div className="text-xs text-frost-dim leading-snug">
             <span className="font-bold text-gold">Pass-and-play</span> — two players share this device and take turns typing each move. No engine plays.{autoFlip ? ' The board flips to each player automatically.' : ''}
+          </div>
+        )}
+
+        {/* Coach (Spar) — grade her moves + hints. Only vs an engine. */}
+        {!twoPlayer && (
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <span className="text-sm font-bold text-frost">
+              🎓 Coach me <span className="font-normal text-frost-dim">— rate my moves &amp; give hints</span>
+            </span>
+            <button
+              onClick={() => setCoach((c) => !c)}
+              className={`cc-btn px-3 py-1 text-xs ${coach ? 'cc-btn-primary' : 'cc-btn-secondary'}`}
+            >
+              {coach ? 'ON' : 'OFF'}
+            </button>
           </div>
         )}
       </div>
@@ -417,6 +573,30 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       <div className="md:shrink-0 md:pt-3">
       {!over && (
         <>
+          {coachActive && (
+            <div className="flex items-center gap-2 mb-2">
+              {coachNote ? (
+                <div
+                  className={`flex-1 rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold animate-pop ${
+                    coachNote.kind === 'best' || coachNote.kind === 'good'
+                      ? 'bg-grass/20 text-grass ring-1 ring-grass/40'
+                      : coachNote.kind === 'warn'
+                      ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
+                      : 'bg-surface text-frost-dim ring-1 ring-edge'
+                  }`}
+                >
+                  {coachNote.text}
+                </div>
+              ) : (
+                <div className="flex-1 text-xs md:text-sm text-frost-dim">🎓 Coach is on — play a move and I’ll rate it.</div>
+              )}
+              {myTurn && (
+                <button onClick={showHint} className="cc-btn cc-btn-secondary px-3 py-2 text-xs shrink-0">
+                  💡 Hint
+                </button>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2 mb-2">
             <div className="text-xs md:text-sm text-frost-dim font-bold whitespace-nowrap">
               {activeColor === 'w' ? 'White' : 'Black'} types:

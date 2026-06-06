@@ -9,6 +9,7 @@ let worker = null;
 let readyPromise = null;
 let active = null; // resolver for the in-flight request
 let infoMoves = null; // when set, collect MultiPV candidate moves by rank
+let infoScores = null; // when set (analyze), also collect each rank's eval score
 let queue = Promise.resolve();
 
 function dispatch(line) {
@@ -17,10 +18,18 @@ function dispatch(line) {
     worker._readyResolve();
     worker._readyResolve = null;
   }
-  // While a MultiPV search runs, capture each line's top move by its rank.
+  // While a MultiPV search runs, capture each line's top move by its rank (and
+  // its eval score too, when analyze() asked for scores).
   if (infoMoves && line.indexOf('info ') === 0) {
     const m = line.match(/ multipv (\d+) .* pv (\S+)/);
-    if (m) infoMoves[parseInt(m[1], 10)] = m[2];
+    if (m) {
+      const rank = parseInt(m[1], 10);
+      infoMoves[rank] = m[2];
+      if (infoScores) {
+        const sc = line.match(/ score (cp|mate) (-?\d+)/);
+        if (sc) infoScores[rank] = sc[1] === 'mate' ? { mate: parseInt(sc[2], 10) } : { cp: parseInt(sc[2], 10) };
+      }
+    }
     return;
   }
   if (line.indexOf('bestmove') === 0 && active) {
@@ -28,11 +37,14 @@ function dispatch(line) {
     const resolve = active;
     active = null;
     if (infoMoves) {
-      const ordered = Object.keys(infoMoves)
-        .sort((a, b) => a - b)
-        .map((k) => infoMoves[k]);
+      const ranks = Object.keys(infoMoves).sort((a, b) => a - b);
+      const hadScores = !!infoScores;
+      const result = hadScores
+        ? ranks.map((k) => ({ move: infoMoves[k], ...(infoScores[k] || {}) }))
+        : ranks.map((k) => infoMoves[k]);
       infoMoves = null;
-      resolve(ordered.length ? ordered : mv && mv !== '(none)' ? [mv] : []);
+      infoScores = null;
+      resolve(result.length ? result : hadScores ? [] : mv && mv !== '(none)' ? [mv] : []);
     } else {
       resolve(mv && mv !== '(none)' ? mv : null);
     }
@@ -104,6 +116,32 @@ export function topMoves(fen, { multipv = 4, movetime = 500, skill = 20 } = {}) 
   const run = () =>
     ensureReady()
       .then(() => doTopMoves(fen, multipv, movetime, skill))
+      .catch(() => []);
+  const p = queue.then(run, run);
+  queue = p.catch(() => {});
+  return p;
+}
+
+function doAnalyze(fen, multipv, movetime) {
+  return new Promise((resolve) => {
+    active = resolve;
+    infoMoves = {};
+    infoScores = {};
+    worker.postMessage('setoption name MultiPV value ' + multipv);
+    worker.postMessage('setoption name Skill Level value 20');
+    worker.postMessage('position fen ' + fen);
+    worker.postMessage('go movetime ' + movetime);
+  });
+}
+
+// Full-strength analysis: best-first candidates WITH eval scores, as
+// [{ move:'e2e4', cp: 35 }] or [{ move, mate: 3 }]. cp is from the side-to-move's
+// perspective (positive = good for them). Used by the Spar coach to detect real
+// blunders (big eval drops) rather than failure to find the engine's exact best.
+export function analyze(fen, { multipv = 5, movetime = 600 } = {}) {
+  const run = () =>
+    ensureReady()
+      .then(() => doAnalyze(fen, multipv, movetime))
       .catch(() => []);
   const p = queue.then(run, run);
   queue = p.catch(() => {});

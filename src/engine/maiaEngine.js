@@ -153,3 +153,20 @@ export async function maiaMove(fen, eloSelf, eloOppo) {
   const { policy } = decodeMaia3(fen, logitsMove, logitsValue, legalMoves);
   return sampleFromPolicy(policy);
 }
+
+// The MOST-LIKELY human move (argmax of the policy) — used for Spar coach hints,
+// where we want the single best human-level suggestion, not a sampled one.
+export async function maiaBestMove(fen, eloSelf, eloOppo) {
+  const { boardTokens, legalMoves } = preprocessMaia3(fen);
+  const { logitsMove, logitsValue } = await runInference(boardTokens, eloSelf, eloOppo);
+  const { policy } = decodeMaia3(fen, logitsMove, logitsValue, legalMoves);
+  let best = null;
+  let bestP = -1;
+  for (const [uci, p] of Object.entries(policy)) {
+    if (p > bestP) {
+      bestP = p;
+      best = uci;
+    }
+  }
+  return best;
+}
