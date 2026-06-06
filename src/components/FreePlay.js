@@ -26,8 +26,12 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
   });
   const [opponentType, setOpponentType] = useState(() => {
     const v = localStorage.getItem('chess-cadet-opponent');
+    if (v === 'human2') return 'human2'; // pass-and-play (two humans, one device)
     return v === 'maia' || v === 'human' ? 'maia' : 'stockfish'; // 'human' = legacy Maia value
   });
+  const [autoFlip, setAutoFlip] = useState(
+    () => localStorage.getItem('chess-cadet-autoflip') !== 'off'
+  ); // pass-and-play: rotate board to whoever is to move
   const [humanRating, setHumanRating] = useState(() => {
     const v = parseInt(localStorage.getItem('chess-cadet-humanrating'), 10);
     return v >= 1100 && v <= 1900 ? v : 1100;
@@ -44,6 +48,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     localStorage.setItem('chess-cadet-humanrating', String(humanRating));
   }, [humanRating]);
   useEffect(() => {
+    localStorage.setItem('chess-cadet-autoflip', autoFlip ? 'on' : 'off');
+  }, [autoFlip]);
+  useEffect(() => {
     initEngine(); // warm up the Stockfish worker
   }, []);
   useEffect(() => onMaiaStatus((status, progress) => setMaia({ status, progress })), []);
@@ -53,7 +60,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
 
   const input = tokens.join('');
   const game = gameRef.current;
-  const myTurn = !over && game.turn() === studentColor;
+  const twoPlayer = opponentType === 'human2'; // pass-and-play: both sides human, no engine
+  const toMove = game.turn();
+  const activeColor = twoPlayer ? toMove : studentColor; // whose move it is right now
+  const myTurn = !over && (twoPlayer || toMove === studentColor);
   const inCheck = !over && game.inCheck();
 
   function checkEnd() {
@@ -79,7 +89,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
   // deliberately suboptimal (but never random) move from its top candidates;
   // if the engine ever fails it falls back to a random legal move.
   useEffect(() => {
-    if (over || game.turn() === studentColor) return;
+    if (twoPlayer || over || game.turn() === studentColor) return; // no engine in pass-and-play
     let cancelled = false;
     const weak = levelWeakening(level);
     const g = gameRef.current;
@@ -214,7 +224,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     const g = gameRef.current;
     if (!g.history().length) return;
     g.undo(); // undo opponent (or last)
-    if (g.history().length && g.turn() !== studentColor) g.undo(); // back to her turn
+    // vs an engine, step back a second time so it's her turn again; in pass-and-play
+    // a single undo correctly hands the move back to the previous player.
+    if (!twoPlayer && g.history().length && g.turn() !== studentColor) g.undo();
     setOver(null);
     setFeedback(null);
     setFen(g.fen());
@@ -230,14 +242,22 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
     rows.push({ n: i / 2 + 1, w: history[i], b: history[i + 1] });
   }
 
-  const viewOrientation = flipped ? (studentColor === 'w' ? 'b' : 'w') : studentColor;
+  const baseOrientation = twoPlayer ? 'w' : studentColor;
+  const viewOrientation =
+    twoPlayer && autoFlip
+      ? toMove // follow the player to move so each side sees their pieces at the bottom
+      : flipped
+      ? baseOrientation === 'w'
+        ? 'b'
+        : 'w'
+      : baseOrientation;
 
   const board = (
     <ChessBoard
       fen={fen}
       orientation={viewOrientation}
       lastMove={lastMove}
-      movableColor={myTurn ? studentColor : null}
+      movableColor={myTurn ? activeColor : null}
       moveStyle={moveStyle}
       onMove={handleBoardMove}
       pieceSet={pieceSet}
@@ -252,6 +272,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
         <div className="text-sm font-bold">
           {over ? (
             <span className="text-gold animate-pop">{over.text}</span>
+          ) : twoPlayer ? (
+            <span className="text-grass">
+              {toMove === 'w' ? '♔ White' : '♚ Black'} to move{inCheck ? ' — check!' : ''} ✍️
+            </span>
           ) : myTurn ? (
             <span className="text-grass">
               Your move{inCheck ? ' — you’re in check!' : ''} ✍️
@@ -264,41 +288,56 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
           <button onClick={takeback} className="rounded-lg px-2.5 py-1 text-xs font-bold bg-surface text-frost ring-1 ring-edge">
             ⤺ Undo
           </button>
-          <button
-            onClick={flipView}
-            className={`rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-edge ${
-              flipped ? 'bg-gold text-bg' : 'bg-surface text-gold'
-            }`}
-            title="Flip the board to see the opponent's view"
-          >
-            ⇄ Flip
-          </button>
+          {twoPlayer ? (
+            <button
+              onClick={() => setAutoFlip((a) => !a)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-edge ${
+                autoFlip ? 'bg-gold text-bg' : 'bg-surface text-gold'
+              }`}
+              title="Rotate the board to whoever is to move"
+            >
+              ⟳ Auto-flip
+            </button>
+          ) : (
+            <button
+              onClick={flipView}
+              className={`rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-edge ${
+                flipped ? 'bg-gold text-bg' : 'bg-surface text-gold'
+              }`}
+              title="Flip the board to see the opponent's view"
+            >
+              ⇄ Flip
+            </button>
+          )}
           <button onClick={() => startNew(studentColor)} className="rounded-lg px-2.5 py-1 text-xs font-bold bg-surface text-coral ring-1 ring-edge">
             ↺ New
           </button>
         </div>
       </div>
 
-      {/* Side picker — choose which color to play (starts a fresh game) */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[11px] uppercase tracking-wide text-gold/50 font-bold whitespace-nowrap">
-          Play as
-        </span>
-        {[
-          { c: 'w', label: '♔ White' },
-          { c: 'b', label: '♚ Black' },
-        ].map((s) => (
-          <button
-            key={s.c}
-            onClick={() => { if (s.c !== studentColor) startNew(s.c); }}
-            className={`flex-1 rounded-lg px-2 py-1 text-xs font-bold ring-1 ring-edge transition ${
-              studentColor === s.c ? 'bg-gold text-bg' : 'bg-surface text-gold/80'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      {/* Side picker — choose which color to play (starts a fresh game). Hidden in
+          pass-and-play, where both colors are played on the same device. */}
+      {!twoPlayer && (
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[11px] uppercase tracking-wide text-gold/50 font-bold whitespace-nowrap">
+            Play as
+          </span>
+          {[
+            { c: 'w', label: '♔ White' },
+            { c: 'b', label: '♚ Black' },
+          ].map((s) => (
+            <button
+              key={s.c}
+              onClick={() => { if (s.c !== studentColor) startNew(s.c); }}
+              className={`flex-1 rounded-lg px-2 py-1 text-xs font-bold ring-1 ring-edge transition ${
+                studentColor === s.c ? 'bg-gold text-bg' : 'bg-surface text-gold/80'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Opponent picker */}
       <div className="flex items-center gap-2 mb-2">
@@ -306,8 +345,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
           Opponent
         </span>
         {[
-          { t: 'stockfish', label: '🤖 Practice Bot' },
+          { t: 'stockfish', label: '🤖 Bot' },
           { t: 'maia', label: '🙂 Maia' },
+          { t: 'human2', label: '👥 2 Players' },
         ].map((o) => (
           <button
             key={o.t}
@@ -340,7 +380,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
             <div className="text-[10px] text-gold/60">{levelEloLabel(level)} Elo</div>
           </div>
         </div>
-      ) : (
+      ) : opponentType === 'maia' ? (
         /* Maia rating + model status */
         <div className="mb-2">
           <div className="flex items-center gap-2">
@@ -384,6 +424,13 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
             )}
           </div>
         </div>
+      ) : (
+        /* Pass-and-play hint */
+        <div className="mb-2 text-xs text-frost/70 bg-surface rounded-xl ring-1 ring-edge px-3 py-2">
+          👥 <span className="font-bold text-gold">Pass-and-play</span> — two players share
+          this device and take turns typing each move. No engine plays.
+          {autoFlip ? ' The board flips to each player automatically.' : ''}
+        </div>
       )}
 
       {/* Move list */}
@@ -418,7 +465,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
         <>
           <div className="flex items-center gap-2 mb-2">
             <div className="text-xs text-gold/60 font-bold whitespace-nowrap">
-              {studentColor === 'w' ? 'White' : 'Black'} types:
+              {activeColor === 'w' ? 'White' : 'Black'} types:
             </div>
             <div className="flex-1 bg-bg rounded-xl ring-2 ring-edge px-3 py-2 min-h-[42px] flex items-center text-xl font-extrabold tracking-wider text-gold">
               {input || <span className="text-gold/30">{myTurn ? 'type, or move on the board…' : 'waiting…'}</span>}
@@ -469,7 +516,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
                   className="w-16 h-16 rounded-xl bg-bg ring-1 ring-edge hover:ring-gold active:translate-y-px flex items-center justify-center"
                 >
                   <div className="w-12 h-12 flex items-center justify-center" style={{ transform: `scale(${pieceSet.scale || 1})` }}>
-                    {pieceSet.render(studentColor, t)}
+                    {pieceSet.render(activeColor, t)}
                   </div>
                 </button>
               ))}
