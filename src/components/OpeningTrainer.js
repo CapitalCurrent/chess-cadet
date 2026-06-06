@@ -61,8 +61,16 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
   const mover = finished ? null : moverAt(depth);
   const myTurn = !finished && mover === student;
   const isBranch = options.length > 1;
+  const branchHasTrap = options.some((o) => o.trap); // a "fall for it vs defend" choice
   const target = finished ? null : options[0]; // her move, or the single forced reply
-  const justPlayed = path.length ? path[path.length - 1] : null;
+  const moveNo = Math.floor(depth / 2) + 1;
+  const roleLabel = finished
+    ? ''
+    : isBranch
+    ? `${mover === 'w' ? 'White' : 'Black'}’s choice`
+    : myTurn
+    ? 'Your move'
+    : 'Opponent’s move';
 
   const { fen, lastMove } = useMemo(() => buildPosition(path), [path]);
 
@@ -86,7 +94,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     if (!myTurn || !targetMove) return;
     if (from === targetMove.from && to === targetMove.to) {
       // Land the move on the SAME render as the drop — no snap-back flash.
-      setFeedback({ kind: 'correct', text: `Nice! ${target.san} — ${readSan(target.san)}` });
+      setFeedback(null);
       playNode(target);
     } else {
       setFeedback({
@@ -103,7 +111,13 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     if (mode !== 'drill' || finished) return;
     if (mover === student) return; // her turn — wait for input
     const t = setTimeout(() => {
-      const choice = options[Math.floor(Math.random() * options.length)];
+      // Prefer the correct/best replies; only fall for a flagged trap occasionally
+      // so she still gets to punish it sometimes (but the bot mostly defends).
+      const best = options.filter((o) => !o.trap);
+      const traps = options.filter((o) => o.trap);
+      const pool =
+        traps.length && best.length && Math.random() < 0.3 ? traps : best.length ? best : options;
+      const choice = pool[Math.floor(Math.random() * pool.length)];
       setPath((p) => [...p, choice]);
     }, 750);
     return () => clearTimeout(t);
@@ -212,170 +226,170 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
           stays constant across modes and the board never shifts). */}
       {openingSwitcher && <div className="mb-3">{openingSwitcher}</div>}
 
-      {/* Coach caption */}
-      <div className="cc-card p-3 md:p-4 mb-3 min-h-[64px] md:min-h-[96px]">
-        {finished ? (
-          <div className="text-center animate-pop">
-            <div className="text-lg md:text-3xl font-extrabold text-gold">🎉 You finished {opening.name}!</div>
-            <div className="text-sm md:text-lg text-gold/70">
-              +5 bonus gems.{' '}
-              {hasBranches(opening)
-                ? 'Tap Restart to try the other line!'
-                : 'Tap Restart to play it again.'}
-            </div>
-          </div>
-        ) : justPlayed ? (
-          <div className="animate-float">
-            <div className="text-xs md:text-sm uppercase tracking-wide text-gold/50">
-              Last move: <span className="text-gold font-bold">{justPlayed.san}</span> · {readSan(justPlayed.san)}
-            </div>
-            <div className="text-sm md:text-xl md:leading-snug text-frost mt-0.5 md:mt-1.5">{justPlayed.note}</div>
-            {justPlayed.coach && (
-              <div className="mt-1.5 md:mt-2.5 text-sm md:text-lg md:leading-snug text-grass flex gap-1.5">
-                <span>🧭</span>
-                <span>{justPlayed.coach}</span>
-              </div>
-            )}
-          </div>
+      {/* History strip — the moves so far in notation (the PAST). Shows the blurb
+          until the first move so there's no empty box. */}
+      <div className="cc-card p-2.5 mb-3 text-sm">
+        {path.length === 0 ? (
+          <span className="text-frost-dim/90">{opening.icon} {opening.blurb}</span>
         ) : (
-          <div className="text-sm md:text-xl md:leading-snug text-frost">
-            {opening.icon} {opening.blurb}
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+            {path.map((n, i) =>
+              i % 2 === 0 ? (
+                <span key={i} className="text-frost/90">
+                  <span className="text-gold/50">{i / 2 + 1}.</span> {n.san}{' '}
+                  <span className="text-frost-dim">{path[i + 1] ? path[i + 1].san : ''}</span>
+                </span>
+              ) : null
+            )}
           </div>
         )}
       </div>
 
-      {/* Feedback toast */}
-      {feedback && (
-        <div
-          className={`rounded-xl px-3 py-2 md:px-4 md:py-3 mb-3 text-sm md:text-lg font-bold animate-pop ${
-            feedback.kind === 'correct'
-              ? 'bg-grass/20 text-grass ring-1 ring-grass/40'
-              : feedback.kind === 'legal'
-              ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
-              : 'bg-coral/15 text-coral ring-1 ring-coral/40'
-          }`}
-        >
-          {feedback.text}
+      {/* The ONE step card — the single focus for the current step. */}
+      {finished ? (
+        <div className="cc-card p-4 md:p-5 text-center animate-pop">
+          <div className="text-lg md:text-3xl font-extrabold text-gold">🎉 You finished {opening.name}!</div>
+          <div className="text-sm md:text-lg text-gold/70 mt-1">
+            {hasBranches(opening) ? 'Tap ↻ Restart to try the other line!' : 'Tap ↻ Restart to play it again.'}
+          </div>
         </div>
-      )}
+      ) : (
+        <div className="cc-card p-3 md:p-4">
+          <div className="text-xs md:text-sm uppercase tracking-wide text-gold/50 mb-1.5">
+            Move {moveNo} · {roleLabel}
+          </div>
 
-      {/* LEARN MODE */}
-      {mode === 'learn' && !finished && (
-        <div className="cc-card p-3">
-          {myTurn ? (
-            /* Her move — slide the piece along the arrow */
-            <>
-              <div className="text-xs md:text-sm uppercase tracking-wide text-gold/50 mb-1">Your move</div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl md:text-4xl font-extrabold text-gold">{target.san}</span>
-                <span className="text-sm md:text-xl text-frost">{readSan(target.san)}</span>
-              </div>
-              <p className="text-sm md:text-xl md:leading-snug text-frost/90 mt-1 md:mt-2">{target.note}</p>
-              <div className="mt-2 text-sm md:text-lg text-grass font-bold">
-                👉 Slide the {PIECE_WORDS[target.san[0]] || 'pawn'} along the orange arrow
-                {targetMove ? ` to ${targetMove.to}` : ''}.
-              </div>
-              <button
-                onClick={() => playNode(target)}
-                className="cc-btn cc-btn-secondary mt-3 w-full py-2.5 md:py-3.5 md:text-lg"
-              >
-                Show me ▶
-              </button>
-            </>
-          ) : isBranch ? (
-            /* Opponent decision point — she picks which reply to explore */
-            <>
-              <div className="text-xs md:text-sm uppercase tracking-wide text-gold/50 mb-1">
-                {mover === 'w' ? 'White' : 'Black'} has a choice
-              </div>
-              <p className="text-sm md:text-lg md:leading-snug text-frost/90 mb-2 md:mb-3">
-                Two good moves here — pick one to learn, then Restart to try the other!
-              </p>
-              <div className="flex flex-col gap-2 md:gap-3">
-                {optionMoves.map((o, i) => (
-                  <button
-                    key={o.node.san}
-                    onClick={() => playNode(o.node)}
-                    className="w-full py-2.5 md:py-4 rounded-xl font-extrabold text-bg active:translate-y-px text-left px-3 md:px-4 md:text-xl"
-                    style={{ backgroundColor: BRANCH_COLORS[i % BRANCH_COLORS.length] }}
-                  >
-                    {o.node.san} — {readSan(o.node.san)}
-                  </button>
-                ))}
-              </div>
-            </>
+          {mode === 'learn' ? (
+            myTurn ? (
+              /* Her move — slide the piece along the arrow */
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl md:text-4xl font-extrabold text-gold">{target.san}</span>
+                  <span className="text-sm md:text-xl text-frost">{readSan(target.san)}</span>
+                </div>
+                <p className="text-sm md:text-xl md:leading-snug text-frost/90 mt-1 md:mt-2">{target.note}</p>
+                <div className="mt-2 text-sm md:text-lg text-grass font-bold">
+                  👉 Slide the {PIECE_WORDS[target.san[0]] || 'pawn'} along the orange arrow
+                  {targetMove ? ` to ${targetMove.to}` : ''}.
+                </div>
+                <button
+                  onClick={() => playNode(target)}
+                  className="cc-btn cc-btn-secondary mt-3 w-full py-2.5 md:py-3.5 md:text-lg"
+                >
+                  Show me ▶
+                </button>
+              </>
+            ) : isBranch ? (
+              /* Opponent decision point — she picks which reply to explore */
+              <>
+                <p className="text-sm md:text-lg md:leading-snug text-frost/90 mb-2 md:mb-3">
+                  {branchHasTrap
+                    ? 'One move is a trap, the other is the right defense — try each, then Restart for the other!'
+                    : 'Two good moves here — pick one to learn, then Restart to try the other!'}
+                </p>
+                <div className="flex flex-col gap-2 md:gap-3">
+                  {optionMoves.map((o, i) => (
+                    <button
+                      key={o.node.san}
+                      onClick={() => playNode(o.node)}
+                      className="w-full py-2.5 md:py-4 rounded-cc-lg font-extrabold text-bg active:translate-y-px text-left px-3 md:px-4 md:text-xl"
+                      style={{ backgroundColor: BRANCH_COLORS[i % BRANCH_COLORS.length] }}
+                    >
+                      {o.node.label || `${o.node.san} — ${readSan(o.node.san)}`}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              /* Forced opponent reply */
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl md:text-4xl font-extrabold text-gold">{target.san}</span>
+                  <span className="text-sm md:text-xl text-frost">{readSan(target.san)}</span>
+                </div>
+                <p className="text-sm md:text-xl md:leading-snug text-frost/90 mt-1 md:mt-2">{target.note}</p>
+                <button
+                  onClick={() => playNode(target)}
+                  className="cc-btn cc-btn-grass mt-3 w-full py-3 md:py-4 text-lg md:text-2xl"
+                >
+                  Opponent plays ▶
+                </button>
+              </>
+            )
+          ) : myTurn ? (
+            <p className="text-sm md:text-lg text-frost/90">
+              Type {student === 'w' ? 'White' : 'Black'}’s move on the keypad below. Stuck? Tap “Need a hint?”.
+            </p>
           ) : (
-            /* Forced opponent reply */
-            <>
-              <div className="text-xs md:text-sm uppercase tracking-wide text-gold/50 mb-1">Opponent's move</div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl md:text-4xl font-extrabold text-gold">{target.san}</span>
-                <span className="text-sm md:text-xl text-frost">{readSan(target.san)}</span>
-              </div>
-              <p className="text-sm md:text-xl md:leading-snug text-frost/90 mt-1 md:mt-2">{target.note}</p>
-              <button
-                onClick={() => playNode(target)}
-                className="cc-btn cc-btn-grass mt-3 w-full py-3 md:py-4 text-lg md:text-2xl"
-              >
-                Opponent plays ▶
-              </button>
-            </>
+            <p className="text-sm md:text-lg text-frost-dim animate-pop">Opponent is thinking…</p>
+          )}
+
+          {/* Learn nudge when the wrong piece is dragged */}
+          {mode === 'learn' && feedback && feedback.kind !== 'correct' && (
+            <div className="mt-3 rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold bg-gold/15 text-gold ring-1 ring-gold/40 animate-pop">
+              {feedback.text}
+            </div>
           )}
         </div>
       )}
       </div>
 
-      {/* DRILL MODE — move entry pinned to the bottom (aligns with board's lower edge) */}
-      {mode === 'drill' && !finished && (
+      {/* DRILL MODE — move entry pinned to the bottom (aligns with board's lower edge).
+          Only on her turn; the "opponent thinking" state lives in the step card above. */}
+      {mode === 'drill' && !finished && myTurn && (
         <div className="md:shrink-0 md:pt-3">
-          {myTurn ? (
-            <>
-              {/* Input line */}
-              <div className="flex items-center gap-2 mb-2">
-                <div className="text-xs md:text-base text-gold/60 font-bold whitespace-nowrap">
-                  {student === 'w' ? 'White' : 'Black'} to play:
-                </div>
-                <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 md:py-3 min-h-[42px] md:min-h-[52px] flex items-center text-xl md:text-2xl font-extrabold tracking-wider text-gold">
-                  {input || <span className="text-gold/30">type your move…</span>}
-                </div>
-              </div>
-
-              {/* Hint ladder */}
-              <div className="mb-2 min-h-[20px] text-sm md:text-base">
-                {hint >= 2 ? (
-                  <span className="text-gold">The move is <b>{target.san}</b> — {readSan(target.san)}</span>
-                ) : hint >= 1 ? (
-                  <span className="text-gold/80">
-                    Hint: move your <b>{PIECE_WORDS[target.san[0]] || 'Pawn'}</b>. {target.note}
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => setHint(1)}
-                    className="text-frost/70 underline underline-offset-2"
-                  >
-                    Need a hint?
-                  </button>
-                )}
-                {hint === 1 && (
-                  <button onClick={() => setHint(2)} className="ml-2 text-frost/60 underline underline-offset-2">
-                    show answer
-                  </button>
-                )}
-              </div>
-
-              <NotationKeypad
-                onKey={(tok) => { setTokens((t) => [...t, tok]); setFeedback(null); }}
-                onBackspace={() => setTokens((t) => t.slice(0, -1))}
-                onClear={resetMoveInput}
-                onSubmit={submit}
-                canSubmit={!!input}
-              />
-            </>
-          ) : (
-            <div className="text-center text-frost/60 text-sm md:text-lg py-6 md:py-10 animate-pop">
-              Opponent is thinking…
+          {/* Right/wrong feedback for her typed move */}
+          {feedback && (
+            <div
+              className={`rounded-cc-lg px-3 py-2 mb-2 text-sm md:text-base font-bold animate-pop ${
+                feedback.kind === 'correct'
+                  ? 'bg-grass/20 text-grass ring-1 ring-grass/40'
+                  : feedback.kind === 'legal'
+                  ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
+                  : 'bg-coral/15 text-coral ring-1 ring-coral/40'
+              }`}
+            >
+              {feedback.text}
             </div>
           )}
+
+          {/* Input line */}
+          <div className="flex items-center gap-2 mb-2">
+            <div className="text-xs md:text-base text-gold/60 font-bold whitespace-nowrap">
+              {student === 'w' ? 'White' : 'Black'} to play:
+            </div>
+            <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 md:py-3 min-h-[42px] md:min-h-[52px] flex items-center text-xl md:text-2xl font-extrabold tracking-wider text-gold">
+              {input || <span className="text-gold/30">type your move…</span>}
+            </div>
+          </div>
+
+          {/* Hint ladder */}
+          <div className="mb-2 min-h-[20px] text-sm md:text-base">
+            {hint >= 2 ? (
+              <span className="text-gold">The move is <b>{target.san}</b> — {readSan(target.san)}</span>
+            ) : hint >= 1 ? (
+              <span className="text-gold/80">
+                Hint: move your <b>{PIECE_WORDS[target.san[0]] || 'Pawn'}</b>. {target.note}
+              </span>
+            ) : (
+              <button onClick={() => setHint(1)} className="text-frost/70 underline underline-offset-2">
+                Need a hint?
+              </button>
+            )}
+            {hint === 1 && (
+              <button onClick={() => setHint(2)} className="ml-2 text-frost/60 underline underline-offset-2">
+                show answer
+              </button>
+            )}
+          </div>
+
+          <NotationKeypad
+            onKey={(tok) => { setTokens((t) => [...t, tok]); setFeedback(null); }}
+            onBackspace={() => setTokens((t) => t.slice(0, -1))}
+            onClear={resetMoveInput}
+            onSubmit={submit}
+            canSubmit={!!input}
+          />
         </div>
       )}
     </>

@@ -97,9 +97,62 @@ const italianBlackTree = chain([
   { san: 'O-O', note: 'Castle your king to safety. Both sides are happy and developed!' },
 ]);
 
+// ── Fried Liver Attack (she plays White) — a TRAP + model tactical line ───────
+// 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 d5 5.exd5, then Black chooses:
+//   • ...Nxd5?? (TRAP) → 6.Nxf7! the Fried Liver sacrifice, raging attack
+//   • ...Na5!   (correct defense) → a fair game
+// `trap: true` flags the blunder so the trainer labels it in Learn and the
+// opponent only falls for it occasionally in Drill.
+
+const friedTrap = chain([
+  { san: 'Nxd5', trap: true, label: '…Nxd5?? — grabs the pawn (the trap!)',
+    note: 'Black greedily recaptures the pawn — but this walks straight into the Fried Liver!' },
+  { san: 'Nxf7', note: 'SACRIFICE! Nxf7 forks the queen and rook and tears open the king.',
+    coach: 'The Fried Liver sac: give up the knight to drag the king out into the open where you can hunt it.' },
+  { san: 'Kxf7', note: 'Black has to take back — the king is dragged out to f7.' },
+  { san: 'Qf3+', note: 'Check! The queen leaps to f3 — hitting the king AND the stranded d5 knight.',
+    coach: 'Double duty: check the king and pile onto the d5 knight at the same time.' },
+  { san: 'Ke6', note: 'The king must step up to defend the knight — right into the storm.' },
+  { san: 'Nc3', note: 'Pile on! Develop with tempo, hitting d5 again. White has a raging attack for the piece.',
+    coach: 'Black’s king is stuck in the open and your pieces keep coming. That’s why ...Nxd5 is a mistake!' },
+]);
+
+const friedDefense = chain([
+  { san: 'Na5', label: '…Na5! — the cool defense',
+    note: 'The smart move! Black ignores the pawn, kicks your bishop, and keeps the king safe.' },
+  { san: 'Bb5+', note: 'Check — and your bishop slides to safety with tempo.' },
+  { san: 'c6', note: 'Black blocks the check and hits your bishop and the d5 pawn.' },
+  { san: 'dxc6', note: 'Grab the pawn while you can.' },
+  { san: 'bxc6', note: 'Black recaptures, opening the b-file.' },
+  { san: 'Be2', note: 'Tuck the bishop back. Black gave a pawn for activity — a fair fight.',
+    coach: 'No Fried Liver today — ...Na5 is the antidote. Worth knowing for when YOU are Black, too!' },
+]);
+
+const friedLiverTree = chain(
+  [
+    { san: 'e4',  note: 'King pawn out — grab the center and free your pieces.' },
+    { san: 'e5',  note: 'Black answers in the center.' },
+    { san: 'Nf3', note: 'Attack the black e5 pawn.' },
+    { san: 'Nc6', note: 'Black defends e5.' },
+    { san: 'Bc4', note: 'Aim the bishop at f7 — the square only the king guards.' },
+    { san: 'Nf6', note: 'Black develops the knight and pokes your e4 pawn — this lets you attack!' },
+    { san: 'Ng5', note: 'Pounce! The knight jumps to g5 so your knight AND bishop both hit f7.',
+      coach: 'Ng5 is the aggressive try — two attackers on f7. Black has to defend very carefully.' },
+    { san: 'd5',  note: 'Black blocks the bishop and strikes back in the center — the right idea.' },
+    { san: 'exd5', note: 'Take the pawn. Now Black faces a big choice…',
+      coach: 'Black can greedily grab back with the knight (the famous mistake!) or play the calm ...Na5. Watch which comes.' },
+  ],
+  [...friedTrap, ...friedDefense]
+);
+
+// Openings are grouped into FAMILIES (the menu's first row) each with one or
+// more VARIATIONS (the second row). e.g. Italian (White) → Main line · Fried Liver.
 export const OPENINGS = [
   {
     id: 'italian-white',
+    familyId: 'italian-w',
+    family: 'Italian (White)',
+    variation: 'Main line',
     name: 'The Italian Game',
     student: 'w', // she plays White
     icon: '⚔️',
@@ -108,7 +161,22 @@ export const OPENINGS = [
     tree: italianWhiteTree,
   },
   {
+    id: 'fried-liver',
+    familyId: 'italian-w',
+    family: 'Italian (White)',
+    variation: 'Fried Liver',
+    name: 'Fried Liver Attack',
+    student: 'w', // she plays White
+    icon: '🍳',
+    blurb:
+      'The spicy Italian! Set a trap on f7 — if Black grabs the pawn, sacrifice your knight and hunt the king. Learn the attack AND the correct defense.',
+    tree: friedLiverTree,
+  },
+  {
     id: 'italian-black',
+    familyId: 'black',
+    family: 'Black (1…e5)',
+    variation: '1…e5 Mirror',
     name: "Black's Mirror (1...e5)",
     student: 'b', // she plays Black
     icon: '🛡️',
@@ -117,6 +185,20 @@ export const OPENINGS = [
     tree: italianBlackTree,
   },
 ];
+
+// Families in first-seen order, for the menu's family row.
+export function getFamilies() {
+  const fams = [];
+  for (const o of OPENINGS) {
+    if (!fams.some((f) => f.id === o.familyId)) fams.push({ id: o.familyId, label: o.family, icon: o.icon });
+  }
+  return fams;
+}
+
+// Variations belonging to a family (the second menu row), in array order.
+export function variationsOf(familyId) {
+  return OPENINGS.filter((o) => o.familyId === familyId);
+}
 
 export function getOpening(id) {
   return OPENINGS.find((o) => o.id === id) || OPENINGS[0];

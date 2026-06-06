@@ -9,6 +9,7 @@ import Settings from './components/Settings';
 import NotationGuide from './components/NotationGuide';
 import Logo from './components/nav/Logo';
 import Segmented from './components/nav/Segmented';
+import OpeningPicker from './components/nav/OpeningPicker';
 import BottomTabBar from './components/nav/BottomTabBar';
 import {
   IconLearn,
@@ -28,9 +29,6 @@ const MODES = [
   { id: 'drill', label: 'Drill', icon: <IconDrill size={22} /> },
   { id: 'play', label: 'Play', icon: <IconPlay size={22} /> },
 ];
-
-// Short opening labels so the segmented control stays tidy.
-const OPENING_SHORT = { 'italian-white': 'Italian', 'italian-black': 'Black 1…e5' };
 
 export default function App() {
   // rewardMove/breakStreak/finishLine still drive progress silently (the gems
@@ -70,12 +68,6 @@ export default function App() {
   const opening = getOpening(openingId);
   const pieceSet = getPieceSet(pieceSetId);
   const boardTheme = getBoardTheme(boardThemeId);
-
-  const openingOptions = OPENINGS.map((o) => ({
-    id: o.id,
-    label: OPENING_SHORT[o.id] || o.name,
-    icon: <span className="text-base leading-none">{o.icon}</span>,
-  }));
 
   const pickMode = (id) => { setMode(id); setRestart((r) => r + 1); };
   const pickOpening = (id) => { setOpeningId(id); setRestart((r) => r + 1); };
@@ -146,9 +138,7 @@ export default function App() {
             opening={opening}
             mode={mode}
             focusBoard={focusBoard}
-            openingSwitcher={
-              <Segmented options={openingOptions} value={openingId} onChange={pickOpening} size="sm" />
-            }
+            openingSwitcher={<OpeningPicker value={openingId} onChange={pickOpening} />}
             pieceSet={pieceSet}
             boardTheme={boardTheme}
             moveStyle={moveStyle}
