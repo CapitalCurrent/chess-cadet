@@ -10,8 +10,11 @@ export default function Segmented({ options, value, onChange, className = '', si
           key={o.id}
           role="tab"
           aria-selected={o.id === value}
-          onClick={() => onChange(o.id)}
-          className={`cc-seg-item ${size === 'sm' ? 'text-sm py-1.5' : 'md:text-lg'}`}
+          disabled={o.disabled}
+          onClick={() => !o.disabled && onChange(o.id)}
+          className={`cc-seg-item ${size === 'sm' ? 'text-sm py-1.5' : 'md:text-lg'} ${
+            o.disabled ? 'opacity-40 cursor-not-allowed' : ''
+          }`}
         >
           {o.icon && <span className="shrink-0">{o.icon}</span>}
           <span className="truncate">{o.label}</span>

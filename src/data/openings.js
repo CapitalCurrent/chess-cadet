@@ -1,3 +1,5 @@
+import { starsFor } from '../state/progress';
+
 // Opening curriculum as a VARIATION TREE. Each node is one ply (half-move) in
 // Standard Algebraic Notation, with a kid-voiced `note` (its "why") and an
 // optional `coach` tip. `children` are the possible NEXT plies:
@@ -406,6 +408,38 @@ export function familiesOf(side) {
     if (!fams.some((f) => f.id === o.familyId)) fams.push({ id: o.familyId, label: o.family, icon: o.icon });
   }
   return fams;
+}
+
+// Progression: which courses must be MASTERED (3★) before each unlocks, plus a
+// one-line "when do I use this?". Starter courses have no requirements. Stars
+// only ever UNLOCK new content — nothing already available is taken away.
+const PROGRESSION = {
+  'italian-white': { requires: [], when: 'Your main game — Black plays 1…e5 and develops normally.' },
+  'fried-liver':   { requires: ['italian-white'], when: 'An aggressive Italian try: if Black plays 2…Nf6, spring the f7 trap!' },
+  'italian-black': { requires: ['italian-white'], when: 'For when YOU play Black against 1.e4 — mirror the Italian.' },
+  'scandinavian':  { requires: ['italian-white'], when: 'When Black answers 1.e4 with 1…d5 instead of …e5.' },
+  'sicilian-alapin': { requires: ['scandinavian'], when: 'When Black plays 1…c5 — the Sicilian.' },
+  'white-e4':      { requires: ['scandinavian', 'sicilian-alapin'], when: 'Mix ALL your 1.e4 answers together — Black surprises you and you pick the plan.' },
+};
+OPENINGS.forEach((o) => {
+  const p = PROGRESSION[o.id] || {};
+  o.requires = p.requires || [];
+  o.when = p.when || o.blurb;
+});
+
+// A course is unlocked when every prerequisite is mastered (3★). No prereqs = open.
+export function isUnlocked(progress, opening) {
+  const reqs = opening.requires || [];
+  return reqs.every((r) => starsFor(progress, r) >= 3);
+}
+
+// Courses that become newly available the moment `masteredId` reaches 3★.
+export function unlockedBy(masteredId, progress) {
+  return OPENINGS.filter(
+    (o) =>
+      (o.requires || []).includes(masteredId) &&
+      (o.requires || []).every((r) => r === masteredId || starsFor(progress, r) >= 3)
+  );
 }
 
 export function getOpening(id) {

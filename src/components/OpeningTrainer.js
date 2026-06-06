@@ -48,7 +48,7 @@ function buildPosition(path) {
   return { fen: game.fen(), lastMove };
 }
 
-export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSet, boardTheme, moveStyle, focusBoard, onContinue, progress, rewardMove, breakStreak, finishLine, recordDrillRun }) {
+export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSet, boardTheme, moveStyle, focusBoard, onContinue, onMastered, progress, rewardMove, breakStreak, finishLine, recordDrillRun }) {
   const student = opening.student;
   const [path, setPath] = useState([]); // nodes played so far (the chosen line)
   const [tokens, setTokens] = useState([]);
@@ -147,10 +147,15 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
   useEffect(() => {
     if (finished && !doneRewarded) {
       finishLine(opening.id);
-      if (mode === 'drill' && recordDrillRun) recordDrillRun(opening.id, cleanRef.current);
+      if (mode === 'drill' && recordDrillRun) {
+        const prevClean = (progress && progress.mastery && progress.mastery[opening.id] && progress.mastery[opening.id].cleanRuns) || 0;
+        recordDrillRun(opening.id, cleanRef.current);
+        // Newly mastered = this clean run pushes clean count from 1 → 2 (= 3★).
+        if (onMastered && cleanRef.current && prevClean === 1) onMastered(opening.id);
+      }
       setDoneRewarded(true);
     }
-  }, [finished, doneRewarded, finishLine, opening.id, mode, recordDrillRun]);
+  }, [finished, doneRewarded, finishLine, opening.id, mode, recordDrillRun, onMastered, progress]);
 
   const masteryStars = starsFor(progress, opening.id);
 

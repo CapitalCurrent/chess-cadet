@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { OPENINGS, getOpening } from './data/openings';
+import { OPENINGS, getOpening, unlockedBy } from './data/openings';
 import { getPieceSet } from './pieces/pieceSets';
 import { getBoardTheme } from './pieces/boardThemes';
 import { useProgress } from './state/progress';
@@ -20,6 +20,7 @@ import {
   IconRestart,
   IconMaximize,
   IconMinimize,
+  IconClose,
 } from './components/icons';
 import { VERSION } from './version';
 
@@ -38,6 +39,7 @@ export default function App() {
   const [mode, setMode] = useState('learn'); // learn first, then drill
   const [restart, setRestart] = useState(0);
   const [playSeed, setPlaySeed] = useState(null); // { moves, color } for Continue vs Computer
+  const [masteredModal, setMasteredModal] = useState(null); // { id, unlocked: [opening] }
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [pieceSetId, setPieceSetId] = useState(
@@ -77,6 +79,14 @@ export default function App() {
   const continueVsComputer = (moves, color) => {
     setPlaySeed({ moves, color });
     setMode('play');
+    setRestart((r) => r + 1);
+  };
+  // A course hit 3★ — celebrate and reveal what it unlocked.
+  const handleMastered = (id) => setMasteredModal({ id, unlocked: unlockedBy(id, progress) });
+  const jumpToCourse = (id) => {
+    setMasteredModal(null);
+    setOpeningId(id);
+    setMode('learn'); // introduce the newly unlocked course in Learn
     setRestart((r) => r + 1);
   };
 
@@ -157,6 +167,7 @@ export default function App() {
             breakStreak={breakStreak}
             finishLine={finishLine}
             recordDrillRun={recordDrillRun}
+            onMastered={handleMastered}
           />
         )}
       </main>
@@ -176,6 +187,56 @@ export default function App() {
       />
 
       <NotationGuide open={guideOpen} onClose={() => setGuideOpen(false)} />
+
+      {masteredModal && (
+        <div className="cc-scrim items-center p-3" onClick={() => setMasteredModal(null)}>
+          <div className="cc-sheet p-5 text-center animate-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-end -mt-2 -mr-2 mb-1">
+              <button onClick={() => setMasteredModal(null)} className="cc-icon-btn" aria-label="Close">
+                <IconClose size={18} />
+              </button>
+            </div>
+            <div className="text-4xl">🏆</div>
+            <div className="text-xl md:text-2xl font-extrabold text-gold mt-1">
+              You mastered {getOpening(masteredModal.id).name}!
+            </div>
+            <div className="text-2xl tracking-[0.3em] text-gold my-2">★★★</div>
+
+            {masteredModal.unlocked.length ? (
+              <>
+                <div className="text-sm text-frost-dim mb-2">🔓 You unlocked:</div>
+                <div className="space-y-2 text-left">
+                  {masteredModal.unlocked.map((o) => (
+                    <button
+                      key={o.id}
+                      onClick={() => jumpToCourse(o.id)}
+                      className="cc-card cc-reveal w-full p-3 flex items-start gap-3"
+                    >
+                      <span className="text-2xl leading-none">{o.icon}</span>
+                      <span className="min-w-0">
+                        <span className="block font-bold text-frost">{o.name}</span>
+                        <span className="block text-xs text-frost-dim">{o.when}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[11px] text-frost-dim mt-3">
+                  Tap one to learn it — or keep practicing what you know.
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-frost-dim">Awesome! Keep drilling to stay sharp. ⭐</div>
+            )}
+
+            <button
+              onClick={() => setMasteredModal(null)}
+              className="cc-btn cc-btn-secondary w-full py-2.5 mt-4 text-sm"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

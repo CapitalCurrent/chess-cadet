@@ -12,11 +12,12 @@ const DEFAULT = {
 };
 
 // Per-course mastery stars (0–3): 1★ drilled it, 2★ a clean run (no hints/errors),
-// 3★ three clean runs. Stars are additive — they NEVER lock or remove a course.
+// 3★ = mastered (two clean runs). Stars are additive — they NEVER lock or remove
+// a course; 3★ just unlocks what's next. (Threshold kept kid-gentle on purpose.)
 export function starsFor(progress, openingId) {
   const m = progress && progress.mastery && progress.mastery[openingId];
   if (!m || !m.runs) return 0;
-  if (m.cleanRuns >= 3) return 3;
+  if (m.cleanRuns >= 2) return 3;
   if (m.cleanRuns >= 1) return 2;
   return 1;
 }
