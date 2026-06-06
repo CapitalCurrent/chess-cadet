@@ -69,6 +69,25 @@ const nf6Line = chain([
   { san: 'O-O', note: 'Black castles too. Both kings safe — time to develop the rest of your pieces!' },
 ], develop);
 
+// A third common reply to 3.Bc4: the solid Hungarian (…Be7).
+const be7Line = chain([
+  { san: 'Be7', note: 'The Hungarian Defense — Black plays it safe, tucking the bishop to e7 instead of the active c5.' },
+  { san: 'd3',  note: 'Black isn’t fighting for the center, so just build calmly.',
+    coach: 'No ...Bc5 to meet, so you could even grab the full center with d4 — but calm d3, develop, castle is easy and good.' },
+  { san: 'Nf6', note: 'Black develops the knight.' },
+  { san: 'O-O', note: 'Castle early and safely.' },
+  { san: 'O-O', note: 'Black castles too.' },
+  { san: 'Nc3', note: 'Bring out the last knight, guarding e4.' },
+  { san: 'd6',  note: 'Black makes room and supports e5.' },
+  { san: 'Re1', note: 'Rook to e1 behind the e-pawn — a calm, healthy Italian.',
+    coach: 'A quiet, solid setup. From here look for the d4 break when you’re ready.' },
+]);
+
+// Frequency weights so Drill throws the common replies more often than rare ones.
+bc5Line[0].freq = 3;
+nf6Line[0].freq = 3;
+be7Line[0].freq = 1;
+
 const italianWhiteTree = chain(
   [
     { san: 'e4',  note: 'King pawn forward two! It grabs the center and frees your bishop and queen.' },
@@ -78,7 +97,7 @@ const italianWhiteTree = chain(
     { san: 'Bc4', note: 'The Italian bishop! It points right at f7 — the square only the king guards.',
       coach: 'Now Black picks a plan. If Black mirrors with ...Bc5 → answer c3. If Black jumps the knight ...Nf6 → answer d3. Watch which one comes!' },
   ],
-  [...bc5Line, ...nf6Line] // Bc4's children = both branch heads
+  [...bc5Line, ...nf6Line, ...be7Line] // Bc4's children = the three common replies
 );
 
 // ── Black's Mirror, 1...e5 (she plays Black) — linear for now ─────────────────
@@ -145,13 +164,96 @@ const friedLiverTree = chain(
   [...friedTrap, ...friedDefense]
 );
 
-// Openings are grouped into FAMILIES (the menu's first row) each with one or
-// more VARIATIONS (the second row). e.g. Italian (White) → Main line · Fried Liver.
+// ── Scandinavian Defense (she plays White) — when Black answers 1.e4 with 1…d5 ──
+// The same friendly development as the Italian (Bc4, Nf3, Nc3), but you grab the
+// pawn and chase the early queen for free tempo.
+// After 3.Nc3 the queen must move. Three common retreats — same White plan each
+// time (d4, Nf3, Bc4, castle), so she learns one setup against all of them.
+const scQa5 = chain([
+  { san: 'Qa5', note: 'The queen slides to a5 — the most popular square, but still a little exposed.' },
+  { san: 'd4',  note: 'Build a big pawn center while you’re ahead in development.',
+    coach: 'You’re developing faster, so grab the center with d4 and keep rolling.' },
+  { san: 'Nf6', note: 'Black develops a knight toward the center.' },
+  { san: 'Nf3', note: 'Another piece out, eyeing the center.' },
+  { san: 'c6',  note: 'Black makes a safe house for the queen and props up the centre.' },
+  { san: 'Bc4', note: 'Your Italian bishop again — aim it at f7!',
+    coach: 'Notice your setup looks just like the Italian — Bc4, Nf3, Nc3. Same friendly pieces!' },
+  { san: 'Bf5', note: 'Black develops the bishop before shutting it in with …e6.' },
+  { san: 'Bd2', note: 'Develop your last minor piece and tidy up behind the knight.' },
+  { san: 'e6',  note: 'Black tucks in the pawn and prepares to finish developing.' },
+  { san: 'O-O', note: 'Castle to safety. You’re ahead with a big center — a great Scandinavian!',
+    coach: 'Pawn won early, faster development, king safe — that’s why taking on d5 is so strong.' },
+]);
+
+const scQd6 = chain([
+  { san: 'Qd6', note: 'The modern retreat — the queen sits on d6, flexible and harder to chase than a5.' },
+  { san: 'd4',  note: 'Grab the big center while you lead in development.' },
+  { san: 'Nf6', note: 'Black develops a knight.' },
+  { san: 'Nf3', note: 'Develop and eye the center.' },
+  { san: 'a6',  note: 'Black makes luft and stops your pieces from jumping to b5.' },
+  { san: 'Bc4', note: 'The Italian bishop again — pointed at f7.',
+    coach: 'Same plan as always: d4, Nf3, Bc4, then castle. Your setup barely changes!' },
+  { san: 'e6',  note: 'Black opens a path to develop the dark bishop.' },
+  { san: 'O-O', note: 'Castle. A healthy, easy Scandinavian — you’re ahead in development.' },
+]);
+
+const scQd8 = chain([
+  { san: 'Qd8', note: 'The queen retreats all the way home — safe, but very passive. You’re way ahead now!' },
+  { san: 'd4',  note: 'Seize the full center — Black has wasted time.',
+    coach: 'When Black plays the passive ...Qd8, punish it by grabbing space and developing fast.' },
+  { san: 'Nf6', note: 'Black tries to catch up in development.' },
+  { san: 'Nf3', note: 'Another piece out.' },
+  { san: 'Bf5', note: 'Black develops the bishop.' },
+  { san: 'Bc4', note: 'Aim at f7 — your usual strong bishop.' },
+  { san: 'e6',  note: 'Black prepares to finish developing.' },
+  { san: 'O-O', note: 'Castle. Big center, faster development — a great position for White.' },
+]);
+
+scQa5[0].freq = 3;
+scQd6[0].freq = 3;
+scQd8[0].freq = 1;
+
+const scandinavianTree = chain(
+  [
+    { san: 'e4',  note: 'King pawn out — grab the center.' },
+    { san: 'd5',  note: 'Black tries the Scandinavian — striking at your e4 pawn right away.' },
+    { san: 'exd5', note: 'Just take it! Win the pawn and open lines.',
+      coach: 'When Black plays 1…d5, the simplest strong answer is to capture: 2.exd5.' },
+    { san: 'Qxd5', note: 'Black grabs the pawn back with the queen — but now the queen is out far too early.' },
+    { san: 'Nc3', note: 'Develop AND attack the queen — a free move (tempo)! Now watch where the queen runs.',
+      coach: 'The point of 3.Nc3: develop while kicking the queen. She’ll go to a5, d6, or all the way home to d8 — your plan stays the same: d4, Nf3, Bc4, castle.' },
+  ],
+  [...scQa5, ...scQd6, ...scQd8]
+);
+
+// Unified White 1.e4 repertoire: after 1.e4, BLACK chooses the defense and she
+// must respond correctly WITHOUT being told which opening it is. Reuses the
+// individual opening subtrees (shared, read-only nodes). In Drill the opponent
+// randomly throws …e5 or …d5 and she figures out the right plan; in Learn she
+// picks which defense to study. The canonical calm Italian is used for …e5 (the
+// aggressive Fried Liver stays its own course).
+const whiteE4Tree = [
+  {
+    san: 'e4',
+    note: 'Your one-and-only first move as White! Now watch Black — their reply decides which opening you’re in.',
+    coach: 'You ALWAYS start 1.e4. If Black plays …e5 → Italian setup. If …d5 → take the pawn and play the Scandinavian. Read Black’s move and choose!',
+    children: [
+      // Spread so we can tag which opening each reply leads into, without
+      // mutating the shared subtrees (their deeper children are reused as-is).
+      { ...italianWhiteTree[0].children[0], opening: 'Italian Game', freq: 4 }, // 1…e5 (most common)
+      { ...scandinavianTree[0].children[0], opening: 'Scandinavian', freq: 2 }, // 1…d5
+    ],
+  },
+];
+
+// Openings are grouped by SIDE (♔ White / ♚ Black), then FAMILY (the opening,
+// e.g. Italian / Scandinavian / Mixed), then VARIATION (e.g. Main line / Fried
+// Liver). The menu is Side → Opening → Variation.
 export const OPENINGS = [
   {
     id: 'italian-white',
     familyId: 'italian-w',
-    family: 'Italian (White)',
+    family: 'Italian',
     variation: 'Main line',
     name: 'The Italian Game',
     student: 'w', // she plays White
@@ -163,7 +265,7 @@ export const OPENINGS = [
   {
     id: 'fried-liver',
     familyId: 'italian-w',
-    family: 'Italian (White)',
+    family: 'Italian',
     variation: 'Fried Liver',
     name: 'Fried Liver Attack',
     student: 'w', // she plays White
@@ -173,9 +275,33 @@ export const OPENINGS = [
     tree: friedLiverTree,
   },
   {
+    id: 'scandinavian',
+    familyId: 'scandi',
+    family: 'Scandinavian',
+    variation: 'Main line',
+    name: 'Scandinavian Defense',
+    student: 'w', // she plays White
+    icon: '❄️',
+    blurb:
+      'Black answered 1.e4 with 1…d5? Take the pawn, chase the queen with your knight for a free move, build a big center, and castle — easy and strong.',
+    tree: scandinavianTree,
+  },
+  {
+    id: 'white-e4',
+    familyId: 'white-mix',
+    family: 'Mixed',
+    variation: 'All defenses',
+    name: 'White (1.e4) — Mixed',
+    student: 'w', // she plays White
+    icon: '🎲',
+    blurb:
+      'You always play 1.e4 — but Black decides the rest! They might answer …e5 (Italian) or …d5 (Scandinavian). Figure out the right plan from what Black plays. Best in Drill!',
+    tree: whiteE4Tree,
+  },
+  {
     id: 'italian-black',
     familyId: 'black',
-    family: 'Black (1…e5)',
+    family: 'Black',
     variation: '1…e5 Mirror',
     name: "Black's Mirror (1...e5)",
     student: 'b', // she plays Black
@@ -195,9 +321,30 @@ export function getFamilies() {
   return fams;
 }
 
-// Variations belonging to a family (the second menu row), in array order.
+// Variations belonging to a family (the third menu row), in array order.
 export function variationsOf(familyId) {
   return OPENINGS.filter((o) => o.familyId === familyId);
+}
+
+// Sides she can practice (the first menu row), in first-seen order.
+export function getSides() {
+  const ids = [];
+  for (const o of OPENINGS) if (!ids.includes(o.student)) ids.push(o.student);
+  return ids.map((id) =>
+    id === 'w'
+      ? { id: 'w', label: 'White (1.e4)', icon: '♔' }
+      : { id: 'b', label: 'Black (1…e5)', icon: '♚' }
+  );
+}
+
+// Families (openings) belonging to a side (the second menu row), in array order.
+export function familiesOf(side) {
+  const fams = [];
+  for (const o of OPENINGS) {
+    if (o.student !== side) continue;
+    if (!fams.some((f) => f.id === o.familyId)) fams.push({ id: o.familyId, label: o.family, icon: o.icon });
+  }
+  return fams;
 }
 
 export function getOpening(id) {

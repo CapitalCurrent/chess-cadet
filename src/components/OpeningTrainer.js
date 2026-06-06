@@ -24,6 +24,18 @@ function readSan(san) {
   return `${piece} ${takes} ${dest}${tail}`;
 }
 
+// Pick a node weighted by its `freq` (default 1) so Drill throws the common
+// replies more often than the rare ones.
+function weightedPick(arr) {
+  const total = arr.reduce((s, o) => s + (o.freq || 1), 0);
+  let r = Math.random() * total;
+  for (const o of arr) {
+    r -= o.freq || 1;
+    if (r < 0) return o;
+  }
+  return arr[arr.length - 1];
+}
+
 // Replay a path (array of played nodes) -> { fen, lastMove }. Pure & idempotent.
 function buildPosition(path) {
   const game = newGame();
@@ -62,6 +74,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
   const myTurn = !finished && mover === student;
   const isBranch = options.length > 1;
   const branchHasTrap = options.some((o) => o.trap); // a "fall for it vs defend" choice
+  const branchIsOpeningFork = options.some((o) => o.opening); // e.g. 1.e4 → …e5 / …d5
   const target = finished ? null : options[0]; // her move, or the single forced reply
   const moveNo = Math.floor(depth / 2) + 1;
   const roleLabel = finished
@@ -71,6 +84,9 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     : myTurn
     ? 'Your move'
     : 'Opponent’s move';
+  // When Black's reply just steered us into a named opening (the Mixed 1.e4 fork),
+  // announce it on her response card so she learns to recognize it.
+  const enteredOpening = path.length ? path[path.length - 1].opening : null;
 
   const { fen, lastMove } = useMemo(() => buildPosition(path), [path]);
 
@@ -117,7 +133,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
       const traps = options.filter((o) => o.trap);
       const pool =
         traps.length && best.length && Math.random() < 0.3 ? traps : best.length ? best : options;
-      const choice = pool[Math.floor(Math.random() * pool.length)];
+      const choice = weightedPick(pool);
       setPath((p) => [...p, choice]);
     }, 750);
     return () => clearTimeout(t);
@@ -255,6 +271,11 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
         </div>
       ) : (
         <div className="cc-card p-3 md:p-4">
+          {enteredOpening && (
+            <div className="mb-2 rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold bg-gold/15 text-gold ring-1 ring-gold/40 animate-pop">
+              🎯 This is the {enteredOpening}! Now find your plan.
+            </div>
+          )}
           <div className="text-xs md:text-sm uppercase tracking-wide text-gold/50 mb-1.5">
             Move {moveNo} · {roleLabel}
           </div>
@@ -283,9 +304,11 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
               /* Opponent decision point — she picks which reply to explore */
               <>
                 <p className="text-sm md:text-lg md:leading-snug text-frost/90 mb-2 md:mb-3">
-                  {branchHasTrap
+                  {branchIsOpeningFork
+                    ? 'Black chooses how to meet your 1.e4 — each move leads to a different opening. Pick one to study!'
+                    : branchHasTrap
                     ? 'One move is a trap, the other is the right defense — try each, then Restart for the other!'
-                    : 'Two good moves here — pick one to learn, then Restart to try the other!'}
+                    : 'Black has a few good tries here — pick one to learn, then ↻ Restart to study the others!'}
                 </p>
                 <div className="flex flex-col gap-2 md:gap-3">
                   {optionMoves.map((o, i) => (
@@ -295,7 +318,10 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
                       className="w-full py-2.5 md:py-4 rounded-cc-lg font-extrabold text-bg active:translate-y-px text-left px-3 md:px-4 md:text-xl"
                       style={{ backgroundColor: BRANCH_COLORS[i % BRANCH_COLORS.length] }}
                     >
-                      {o.node.label || `${o.node.san} — ${readSan(o.node.san)}`}
+                      {o.node.label ||
+                        (o.node.opening
+                          ? `${o.node.san} → the ${o.node.opening}`
+                          : `${o.node.san} — ${readSan(o.node.san)}`)}
                     </button>
                   ))}
                 </div>

@@ -1,16 +1,24 @@
 import React from 'react';
 import Segmented from './Segmented';
-import { OPENINGS, getFamilies, variationsOf } from '../../data/openings';
+import { OPENINGS, getSides, familiesOf, variationsOf } from '../../data/openings';
 
-// Two-row opening menu: Family (Italian / Black) → Variation (Main line / Fried
-// Liver / …). Picking a family jumps to its first variation. The variation row
-// only appears when a family has more than one line. This is the first step of
-// the Learn-hub catalog.
+// Three-tier opening menu (the Learn-hub):
+//   Side    ♔ White (1.e4) · ♚ Black
+//   Opening Italian · Scandinavian · Mixed   (within the side)
+//   Variation Main line · Fried Liver        (within the opening; only if >1)
+// Picking a higher tier jumps to the first entry beneath it. Tiers with a single
+// option are hidden to keep it tidy.
 export default function OpeningPicker({ value, onChange }) {
   const current = OPENINGS.find((o) => o.id === value) || OPENINGS[0];
-  const families = getFamilies();
+  const sides = getSides();
+  const families = familiesOf(current.student);
   const variations = variationsOf(current.familyId);
 
+  const pickSide = (side) => {
+    if (side === current.student) return;
+    const first = OPENINGS.find((o) => o.student === side);
+    if (first) onChange(first.id);
+  };
   const pickFamily = (famId) => {
     if (famId === current.familyId) return;
     const first = OPENINGS.find((o) => o.familyId === famId);
@@ -20,15 +28,27 @@ export default function OpeningPicker({ value, onChange }) {
   return (
     <div className="space-y-2">
       <Segmented
-        options={families.map((f) => ({
-          id: f.id,
-          label: f.label,
-          icon: <span className="text-base leading-none">{f.icon}</span>,
+        options={sides.map((s) => ({
+          id: s.id,
+          label: s.label,
+          icon: <span className="text-base leading-none">{s.icon}</span>,
         }))}
-        value={current.familyId}
-        onChange={pickFamily}
+        value={current.student}
+        onChange={pickSide}
         size="sm"
       />
+      {families.length > 1 && (
+        <Segmented
+          options={families.map((f) => ({
+            id: f.id,
+            label: f.label,
+            icon: <span className="text-base leading-none">{f.icon}</span>,
+          }))}
+          value={current.familyId}
+          onChange={pickFamily}
+          size="sm"
+        />
+      )}
       {variations.length > 1 && (
         <Segmented
           options={variations.map((v) => ({ id: v.id, label: v.variation }))}
