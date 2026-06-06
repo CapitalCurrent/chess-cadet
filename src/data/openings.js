@@ -251,6 +251,29 @@ const scandinavianTree = chain(
   [...scQa5, ...scQd6, ...scQd8]
 );
 
+// ── Sicilian Defense (she plays White) — when Black answers 1.e4 with 1…c5 ─────
+// The Alapin (2.c3): low-theory and sound, and it echoes the Scandinavian —
+// take on d5, the queen comes out early, and you build a big center with d4.
+const sicilianTree = chain([
+  { san: 'e4',  note: 'King pawn out — grab the center.' },
+  { san: 'c5',  note: 'The Sicilian Defense — Black fights for the center from the side instead of copying you.' },
+  { san: 'c3',  note: 'A new plan! Prepare d4 to build a big center against the Sicilian.',
+    coach: 'The Sicilian needs a different idea than the Italian. The simple, strong Alapin: 2.c3, getting ready to play d4.' },
+  { san: 'd5',  note: 'Black hits back in the center right away.' },
+  { san: 'exd5', note: 'Take the pawn.' },
+  { san: 'Qxd5', note: 'Black recaptures with the queen — out early, just like the Scandinavian!' },
+  { san: 'd4',  note: 'Build your big pawn center.',
+    coach: 'Same idea as the Scandinavian: you took the pawn, the queen came out, now grab the center with d4.' },
+  { san: 'Nc6', note: 'Black develops, eyeing your d4 pawn.' },
+  { san: 'Nf3', note: 'Develop and defend d4.' },
+  { san: 'Bg4', note: 'Black pins your knight to the queen.' },
+  { san: 'Be2', note: 'Quietly break the pin — your bishop slips behind the knight.',
+    coach: 'Be2 un-pins your knight and gets you ready to castle.' },
+  { san: 'e6',  note: 'Black opens a path for the dark bishop.' },
+  { san: 'O-O', note: 'Castle — a healthy big-center game against the Sicilian, no scary theory needed!',
+    coach: 'Big center, pieces out, king safe — and you didn’t have to memorize deep Sicilian lines.' },
+]);
+
 // Unified White 1.e4 repertoire: after 1.e4, BLACK chooses the defense and she
 // must respond correctly WITHOUT being told which opening it is. Reuses the
 // individual opening subtrees (shared, read-only nodes). In Drill the opponent
@@ -267,6 +290,7 @@ const whiteE4Tree = [
       // mutating the shared subtrees (their deeper children are reused as-is).
       { ...italianWhiteTree[0].children[0], opening: 'Italian Game', freq: 4 }, // 1…e5 (most common)
       { ...scandinavianTree[0].children[0], opening: 'Scandinavian', freq: 2 }, // 1…d5
+      { ...sicilianTree[0].children[0], opening: 'Sicilian', freq: 3 }, // 1…c5
     ],
   },
 ];
@@ -310,6 +334,18 @@ export const OPENINGS = [
     blurb:
       'Black answered 1.e4 with 1…d5? Take the pawn, chase the queen with your knight for a free move, build a big center, and castle — easy and strong.',
     tree: scandinavianTree,
+  },
+  {
+    id: 'sicilian-alapin',
+    familyId: 'sicilian',
+    family: 'Sicilian',
+    variation: 'Alapin',
+    name: 'Sicilian Defense (Alapin)',
+    student: 'w', // she plays White
+    icon: '🌋',
+    blurb:
+      'Black plays 1…c5 (the Sicilian)? Don’t panic — play c3, then take and build a big center with d4. Same idea as the Scandinavian, and no scary theory.',
+    tree: sicilianTree,
   },
   {
     id: 'white-e4',
