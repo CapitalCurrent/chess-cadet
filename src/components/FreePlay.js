@@ -3,7 +3,7 @@ import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import Segmented from './nav/Segmented';
-import { IconUndo, IconFlip, IconRestart } from './icons';
+import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
 import { detectMotifs, motifsOfMove } from '../engine/tactics';
 import { newGame } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine, analyze } from '../engine/stockfishEngine';
@@ -60,6 +60,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     () => localStorage.getItem('chess-cadet-coach') === 'on'
   ); // Spar: grade her moves + offer hints when playing the engine
   const [coachNote, setCoachNote] = useState(null); // { kind, text }
+  const [review, setReview] = useState(null); // null | { running, done, total, rows, summary }
   const [humanRating, setHumanRating] = useState(() => {
     const v = parseInt(localStorage.getItem('chess-cadet-humanrating'), 10);
     return v >= 1100 && v <= 1900 ? v : 1100;
@@ -308,21 +309,19 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     return null;
   }
 
-  // Grade her move by how much it dropped the evaluation (a real blunder check),
-  // NOT by whether it was the engine's exact best. Beginner-friendly: praise
-  // anything sound, only warn on genuine material/eval losses. Hints are
-  // human-level (Maia), not superhuman engine lines.
-  async function gradeMove(beforeFen, move) {
-    const uci = move.from + move.to + (move.promotion || '');
-    const afterFen = gameRef.current.fen();
-    setCoachNote({ kind: 'pending', text: '🎓 Coach is looking…' });
+  // Classify a move by EVAL DROP (a real-blunder check, not "did it match the
+  // engine's exact best") and recognize/name tactics. Returns
+  // { kind, icon, label, text } or null. Shared by the live coach AND Game
+  // Review. useHumanHint -> Maia-level suggestion for inaccuracies (live play);
+  // off -> the engine's move (faster, used for batch review).
+  async function classifyMove(beforeFen, uci, afterFen, { movetime = 600, useHumanHint = false } = {}) {
     let cands = [];
     try {
-      cands = (await analyze(beforeFen, { multipv: 5, movetime: 600 })) || [];
+      cands = (await analyze(beforeFen, { multipv: 5, movetime })) || [];
     } catch {
       cands = [];
     }
-    if (!cands.length) return setCoachNote(null);
+    if (!cands.length) return null;
     const bestCp = scoreNum(cands[0]);
     const found = cands.find((c) => c.move === uci);
     let herCp;
@@ -331,82 +330,86 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     } else {
       let after = [];
       try {
-        after = (await analyze(afterFen, { multipv: 1, movetime: 450 })) || [];
+        after = (await analyze(afterFen, { multipv: 1, movetime: Math.max(250, movetime - 200) })) || [];
       } catch {
         after = [];
       }
       herCp = after.length ? -scoreNum(after[0]) : bestCp - 400;
     }
     const loss = bestCp - herCp; // centipawns given up vs the best move
+    const her = moveInfo(beforeFen, uci);
     if (loss <= 50) {
       const isBest = uci === cands[0].move;
-      const her = moveInfo(beforeFen, uci);
-      // A "tactic" = the clear standout winning forcing move (a spike above the
-      // alternatives), not a routine recapture where many moves are equal.
       const spike = cands.length >= 2 ? scoreNum(cands[0]) - scoreNum(cands[1]) : 999;
-      const winning = scoreNum(cands[0]) >= 150;
-      const standout = isBest && winning && spike >= 150; // a real, decisive shot
-      if (isBest && /#/.test(her.san)) {
-        setCoachNote({ kind: 'best', text: '🏆 Checkmate! Brilliant finish!' });
-      } else if (standout) {
+      const winning = bestCp >= 150;
+      if (isBest && /#/.test(her.san)) return { kind: 'best', icon: '🏆', label: 'Checkmate', text: '🏆 Checkmate! Brilliant finish!' };
+      if (isBest && winning && spike >= 150) {
         const motifs = detectMotifs(afterFen, uci.slice(0, 2), uci.slice(2, 4));
-        let text;
-        if (motifs.includes('fork')) text = `✦ Nice fork! ${her.san} attacks two pieces at once.`;
-        else if (motifs.includes('discovered')) text = `✦ Discovered attack! ${her.san} unleashes a piece from behind.`;
-        else if (motifs.includes('pin')) text = `✦ Nice pin! ${her.san} freezes a piece against a bigger one.`;
-        else if (her.capture) text = `💥 Nice tactic! ${her.san} wins material — well spotted!`;
-        else if (her.check) text = `💥 Strong — ${her.san} is a winning check!`;
-        else text = `💥 Sharp! ${her.san} is the winning move here.`;
-        setCoachNote({ kind: 'best', text });
-      } else if (isBest && her.check) {
-        setCoachNote({ kind: 'best', text: `👍 Strong check — ${her.san}!` });
-      } else if (isBest) {
-        setCoachNote({ kind: 'best', text: '⭐ Best move! Right on the money.' });
-      } else {
-        setCoachNote({ kind: 'good', text: '👍 Great move — among the best here.' });
+        if (motifs.includes('fork')) return { kind: 'best', icon: '✦', label: 'Fork', text: `✦ Nice fork! ${her.san} attacks two pieces at once.` };
+        if (motifs.includes('discovered')) return { kind: 'best', icon: '✦', label: 'Discovery', text: `✦ Discovered attack! ${her.san} unleashes a piece from behind.` };
+        if (motifs.includes('pin')) return { kind: 'best', icon: '✦', label: 'Pin', text: `✦ Nice pin! ${her.san} freezes a piece against a bigger one.` };
+        if (her.capture) return { kind: 'best', icon: '💥', label: 'Tactic', text: `💥 Nice tactic! ${her.san} wins material — well spotted!` };
+        if (her.check) return { kind: 'best', icon: '💥', label: 'Tactic', text: `💥 Strong — ${her.san} is a winning check!` };
+        return { kind: 'best', icon: '💥', label: 'Tactic', text: `💥 Sharp! ${her.san} is the winning move here.` };
       }
-    } else if (loss <= 150) {
-      setCoachNote({ kind: 'good', text: '🙂 Good — a solid, safe move.' });
-    } else {
-      const best = moveInfo(beforeFen, cands[0].move);
-      const bestMotifs = motifsOfMove(beforeFen, cands[0].move);
-      // A big, winning best move she didn't take = a missed tactic — forcing
-      // (capture/check) OR a named quiet motif (fork/pin/discovery).
-      const missedTactic = bestCp >= 150 && loss >= 200 && (best.capture || best.check || bestMotifs.length);
-      const missedName = bestMotifs.includes('fork')
-        ? 'fork'
-        : bestMotifs.includes('discovered')
-        ? 'discovered attack'
-        : bestMotifs.includes('pin')
-        ? 'pin'
-        : null;
-      if (missedTactic && missedName) {
-        setCoachNote({ kind: 'warn', text: `💥 You missed a ${missedName}! ${best.san} was winning.` });
-      } else if (missedTactic && herCp > -50) {
-        setCoachNote({
-          kind: 'warn',
-          text: `💥 You missed a tactic! ${best.san} wins material. Tip: always check captures & checks first.`,
-        });
-      } else if (missedTactic) {
-        setCoachNote({
-          kind: 'warn',
-          text: `💥 Ouch — ${best.san} won material there. Look for captures & checks before you move!`,
-        });
-      } else {
-        const sug = await humanSuggestion(beforeFen);
-        if (loss <= 350) {
-          setCoachNote({
-            kind: 'warn',
-            text: sug ? `🤔 A little loose — ${sug} keeps you better.` : '🤔 A little loose — there was a stronger move.',
-          });
-        } else {
-          setCoachNote({
-            kind: 'warn',
-            text: sug ? `⚠️ Careful — that gives a lot away. Safer was ${sug}.` : '⚠️ Careful — that move loses ground.',
-          });
-        }
+      if (isBest && her.check) return { kind: 'best', icon: '👍', label: 'Strong', text: `👍 Strong check — ${her.san}!` };
+      if (isBest) return { kind: 'best', icon: '⭐', label: 'Best', text: '⭐ Best move! Right on the money.' };
+      return { kind: 'good', icon: '👍', label: 'Great', text: '👍 Great move — among the best here.' };
+    }
+    if (loss <= 150) return { kind: 'good', icon: '🙂', label: 'Good', text: '🙂 Good — a solid, safe move.' };
+    const best = moveInfo(beforeFen, cands[0].move);
+    const bestMotifs = motifsOfMove(beforeFen, cands[0].move);
+    const missedName = bestMotifs.includes('fork')
+      ? 'fork'
+      : bestMotifs.includes('discovered')
+      ? 'discovered attack'
+      : bestMotifs.includes('pin')
+      ? 'pin'
+      : null;
+    const missedTactic = bestCp >= 150 && loss >= 200 && (best.capture || best.check || bestMotifs.length);
+    if (missedTactic && missedName) return { kind: 'warn', icon: '💥', label: `Missed ${missedName}`, text: `💥 You missed a ${missedName}! ${best.san} was winning.` };
+    if (missedTactic && herCp > -50) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 You missed a tactic! ${best.san} wins material. Tip: check captures & checks first.` };
+    if (missedTactic) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 Ouch — ${best.san} won material there. Look for captures & checks!` };
+    const sug = useHumanHint ? (await humanSuggestion(beforeFen)) || best.san : best.san;
+    if (loss <= 350) return { kind: 'warn', icon: '🤔', label: 'Inaccuracy', text: `🤔 A little loose — ${sug} keeps you better.` };
+    return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.` };
+  }
+
+  async function gradeMove(beforeFen, move) {
+    const uci = move.from + move.to + (move.promotion || '');
+    const afterFen = gameRef.current.fen();
+    setCoachNote({ kind: 'pending', text: '🎓 Coach is looking…' });
+    const v = await classifyMove(beforeFen, uci, afterFen, { movetime: 600, useHumanHint: true });
+    setCoachNote(v ? { kind: v.kind, text: v.text } : null);
+  }
+
+  // Game Review: re-walk the game and classify each of HER moves, then summarize.
+  async function reviewGame() {
+    const verbose = gameRef.current.history({ verbose: true });
+    const total = verbose.filter((m) => m.color === studentColor).length;
+    if (!total) return;
+    setReview({ running: true, done: 0, total, rows: [] });
+    const g = newGame();
+    const rows = [];
+    for (const m of verbose) {
+      const beforeFen = g.fen();
+      g.move(m.san);
+      if (m.color === studentColor) {
+        const uci = m.from + m.to + (m.promotion || '');
+        const v =
+          (await classifyMove(beforeFen, uci, g.fen(), { movetime: 300, useHumanHint: false })) || {
+            kind: 'good',
+            icon: '·',
+            label: 'Move',
+            text: '',
+          };
+        rows.push({ num: Math.ceil(g.history().length / 2), san: m.san, v });
+        setReview({ running: true, done: rows.length, total, rows: [...rows] });
       }
     }
+    const summary = {};
+    rows.forEach((r) => { summary[r.v.label] = (summary[r.v.label] || 0) + 1; });
+    setReview({ running: false, total, rows, summary });
   }
 
   async function showHint() {
@@ -620,6 +623,12 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
         )}
       </div>
 
+      {!twoPlayer && history.length >= 2 && (
+        <button onClick={reviewGame} className="cc-btn cc-btn-secondary w-full py-2 text-sm mb-3">
+          📋 Review game
+        </button>
+      )}
+
       {feedback && (
         <div
           className={`rounded-cc-lg px-3 py-2 mb-3 text-sm md:text-base font-bold animate-pop ${
@@ -719,6 +728,63 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
               ))}
             </div>
             <div className="mt-2 text-center text-[11px] text-frost/40">Tap a piece (or tap outside to cancel)</div>
+          </div>
+        </div>
+      )}
+
+      {review && (
+        <div className="cc-scrim items-end sm:items-center p-3" onClick={() => setReview(null)}>
+          <div className="cc-sheet p-4 animate-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-extrabold text-gold flex items-center gap-2">📋 Game Review</h2>
+              <button onClick={() => setReview(null)} className="cc-icon-btn" aria-label="Close">
+                <IconClose size={20} />
+              </button>
+            </div>
+
+            {review.running ? (
+              <div>
+                <div className="text-sm text-frost-dim mb-2">Reviewing your moves… {review.done}/{review.total}</div>
+                <div className="h-1.5 rounded-full bg-edge overflow-hidden">
+                  <div
+                    className="h-full bg-gold transition-all"
+                    style={{ width: `${Math.round((review.done / Math.max(1, review.total)) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                {review.summary && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {Object.entries(review.summary).map(([k, n]) => (
+                      <span key={k} className="cc-chip text-xs">
+                        {k}: {n}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-1 max-h-[55vh] overflow-y-auto md:-mr-1 md:pr-1">
+                  {review.rows.map((r, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-center gap-2 rounded-cc px-2.5 py-1.5 ${
+                        r.v.kind === 'best' ? 'bg-grass/10' : r.v.kind === 'warn' ? 'bg-gold/10' : 'bg-surface'
+                      }`}
+                    >
+                      <span className="text-base w-6 text-center">{r.v.icon}</span>
+                      <span className="font-bold text-frost w-16 shrink-0">{r.num}. {r.san}</span>
+                      <span
+                        className={`text-sm ${
+                          r.v.kind === 'best' ? 'text-grass' : r.v.kind === 'warn' ? 'text-gold' : 'text-frost-dim'
+                        }`}
+                      >
+                        {r.v.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

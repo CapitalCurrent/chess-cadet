@@ -88,16 +88,41 @@ bc5Line[0].freq = 3;
 nf6Line[0].freq = 3;
 be7Line[0].freq = 1;
 
-const italianWhiteTree = chain(
+// After 1.e4 e5 2.Nf3 Black usually plays 2…Nc6 (Italian), but 2…d6 (the
+// Philidor) is common at club level — meet it by striking the center with 3.d4.
+const nc6Main = chain(
   [
-    { san: 'e4',  note: 'King pawn forward two! It grabs the center and frees your bishop and queen.' },
-    { san: 'e5',  note: 'Black copies you and fights for the center too.' },
-    { san: 'Nf3', note: 'Knight jumps out and attacks the black e5 pawn.' },
     { san: 'Nc6', note: 'Black develops a knight to defend e5.' },
     { san: 'Bc4', note: 'The Italian bishop! It points right at f7 — the square only the king guards.',
       coach: 'Now Black picks a plan. If Black mirrors with ...Bc5 → answer c3. If Black jumps the knight ...Nf6 → answer d3. Watch which one comes!' },
   ],
   [...bc5Line, ...nf6Line, ...be7Line] // Bc4's children = the three common replies
+);
+
+const philidor = chain([
+  { san: 'd6',  note: 'The Philidor Defense — Black guards e5 with a pawn instead of a knight. A bit passive.' },
+  { san: 'd4',  note: 'Strike the center! Challenge e5 right away while Black is cramped.',
+    coach: 'Against the Philidor (...d6), the strong reply is d4 — open the center against Black’s passive setup.' },
+  { san: 'Nf6', note: 'Black develops the knight and eyes your e4 pawn.' },
+  { san: 'Nc3', note: 'Develop and guard your e4 pawn.' },
+  { san: 'Nbd7', note: 'Black brings the other knight toward the center (the Hanham setup).' },
+  { san: 'Bc4', note: 'Your Italian bishop again — pointed at f7.' },
+  { san: 'Be7', note: 'Black tucks the bishop and prepares to castle.' },
+  { san: 'O-O', note: 'Castle — you have more space and easier development.',
+    coach: 'More space, easy pieces, a safe king — a comfortable edge against the Philidor.' },
+  { san: 'O-O', note: 'Black castles too. You’re comfortably better.' },
+]);
+
+nc6Main[0].freq = 4; // 2…Nc6 is far more common than the Philidor
+philidor[0].freq = 1;
+
+const italianWhiteTree = chain(
+  [
+    { san: 'e4',  note: 'King pawn forward two! It grabs the center and frees your bishop and queen.' },
+    { san: 'e5',  note: 'Black copies you and fights for the center too.' },
+    { san: 'Nf3', note: 'Knight jumps out and attacks the black e5 pawn. Watch Black’s reply.' },
+  ],
+  [...nc6Main, ...philidor] // Nf3's children = 2…Nc6 (Italian) or 2…d6 (Philidor)
 );
 
 // ── Black's Mirror, 1...e5 (she plays Black) — linear for now ─────────────────
