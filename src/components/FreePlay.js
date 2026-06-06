@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
+import Segmented from './nav/Segmented';
+import { IconUndo, IconFlip, IconRestart } from './icons';
 import { newGame } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
@@ -9,7 +11,7 @@ import { initMaia, ensureMaiaReady, maiaMove, onMaiaStatus, getMaiaStatus } from
 // Notation-only game. The board is DISPLAY ONLY — every move must be typed on
 // the keypad. A simple random-mover opponent replies (very beatable; a real
 // engine can replace it later). The move list reinforces reading notation.
-export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }) {
+export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, rewardMove }) {
   const gameRef = useRef(newGame());
   const [fen, setFen] = useState(gameRef.current.fen());
   const [history, setHistory] = useState([]); // SAN strings
@@ -262,186 +264,135 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
       onMove={handleBoardMove}
       pieceSet={pieceSet}
       boardTheme={boardTheme}
+      big={focusBoard}
     />
   );
 
+  const opponentOptions = [
+    { id: 'stockfish', label: 'StockBot', icon: <span className="text-base leading-none">🤖</span> },
+    { id: 'maia', label: 'MaiaBot', icon: <span className="text-base leading-none">🙂</span> },
+    { id: 'human2', label: '2 Players', icon: <span className="text-base leading-none">👥</span> },
+  ];
+
   const panel = (
     <>
+      {/* Top region — setup, status, move list, feedback scroll here on desktop so
+          the move-entry block stays pinned to the board's bottom edge. */}
+      <div className="md:flex-1 md:min-h-0 md:overflow-y-auto md:-mr-1 md:pr-1">
+      {/* Match setup — opponent, side, and difficulty grouped in one card */}
+      <div className="cc-card p-3 mb-3 space-y-3">
+        <Segmented options={opponentOptions} value={opponentType} onChange={selectOpponent} size="sm" />
+
+        {/* Play-as side (engine modes only — both colors are played in pass-and-play) */}
+        {!twoPlayer && (
+          <Segmented
+            options={[
+              { id: 'w', label: '♔ White' },
+              { id: 'b', label: '♚ Black' },
+            ]}
+            value={studentColor}
+            onChange={(c) => { if (c !== studentColor) startNew(c); }}
+            size="sm"
+          />
+        )}
+
+        {opponentType === 'stockfish' ? (
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] uppercase tracking-wide text-frost-dim font-bold">Level</span>
+              <input type="range" min="1" max="20" value={level} onChange={(e) => setLevel(Number(e.target.value))} className="flex-1 accent-gold" />
+              <div className="w-28 text-right whitespace-nowrap leading-tight">
+                <div className="text-xs font-bold text-gold">{level} · {levelTier(level)}</div>
+                <div className="text-[10px] text-frost-dim">{levelEloLabel(level)} Elo</div>
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-frost-dim">🤖 A chess computer — slide to set how strong it plays.</div>
+          </div>
+        ) : opponentType === 'maia' ? (
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] uppercase tracking-wide text-frost-dim font-bold">Rating</span>
+              <input type="range" min="1100" max="1900" step="100" value={humanRating} onChange={(e) => setHumanRating(Number(e.target.value))} className="flex-1 accent-gold" />
+              <span className="text-xs font-bold text-gold whitespace-nowrap w-16 text-right">{humanRating}</span>
+            </div>
+            <div className="mt-2 text-xs">
+              {maia.status === 'ready' ? (
+                <span className="text-grass font-bold">🙂 MaiaBot is ready — plays like a real {humanRating} player.</span>
+              ) : maia.status === 'downloading' ? (
+                <div>
+                  <div className="text-frost-dim mb-1">Downloading MaiaBot… {maia.progress}%</div>
+                  <div className="h-1.5 rounded-full bg-edge overflow-hidden">
+                    <div className="h-full bg-gold transition-all" style={{ width: `${maia.progress}%` }} />
+                  </div>
+                </div>
+              ) : maia.status === 'error' ? (
+                <span className="text-coral">Couldn’t load MaiaBot — using StockBot instead.</span>
+              ) : navigator.onLine ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={downloadMaia} className="cc-btn cc-btn-grass px-3 py-1.5 text-xs">⬇ Get MaiaBot (~44 MB)</button>
+                  <span className="text-frost-dim">🙂 Plays like a human. StockBot fills in until ready.</span>
+                </div>
+              ) : (
+                <span className="text-frost-dim">Connect to the internet once to download MaiaBot. Using StockBot for now.</span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-xs text-frost-dim leading-snug">
+            <span className="font-bold text-gold">Pass-and-play</span> — two players share this device and take turns typing each move. No engine plays.{autoFlip ? ' The board flips to each player automatically.' : ''}
+          </div>
+        )}
+      </div>
+
       {/* Status + controls */}
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="text-sm font-bold">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="font-bold md:text-lg min-w-0 truncate">
           {over ? (
             <span className="text-gold animate-pop">{over.text}</span>
           ) : twoPlayer ? (
-            <span className="text-grass">
-              {toMove === 'w' ? '♔ White' : '♚ Black'} to move{inCheck ? ' — check!' : ''} ✍️
-            </span>
+            <span className="text-grass">{toMove === 'w' ? '♔ White' : '♚ Black'} to move{inCheck ? ' — check!' : ''}</span>
           ) : myTurn ? (
-            <span className="text-grass">
-              Your move{inCheck ? ' — you’re in check!' : ''} ✍️
-            </span>
+            <span className="text-grass">Your move{inCheck ? ' — check!' : ''}</span>
           ) : (
-            <span className="text-frost/60">Opponent thinking…</span>
+            <span className="text-frost-dim">Opponent thinking…</span>
           )}
         </div>
-        <div className="flex gap-1.5">
-          <button onClick={takeback} className="rounded-lg px-2.5 py-1 text-xs font-bold bg-surface text-frost ring-1 ring-edge">
-            ⤺ Undo
+        <div className="flex gap-1.5 shrink-0">
+          <button onClick={takeback} className="cc-btn cc-btn-secondary px-2.5 py-1.5 text-xs" title="Take back">
+            <IconUndo size={15} /> Undo
           </button>
           {twoPlayer ? (
             <button
               onClick={() => setAutoFlip((a) => !a)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-edge ${
-                autoFlip ? 'bg-gold text-bg' : 'bg-surface text-gold'
-              }`}
+              className={`cc-btn px-2.5 py-1.5 text-xs ${autoFlip ? 'cc-btn-primary' : 'cc-btn-secondary'}`}
               title="Rotate the board to whoever is to move"
             >
-              ⟳ Auto-flip
+              <IconFlip size={15} /> Auto-flip
             </button>
           ) : (
             <button
               onClick={flipView}
-              className={`rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-edge ${
-                flipped ? 'bg-gold text-bg' : 'bg-surface text-gold'
-              }`}
+              className={`cc-btn px-2.5 py-1.5 text-xs ${flipped ? 'cc-btn-primary' : 'cc-btn-secondary'}`}
               title="Flip the board to see the opponent's view"
             >
-              ⇄ Flip
+              <IconFlip size={15} /> Flip
             </button>
           )}
-          <button onClick={() => startNew(studentColor)} className="rounded-lg px-2.5 py-1 text-xs font-bold bg-surface text-coral ring-1 ring-edge">
-            ↺ New
+          <button onClick={() => startNew(studentColor)} className="cc-btn cc-btn-secondary px-2.5 py-1.5 text-xs" title="New game">
+            <IconRestart size={15} /> New
           </button>
         </div>
       </div>
-
-      {/* Side picker — choose which color to play (starts a fresh game). Hidden in
-          pass-and-play, where both colors are played on the same device. */}
-      {!twoPlayer && (
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[11px] uppercase tracking-wide text-gold/50 font-bold whitespace-nowrap">
-            Play as
-          </span>
-          {[
-            { c: 'w', label: '♔ White' },
-            { c: 'b', label: '♚ Black' },
-          ].map((s) => (
-            <button
-              key={s.c}
-              onClick={() => { if (s.c !== studentColor) startNew(s.c); }}
-              className={`flex-1 rounded-lg px-2 py-1 text-xs font-bold ring-1 ring-edge transition ${
-                studentColor === s.c ? 'bg-gold text-bg' : 'bg-surface text-gold/80'
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Opponent picker */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[11px] uppercase tracking-wide text-gold/50 font-bold whitespace-nowrap">
-          Opponent
-        </span>
-        {[
-          { t: 'stockfish', label: '🤖 Bot' },
-          { t: 'maia', label: '🙂 Maia' },
-          { t: 'human2', label: '👥 2 Players' },
-        ].map((o) => (
-          <button
-            key={o.t}
-            onClick={() => selectOpponent(o.t)}
-            className={`flex-1 rounded-lg px-2 py-1 text-xs font-bold ring-1 ring-edge transition ${
-              opponentType === o.t ? 'bg-gold text-bg' : 'bg-surface text-gold/80'
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-
-      {opponentType === 'stockfish' ? (
-        /* Stockfish difficulty */
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[11px] uppercase tracking-wide text-gold/50 font-bold whitespace-nowrap">
-            Level
-          </span>
-          <input
-            type="range"
-            min="1"
-            max="20"
-            value={level}
-            onChange={(e) => setLevel(Number(e.target.value))}
-            className="flex-1 accent-gold"
-          />
-          <div className="w-28 text-right whitespace-nowrap leading-tight">
-            <div className="text-xs font-bold text-gold">{level} · {levelTier(level)}</div>
-            <div className="text-[10px] text-gold/60">{levelEloLabel(level)} Elo</div>
-          </div>
-        </div>
-      ) : opponentType === 'maia' ? (
-        /* Maia rating + model status */
-        <div className="mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wide text-gold/50 font-bold whitespace-nowrap">
-              Rating
-            </span>
-            <input
-              type="range"
-              min="1100"
-              max="1900"
-              step="100"
-              value={humanRating}
-              onChange={(e) => setHumanRating(Number(e.target.value))}
-              className="flex-1 accent-gold"
-            />
-            <span className="text-xs font-bold text-gold whitespace-nowrap w-20 text-right">{humanRating}</span>
-          </div>
-          <div className="mt-1.5 text-xs">
-            {maia.status === 'ready' ? (
-              <span className="text-grass font-bold">🙂 Maia is ready — plays like a {humanRating} player.</span>
-            ) : maia.status === 'downloading' ? (
-              <div>
-                <div className="text-frost/70 mb-1">Downloading human opponent… {maia.progress}%</div>
-                <div className="h-1.5 rounded-full bg-edge overflow-hidden">
-                  <div className="h-full bg-gold transition-all" style={{ width: `${maia.progress}%` }} />
-                </div>
-              </div>
-            ) : maia.status === 'error' ? (
-              <span className="text-coral">Couldn’t load Maia — using the practice bot.</span>
-            ) : navigator.onLine ? (
-              <div>
-                <button onClick={downloadMaia} className="rounded-lg px-2.5 py-1 font-bold bg-grass text-bg active:translate-y-px">
-                  ⬇ Get Maia (one-time ~44 MB)
-                </button>
-                <span className="ml-2 text-frost/50">Practice bot plays until she’s ready.</span>
-              </div>
-            ) : (
-              <span className="text-frost/60">
-                Connect to the internet once to download Maia. Using the practice bot for now.
-              </span>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* Pass-and-play hint */
-        <div className="mb-2 text-xs text-frost/70 bg-surface rounded-xl ring-1 ring-edge px-3 py-2">
-          👥 <span className="font-bold text-gold">Pass-and-play</span> — two players share
-          this device and take turns typing each move. No engine plays.
-          {autoFlip ? ' The board flips to each player automatically.' : ''}
-        </div>
-      )}
 
       {/* Move list */}
-      <div className="bg-surface rounded-xl ring-1 ring-edge p-2 mb-3 max-h-24 overflow-y-auto text-sm">
+      <div className="cc-card p-2.5 mb-3 max-h-24 overflow-y-auto text-sm">
         {rows.length === 0 ? (
-          <span className="text-frost/40">Moves will appear here in notation…</span>
+          <span className="text-frost-dim/70">Moves will appear here in notation…</span>
         ) : (
           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
             {rows.map((r) => (
               <span key={r.n} className="text-frost/90">
-                <span className="text-gold/50">{r.n}.</span> {r.w} <span className="text-frost/60">{r.b || ''}</span>
+                <span className="text-gold/50">{r.n}.</span> {r.w} <span className="text-frost-dim">{r.b || ''}</span>
               </span>
             ))}
           </div>
@@ -450,7 +401,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
 
       {feedback && (
         <div
-          className={`rounded-xl px-3 py-2 mb-3 text-sm font-bold animate-pop ${
+          className={`rounded-cc-lg px-3 py-2 mb-3 text-sm md:text-base font-bold animate-pop ${
             feedback.kind === 'good'
               ? 'bg-grass/20 text-grass ring-1 ring-grass/40'
               : 'bg-coral/15 text-coral ring-1 ring-coral/40'
@@ -460,14 +411,17 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
         </div>
       )}
 
-      {/* Input + keypad (the only way to move) */}
+      </div>
+
+      {/* Move entry pinned to the bottom (aligns with the board's lower edge) */}
+      <div className="md:shrink-0 md:pt-3">
       {!over && (
         <>
           <div className="flex items-center gap-2 mb-2">
-            <div className="text-xs text-gold/60 font-bold whitespace-nowrap">
+            <div className="text-xs md:text-sm text-frost-dim font-bold whitespace-nowrap">
               {activeColor === 'w' ? 'White' : 'Black'} types:
             </div>
-            <div className="flex-1 bg-bg rounded-xl ring-2 ring-edge px-3 py-2 min-h-[42px] flex items-center text-xl font-extrabold tracking-wider text-gold">
+            <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 min-h-[44px] flex items-center text-xl md:text-2xl font-extrabold tracking-wider text-gold">
               {input || <span className="text-gold/30">{myTurn ? 'type, or move on the board…' : 'waiting…'}</span>}
             </div>
           </div>
@@ -483,26 +437,24 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
       )}
 
       {over && (
-        <button
-          onClick={() => startNew(studentColor)}
-          className="w-full py-3 rounded-xl bg-grass text-bg font-extrabold text-lg active:translate-y-px"
-        >
+        <button onClick={() => startNew(studentColor)} className="cc-btn cc-btn-grass w-full py-3 text-lg">
           ↺ Play again
         </button>
       )}
+      </div>
     </>
   );
 
   return (
     <>
-      <PlayLayout board={board} panel={panel} />
+      <PlayLayout board={board} panel={panel} focus={focusBoard} />
 
       {pendingPromotion && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          className="cc-scrim items-center p-4"
           onClick={() => setPendingPromotion(null)}
         >
-          <div className="bg-surface rounded-2xl ring-1 ring-edge p-4 animate-pop" onClick={(e) => e.stopPropagation()}>
+          <div className="cc-card p-4 m-auto animate-pop" onClick={(e) => e.stopPropagation()}>
             <div className="text-sm font-bold text-gold mb-3 text-center">Promote your pawn to…</div>
             <div className="flex gap-2">
               {['q', 'r', 'b', 'n'].map((t) => (
@@ -513,7 +465,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, rewardMove }
                     setPendingPromotion(null);
                     applyBoardMove(p.from, p.to, t);
                   }}
-                  className="w-16 h-16 rounded-xl bg-bg ring-1 ring-edge hover:ring-gold active:translate-y-px flex items-center justify-center"
+                  className="w-16 h-16 rounded-cc bg-bg-2 ring-1 ring-edge hover:ring-gold active:translate-y-px flex items-center justify-center cc-reveal"
                 >
                   <div className="w-12 h-12 flex items-center justify-center" style={{ transform: `scale(${pieceSet.scale || 1})` }}>
                     {pieceSet.render(activeColor, t)}

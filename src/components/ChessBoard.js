@@ -67,6 +67,7 @@ export default function ChessBoard({
   onMove,
   pieceSet,
   boardTheme,
+  big = false, // focus mode — let the board fill much more of a large screen
 }) {
   const set = pieceSet || getPieceSet('classic');
   const theme = boardTheme || getBoardTheme('wood');
@@ -265,7 +266,11 @@ export default function ChessBoard({
         <div>
           <div
             ref={boardRef}
-            className="relative w-[min(86vw,420px)] md:w-[min(62vh,600px)]"
+            className={
+              big
+                ? 'relative w-[min(92vw,520px)] md:w-[min(86vh,760px)] lg:w-[min(90vh,920px)] xl:w-[min(92vh,1100px)]'
+                : 'relative w-[min(86vw,420px)] md:w-[min(62vh,600px)] lg:w-[min(72vh,700px)] xl:w-[min(80vh,820px)]'
+            }
             style={{ touchAction: movableColor ? 'none' : 'auto', containerType: 'inline-size' }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}

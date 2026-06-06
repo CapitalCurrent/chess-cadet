@@ -1,4 +1,5 @@
 import React from 'react';
+import { IconGuide, IconClose } from './icons';
 
 // A kid-friendly cheat sheet for the RULES of writing chess notation. Colors
 // mirror the keypad (pieces = gold, ranks = green, specials = coral) so the
@@ -54,17 +55,16 @@ export default function NotationGuide({ open, onClose }) {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3"
+      className="cc-scrim items-end sm:items-center p-3"
       onClick={onClose}
     >
-      <div
-        className="bg-surface rounded-2xl ring-1 ring-edge w-full max-w-md p-4 max-h-[88vh] overflow-y-auto animate-pop"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="cc-sheet p-4 animate-pop" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-extrabold text-gold">📝 Notation Cheat Sheet</h2>
-          <button onClick={onClose} className="text-frost/70 text-xl leading-none px-2 py-1">
-            ✕
+          <h2 className="text-lg font-extrabold text-gold flex items-center gap-2">
+            <IconGuide size={20} /> Notation Cheat Sheet
+          </h2>
+          <button onClick={onClose} className="cc-icon-btn" aria-label="Close">
+            <IconClose size={20} />
           </button>
         </div>
 

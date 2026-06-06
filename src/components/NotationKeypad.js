@@ -21,7 +21,7 @@ function Key({ children, onClick, disabled, className = '', title }) {
       title={title}
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-xl font-bold shadow-md active:translate-y-px disabled:opacity-40
+      className={`rounded-cc-lg font-bold shadow-card border border-edge-soft active:translate-y-px disabled:opacity-40
         disabled:active:translate-y-0 transition select-none ${className}`}
     >
       {children}

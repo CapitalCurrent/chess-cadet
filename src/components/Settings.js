@@ -3,6 +3,7 @@ import { PIECE_SETS, getPieceSet } from '../pieces/pieceSets';
 import { BOARD_THEMES, getBoardTheme } from '../pieces/boardThemes';
 import { THEME_PRESETS, activePresetId } from '../pieces/themePresets';
 import { isMuted, setMuted } from '../utils/sounds';
+import { IconSettings, IconClose, IconSoundOn, IconSoundOff } from './icons';
 
 export default function Settings({
   open,
@@ -27,17 +28,16 @@ export default function Settings({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3"
+      className="cc-scrim items-end sm:items-center p-3"
       onClick={onClose}
     >
-      <div
-        className="bg-surface rounded-2xl ring-1 ring-edge w-full max-w-md p-4 max-h-[88vh] overflow-y-auto animate-pop"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="cc-sheet p-4 animate-pop" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-extrabold text-gold">⚙️ Settings</h2>
-          <button onClick={onClose} className="text-frost/70 text-xl leading-none px-2 py-1">
-            ✕
+          <h2 className="text-lg font-extrabold text-gold flex items-center gap-2">
+            <IconSettings size={20} /> Settings
+          </h2>
+          <button onClick={onClose} className="cc-icon-btn" aria-label="Close">
+            <IconClose size={20} />
           </button>
         </div>
 
@@ -49,8 +49,9 @@ export default function Settings({
             soundOn ? 'bg-gold/15 ring-gold' : 'bg-bg ring-edge'
           }`}
         >
-          <span className={`text-sm font-bold ${soundOn ? 'text-gold' : 'text-frost/80'}`}>
-            {soundOn ? '🔊 Move sounds on' : '🔇 Move sounds off'}
+          <span className={`text-sm font-bold flex items-center gap-2 ${soundOn ? 'text-gold' : 'text-frost/80'}`}>
+            {soundOn ? <IconSoundOn size={18} /> : <IconSoundOff size={18} />}
+            {soundOn ? 'Move sounds on' : 'Move sounds off'}
           </span>
           <span className={`text-xs font-bold ${soundOn ? 'text-gold' : 'text-frost/50'}`}>
             {soundOn ? 'ON' : 'OFF'}

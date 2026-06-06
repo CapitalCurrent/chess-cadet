@@ -5,12 +5,36 @@ import { getBoardTheme } from './pieces/boardThemes';
 import { useProgress } from './state/progress';
 import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
-import RewardBar from './components/RewardBar';
 import Settings from './components/Settings';
 import NotationGuide from './components/NotationGuide';
+import Logo from './components/nav/Logo';
+import Segmented from './components/nav/Segmented';
+import BottomTabBar from './components/nav/BottomTabBar';
+import {
+  IconLearn,
+  IconDrill,
+  IconPlay,
+  IconSettings,
+  IconGuide,
+  IconRestart,
+  IconMaximize,
+  IconMinimize,
+} from './components/icons';
 import { VERSION } from './version';
 
+// Primary modes — used by both the desktop segmented bar and the mobile tabs.
+const MODES = [
+  { id: 'learn', label: 'Learn', icon: <IconLearn size={22} /> },
+  { id: 'drill', label: 'Drill', icon: <IconDrill size={22} /> },
+  { id: 'play', label: 'Play', icon: <IconPlay size={22} /> },
+];
+
+// Short opening labels so the segmented control stays tidy.
+const OPENING_SHORT = { 'italian-white': 'Italian', 'italian-black': 'Black 1…e5' };
+
 export default function App() {
+  // rewardMove/breakStreak/finishLine still drive progress silently (the gems
+  // reward bar was removed from the chrome; reinstate intentionally later).
   const { progress, rewardMove, breakStreak, finishLine } = useProgress();
   const [openingId, setOpeningId] = useState(OPENINGS[0].id);
   const [mode, setMode] = useState('learn'); // learn first, then drill
@@ -26,6 +50,9 @@ export default function App() {
   const [moveStyle, setMoveStyle] = useState(
     () => localStorage.getItem('chess-cadet-movestyle') || 'both'
   );
+  const [focusBoard, setFocusBoard] = useState(
+    () => localStorage.getItem('chess-cadet-focusboard') === 'on'
+  );
 
   useEffect(() => {
     localStorage.setItem('chess-cadet-pieceset', pieceSetId);
@@ -36,80 +63,69 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('chess-cadet-movestyle', moveStyle);
   }, [moveStyle]);
+  useEffect(() => {
+    localStorage.setItem('chess-cadet-focusboard', focusBoard ? 'on' : 'off');
+  }, [focusBoard]);
 
   const opening = getOpening(openingId);
   const pieceSet = getPieceSet(pieceSetId);
   const boardTheme = getBoardTheme(boardThemeId);
 
+  const openingOptions = OPENINGS.map((o) => ({
+    id: o.id,
+    label: OPENING_SHORT[o.id] || o.name,
+    icon: <span className="text-base leading-none">{o.icon}</span>,
+  }));
+
+  const pickMode = (id) => { setMode(id); setRestart((r) => r + 1); };
+  const pickOpening = (id) => { setOpeningId(id); setRestart((r) => r + 1); };
+
   return (
-    <div className="min-h-screen bg-bg text-frost pb-10">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-bg/95 backdrop-blur border-b border-edge px-3 py-2">
-        <div className="max-w-md md:max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-lg font-extrabold text-gold flex items-baseline gap-1.5">
-              ♟️ Chess Cadet
-              <span className="text-[10px] font-bold text-frost/40">v{VERSION}</span>
-            </h1>
-            <RewardBar progress={progress} />
+    <div className="min-h-screen text-frost pb-24 md:pb-10">
+      {/* Header — acrylic top bar */}
+      <header
+        className="sticky top-0 z-20"
+        style={{
+          background: 'rgba(14,23,38,0.82)',
+          backdropFilter: 'blur(22px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(22px) saturate(140%)',
+          borderBottom: '1px solid var(--edge-soft)',
+        }}
+      >
+        <div className="max-w-md md:max-w-6xl mx-auto px-3 py-2">
+          {/* Row 1: brand · (desktop modes) · tools */}
+          <div className="flex items-center gap-3">
+            <Logo version={VERSION} />
+
+            {/* Modes — desktop only (mobile uses the bottom tab bar) */}
+            <div className="hidden md:block flex-1 max-w-md mx-auto">
+              <Segmented options={MODES} value={mode} onChange={pickMode} />
+            </div>
+
+            {/* Spacer keeps tools right-aligned on mobile */}
+            <div className="flex-1 md:hidden" />
+
+            {/* Tools */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                className="cc-icon-btn hidden md:inline-flex"
+                title={focusBoard ? 'Exit big board' : 'Maximize board'}
+                onClick={() => setFocusBoard((f) => !f)}
+              >
+                {focusBoard ? <IconMinimize /> : <IconMaximize />}
+              </button>
+              <button className="cc-icon-btn" title="Restart this line" onClick={() => setRestart((r) => r + 1)}>
+                <IconRestart />
+              </button>
+              <button className="cc-icon-btn" title="Notation cheat sheet" onClick={() => setGuideOpen(true)}>
+                <IconGuide />
+              </button>
+              <button className="cc-icon-btn" title="Settings" onClick={() => setSettingsOpen(true)}>
+                <IconSettings />
+              </button>
+            </div>
           </div>
 
-          {/* Opening picker (hidden in free-play) */}
-          <div className={`flex gap-2 mb-2 ${mode === 'play' ? 'hidden' : ''}`}>
-            {OPENINGS.map((o) => (
-              <button
-                key={o.id}
-                onClick={() => { setOpeningId(o.id); setRestart((r) => r + 1); }}
-                className={`flex-1 rounded-xl px-2 py-1.5 text-xs font-bold ring-1 transition ${
-                  o.id === openingId
-                    ? 'bg-gold text-bg ring-gold'
-                    : 'bg-surface text-gold/80 ring-edge'
-                }`}
-              >
-                {o.icon} {o.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Mode toggle + restart + settings */}
-          <div className="flex gap-2">
-            {[
-              { id: 'learn', label: '📖 Learn' },
-              { id: 'drill', label: '✍️ Drill' },
-              { id: 'play', label: '🎮 Play' },
-            ].map((m) => (
-              <button
-                key={m.id}
-                onClick={() => { setMode(m.id); setRestart((r) => r + 1); }}
-                className={`flex-1 rounded-xl px-2 py-1.5 text-sm font-bold ring-1 transition ${
-                  m.id === mode ? 'bg-frost text-bg ring-frost' : 'bg-surface text-frost/80 ring-edge'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
-            <button
-              onClick={() => setRestart((r) => r + 1)}
-              className="rounded-xl px-3 py-1.5 text-sm font-bold bg-surface text-coral ring-1 ring-edge"
-              title="Restart this line"
-            >
-              ↻
-            </button>
-            <button
-              onClick={() => setGuideOpen(true)}
-              className="rounded-xl px-3 py-1.5 text-sm font-bold bg-surface text-grass ring-1 ring-edge"
-              title="Notation cheat sheet"
-            >
-              📝
-            </button>
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="rounded-xl px-3 py-1.5 text-sm font-bold bg-surface text-gold ring-1 ring-edge"
-              title="Settings"
-            >
-              ⚙️
-            </button>
-          </div>
         </div>
       </header>
 
@@ -121,6 +137,7 @@ export default function App() {
             pieceSet={pieceSet}
             boardTheme={boardTheme}
             moveStyle={moveStyle}
+            focusBoard={focusBoard}
             rewardMove={rewardMove}
           />
         ) : (
@@ -128,6 +145,10 @@ export default function App() {
             key={`${openingId}-${mode}-${restart}`}
             opening={opening}
             mode={mode}
+            focusBoard={focusBoard}
+            openingSwitcher={
+              <Segmented options={openingOptions} value={openingId} onChange={pickOpening} size="sm" />
+            }
             pieceSet={pieceSet}
             boardTheme={boardTheme}
             moveStyle={moveStyle}
@@ -138,6 +159,9 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Mobile primary navigation */}
+      <BottomTabBar tabs={MODES} value={mode} onChange={pickMode} />
 
       <Settings
         open={settingsOpen}

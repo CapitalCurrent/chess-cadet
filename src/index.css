@@ -1,24 +1,300 @@
-/* Base styles — Tailwind is loaded via CDN in public/index.html */
+/* Base styles + Chess Cadet design system. Tailwind is loaded via CDN in
+   public/index.html, so component styles live here as plain CSS (no @apply).
+   Visual language: Microsoft Fluent — acrylic/mica materials, depth, subtle
+   reveal-on-hover, Win11 rounding, purposeful motion — on deep-navy + gold. */
+
+:root {
+  /* Palette (mirrors tailwind.config tokens) */
+  --bg: #0e1726;
+  --bg-2: #0b1320;
+  --surface: #16243a;
+  --surface-2: #1d3047;
+  --edge: #2c4a6e;
+  --edge-soft: rgba(255, 255, 255, 0.07);
+  --frost: #f4f7fb;
+  --frost-dim: #aebfd4;
+  --gold: #f6c544;
+  --gold-deep: #e0a92e;
+  --grass: #7bd389;
+  --coral: #e76f51;
+  --ink: #0e1726; /* dark text on gold */
+
+  /* Rounding (Win11-ish) */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+
+  /* Elevation */
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  --shadow-elevated: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 18px 48px -16px rgba(0, 0, 0, 0.7);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --dur: 0.18s;
+}
 
 html,
 body {
   margin: 0;
-  background: #0f1b2d;
-  color: #f4f7fb;
-  font-family: 'Baloo 2', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: var(--frost);
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Baloo 2', sans-serif;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Prevent text selection on tappy kid UI */
+/* Mica-style app background — subtle layered light over deep navy. */
+body {
+  background:
+    radial-gradient(1200px 600px at 70% -10%, rgba(91, 141, 239, 0.1), transparent 60%),
+    radial-gradient(900px 500px at 0% 0%, rgba(246, 197, 68, 0.06), transparent 55%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  background-attachment: fixed;
+}
+
 button,
 .no-select {
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* Gentle entrance for feedback toasts */
+/* ── Materials ─────────────────────────────────────────────────────────── */
+
+/* Acrylic: translucent, blurred surface (Fluent material). */
+.cc-acrylic {
+  background: rgba(22, 36, 58, 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--edge-soft);
+}
+
+/* Card: elevated solid surface with a 1px light edge + soft shadow. */
+.cc-card {
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
+  border: 1px solid var(--edge-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+}
+
+/* Reveal: gentle highlight on hover (Fluent "reveal"). */
+.cc-reveal {
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    background-color var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.cc-reveal:hover {
+  border-color: rgba(246, 197, 68, 0.35);
+  box-shadow: 0 0 0 1px rgba(246, 197, 68, 0.18), var(--shadow-card);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+
+.cc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--r-md);
+  font-weight: 700;
+  border: 1px solid var(--edge-soft);
+  cursor: pointer;
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    background-color var(--dur) var(--ease), border-color var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+.cc-btn:active {
+  transform: translateY(1px);
+}
+.cc-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cc-btn:disabled:active {
+  transform: none;
+}
+
+.cc-btn-primary {
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+  color: var(--ink);
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 18px -8px rgba(246, 197, 68, 0.6);
+}
+.cc-btn-primary:hover {
+  box-shadow: 0 8px 22px -8px rgba(246, 197, 68, 0.75);
+}
+
+.cc-btn-grass {
+  background: linear-gradient(180deg, #8fdb9b 0%, var(--grass) 100%);
+  color: var(--ink);
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 18px -8px rgba(123, 211, 137, 0.55);
+}
+
+.cc-btn-secondary {
+  background: rgba(29, 48, 71, 0.85);
+  color: var(--frost);
+}
+.cc-btn-secondary:hover {
+  background: rgba(44, 74, 110, 0.9);
+  border-color: rgba(246, 197, 68, 0.3);
+}
+
+.cc-btn-ghost {
+  background: transparent;
+  color: var(--frost-dim);
+  border-color: transparent;
+}
+.cc-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--frost);
+}
+
+/* Icon button — quiet, square, for tools. */
+.cc-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  color: var(--frost-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.cc-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--frost);
+  border-color: var(--edge-soft);
+}
+.cc-icon-btn:active {
+  transform: translateY(1px);
+}
+
+/* ── Segmented control (replaces mode/opening pills) ───────────────────── */
+
+.cc-seg {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  border-radius: var(--r-lg);
+  background: rgba(11, 19, 32, 0.6);
+  border: 1px solid var(--edge-soft);
+}
+.cc-seg-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex: 1 1 0;
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--r-md);
+  font-weight: 700;
+  color: var(--frost-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.cc-seg-item:hover {
+  color: var(--frost);
+  background: rgba(255, 255, 255, 0.05);
+}
+.cc-seg-item[aria-selected='true'] {
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+  box-shadow: 0 6px 16px -8px rgba(246, 197, 68, 0.6);
+}
+.cc-seg-item:active {
+  transform: translateY(1px);
+}
+
+/* ── Mobile bottom tab bar ─────────────────────────────────────────────── */
+
+/* NOTE: display is intentionally set via Tailwind utilities in the JSX
+   (`flex md:hidden`) so the responsive `md:hidden` can win — setting
+   `display:flex` here would override it and show the bar on desktop too. */
+.cc-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  padding: 6px calc(env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom));
+  gap: 4px;
+  background: rgba(14, 23, 38, 0.82);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  border-top: 1px solid var(--edge-soft);
+}
+.cc-tab {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: var(--r-md);
+  background: transparent;
+  border: none;
+  color: var(--frost-dim);
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+.cc-tab[aria-selected='true'] {
+  color: var(--gold);
+  background: rgba(246, 197, 68, 0.12);
+}
+.cc-tab:active {
+  transform: translateY(1px);
+}
+
+/* ── Chip (compact toggle / status) ────────────────────────────────────── */
+
+.cc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  background: rgba(29, 48, 71, 0.7);
+  border: 1px solid var(--edge-soft);
+}
+
+/* ── Modal / sheet shell ───────────────────────────────────────────────── */
+
+.cc-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+}
+.cc-sheet {
+  width: 100%;
+  max-width: 28rem;
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: var(--r-lg);
+  background: rgba(22, 36, 58, 0.92);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid var(--edge-soft);
+  box-shadow: var(--shadow-elevated);
+}
+
+/* ── Animations ────────────────────────────────────────────────────────── */
+
 @keyframes popIn {
   0% { opacity: 0; transform: scale(0.85); }
   60% { opacity: 1; transform: scale(1.04); }
@@ -45,4 +321,13 @@ button,
 }
 .piece-slide {
   animation: pieceSlide 0.17s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }

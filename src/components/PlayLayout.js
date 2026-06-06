@@ -4,12 +4,16 @@ import React from 'react';
 //  - Phone: single column (board on top, controls below) — unchanged feel.
 //  - Desktop (md+): two columns — a big board on the left, a compact control
 //    panel on the right, so we stop wasting the wide empty margins.
-export default function PlayLayout({ board, panel }) {
+export default function PlayLayout({ board, panel, focus = false }) {
   return (
-    <div className="w-full px-3 mx-auto max-w-md md:max-w-5xl">
-      <div className="md:flex md:items-start md:justify-center md:gap-6">
+    <div
+      className={`w-full px-3 mx-auto max-w-md md:max-w-6xl ${
+        focus ? 'xl:max-w-[1700px]' : 'xl:max-w-[1500px]'
+      }`}
+    >
+      <div className="md:flex md:items-stretch md:justify-center md:gap-6 lg:gap-8">
         <div className="flex justify-center mb-3 md:mb-0 md:shrink-0">{board}</div>
-        <div className="md:flex-1 md:min-w-[300px] md:max-w-md">{panel}</div>
+        <div className={`md:flex md:flex-col md:flex-1 md:min-w-[320px] ${focus ? 'md:max-w-sm' : 'md:max-w-lg'}`}>{panel}</div>
       </div>
     </div>
   );
