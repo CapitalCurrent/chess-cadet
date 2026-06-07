@@ -58,6 +58,9 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
   const [doneRewarded, setDoneRewarded] = useState(false);
   const cleanRef = useRef(true); // this Drill run used no hints and made no wrong moves
   const [continued, setContinued] = useState(false); // chose to keep going past the castling milestone
+  const [keypadOpen, setKeypadOpen] = useState(
+    () => localStorage.getItem('chess-cadet-drillkeypad') !== 'closed'
+  ); // Drill is typing practice → keypad open by default (minimizable)
 
   // Reset everything when the opening or mode changes.
   useEffect(() => {
@@ -283,30 +286,29 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
   }
   const logEmpty = `${opening.icon} ${opening.blurb}`;
 
-  // The course rail — switcher + Progressive-Lines outline. Rendered in the left
-  // rail on desktop, and inline at the top of the panel on phone/tablet.
+  // Persist the keypad minimize choice (Drill).
+  useEffect(() => {
+    localStorage.setItem('chess-cadet-drillkeypad', keypadOpen ? 'open' : 'closed');
+  }, [keypadOpen]);
+
+  // The course rail — switcher + Progressive-Lines outline + move log. Rendered in
+  // the left rail on desktop, and inline at the top of the panel on phone/tablet.
   const courseRail = (
     <div className="space-y-3">
       {openingSwitcher}
       {linesPicker}
+      {path.length > 0 && (
+        <div className="max-h-[34vh] overflow-y-auto">
+          <MoveLog pairs={histPairs} empty={logEmpty} variant="sidebar" />
+        </div>
+      )}
     </div>
   );
 
   const panel = (
-    <>
-      {/* Top region — variable content (caption, feedback, lesson) scrolls here on
-          desktop so the move-entry block below stays pinned to the board's bottom. */}
-      <div className="md:flex-1 md:min-h-0 md:overflow-y-auto md:-mr-1 md:pr-1">
-      {/* Opening switcher (lives here, not the global header, so the header height
-          stays constant across modes and the board never shifts). */}
-      {/* Course outline (switcher + lines) — shown here on phone/tablet; on
-          desktop it lives in the left rail instead. */}
-      <div className="lg:hidden mb-3 space-y-3">{courseRail}</div>
-
-      {/* Move log (inline) — hidden when it's showing in the sidebar column. */}
-      <div className="cc-log-inline mb-3">
-        <MoveLog pairs={histPairs} empty={logEmpty} variant="inline" />
-      </div>
+    <div className="space-y-3">
+      {/* Course outline + moves — shown here below xl; xl shows it in the left rail. */}
+      <div className="xl:hidden">{courseRail}</div>
 
       {/* The ONE step card — the single focus for the current step. */}
       {coreComplete ? (
@@ -452,16 +454,14 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
           )}
         </div>
       )}
-      </div>
 
-      {/* DRILL MODE — move entry pinned to the bottom (aligns with board's lower edge).
-          Only on her turn; the "opponent thinking" state lives in the step card above. */}
+      {/* DRILL — typed move entry. The keypad is the typing-practice tool here; it
+          can be minimized with ⌨ but defaults open. */}
       {mode === 'drill' && !coreComplete && myTurn && (
-        <div className="md:shrink-0 md:pt-3">
-          {/* Right/wrong feedback for her typed move */}
+        <>
           {feedback && (
             <div
-              className={`rounded-cc-lg px-3 py-2 mb-2 text-sm md:text-base font-bold animate-pop ${
+              className={`rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold animate-pop ${
                 feedback.kind === 'correct'
                   ? 'bg-grass/20 text-grass ring-1 ring-grass/40'
                   : feedback.kind === 'legal'
@@ -473,18 +473,25 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
             </div>
           )}
 
-          {/* Input line */}
-          <div className="flex items-center gap-2 mb-2">
+          {/* Input line + keypad toggle */}
+          <div className="flex items-center gap-2">
             <div className="text-xs text-gold/60 font-bold whitespace-nowrap">
               {student === 'w' ? 'White' : 'Black'}:
             </div>
-            <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 min-h-[40px] md:min-h-[44px] flex items-center text-lg md:text-xl font-extrabold tracking-wider text-gold">
-              {input || <span className="text-gold/30 text-sm font-bold">type your move…</span>}
+            <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 min-h-[40px] flex items-center text-lg md:text-xl font-extrabold tracking-wider text-gold">
+              {input || <span className="text-gold/30 text-sm font-bold">{keypadOpen ? 'type your move…' : 'tap ⌨ to type your move'}</span>}
             </div>
+            <button
+              onClick={() => setKeypadOpen((o) => !o)}
+              className={`cc-btn px-3 py-2 text-sm shrink-0 ${keypadOpen ? 'cc-btn-primary' : 'cc-btn-secondary'}`}
+              title={keypadOpen ? 'Hide the keypad' : 'Show the keypad'}
+            >
+              ⌨
+            </button>
           </div>
 
           {/* Hint ladder */}
-          <div className="mb-2 min-h-[20px] text-sm md:text-base">
+          <div className="min-h-[20px] text-sm md:text-base">
             {hint >= 2 ? (
               <span className="text-gold">The move is <b>{target.san}</b> — {readSan(target.san)}</span>
             ) : hint >= 1 ? (
@@ -503,16 +510,18 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
             )}
           </div>
 
-          <NotationKeypad
-            onKey={(tok) => { setTokens((t) => [...t, tok]); setFeedback(null); }}
-            onBackspace={() => setTokens((t) => t.slice(0, -1))}
-            onClear={resetMoveInput}
-            onSubmit={submit}
-            canSubmit={!!input}
-          />
-        </div>
+          {keypadOpen && (
+            <NotationKeypad
+              onKey={(tok) => { setTokens((t) => [...t, tok]); setFeedback(null); }}
+              onBackspace={() => setTokens((t) => t.slice(0, -1))}
+              onClear={resetMoveInput}
+              onSubmit={submit}
+              canSubmit={!!input}
+            />
+          )}
+        </>
       )}
-    </>
+    </div>
   );
 
   return (
@@ -520,7 +529,6 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       rail={courseRail}
       board={board}
       panel={panel}
-      history={<MoveLog pairs={histPairs} empty={logEmpty} variant="sidebar" />}
       focus={focusBoard}
     />
   );
