@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
+import MoveLog from './MoveLog';
 import { newGame, applySan, evaluateInput, coreSan, tryMove } from '../engine/chessEngine';
 import { moverAt, hasBranches } from '../data/openings';
 import { starsFor } from '../state/progress';
@@ -256,26 +257,13 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     />
   );
 
-  // The move log — rendered inline in the panel (default) AND, on wide screens,
-  // in its own sidebar column (PlayLayout decides which via CSS).
-  const historyLog = (
-    <div className="cc-card p-2.5 text-sm">
-      {path.length === 0 ? (
-        <span className="text-frost-dim/90">{opening.icon} {opening.blurb}</span>
-      ) : (
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-          {path.map((n, i) =>
-            i % 2 === 0 ? (
-              <span key={i} className="text-frost/90">
-                <span className="text-gold/50">{i / 2 + 1}.</span> {n.san}{' '}
-                <span className="text-frost-dim">{path[i + 1] ? path[i + 1].san : ''}</span>
-              </span>
-            ) : null
-          )}
-        </div>
-      )}
-    </div>
-  );
+  // The move log (data) — rendered inline in the panel AND, on wide screens, as
+  // a stacked table in the sidebar column (PlayLayout decides which via CSS).
+  const histPairs = [];
+  for (let i = 0; i < path.length; i += 2) {
+    histPairs.push({ n: i / 2 + 1, w: path[i].san, b: path[i + 1] ? path[i + 1].san : '' });
+  }
+  const logEmpty = `${opening.icon} ${opening.blurb}`;
 
   const panel = (
     <>
@@ -287,7 +275,9 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
       {openingSwitcher && <div className="mb-3">{openingSwitcher}</div>}
 
       {/* Move log (inline) — hidden when it's showing in the sidebar column. */}
-      <div className="cc-log-inline mb-3">{historyLog}</div>
+      <div className="cc-log-inline mb-3">
+        <MoveLog pairs={histPairs} empty={logEmpty} variant="inline" />
+      </div>
 
       {/* The ONE step card — the single focus for the current step. */}
       {atMilestone ? (
@@ -502,5 +492,12 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     </>
   );
 
-  return <PlayLayout board={board} panel={panel} history={historyLog} focus={focusBoard} />;
+  return (
+    <PlayLayout
+      board={board}
+      panel={panel}
+      history={<MoveLog pairs={histPairs} empty={logEmpty} variant="sidebar" />}
+      focus={focusBoard}
+    />
+  );
 }
