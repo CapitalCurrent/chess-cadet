@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PIECE_SETS, getPieceSet } from '../pieces/pieceSets';
 import { BOARD_THEMES, getBoardTheme } from '../pieces/boardThemes';
 import { THEME_PRESETS, activePresetId } from '../pieces/themePresets';
-import { isMuted, setMuted, playTest } from '../utils/sounds';
+import { isMuted, setMuted, playTest, audioState } from '../utils/sounds';
 import { IconSettings, IconClose, IconSoundOn, IconSoundOff } from './icons';
 
 export default function Settings({
@@ -19,6 +19,7 @@ export default function Settings({
 }) {
   const [showCustom, setShowCustom] = useState(false);
   const [soundOn, setSoundOn] = useState(!isMuted());
+  const [audioInfo, setAudioInfo] = useState('');
   if (!open) return null;
 
   const activeId = activePresetId(pieceSetId, boardThemeId);
@@ -60,10 +61,10 @@ export default function Settings({
           </span>
         </button>
         <button
-          onClick={playTest}
+          onClick={() => { playTest(); setTimeout(() => setAudioInfo(audioState()), 120); }}
           className="w-full mb-4 rounded-xl p-2 ring-1 ring-edge bg-bg text-sm font-bold text-frost/80 active:translate-y-px"
         >
-          🔊 Play a test sound
+          🔊 Play a test sound{audioInfo ? ` — audio: ${audioInfo}` : ''}
         </button>
 
         {/* Move input style */}

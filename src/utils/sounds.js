@@ -105,9 +105,24 @@ export function playMove() {
   thock({ freq: 300, dur: 0.07, type: 'triangle', gain: 0.26, drop: 0.55 });
 }
 
-// Plays a sound IGNORING the mute flag — for the Settings "Test sound" button.
+// Reports the AudioContext state for diagnostics: 'no-context' | 'suspended' |
+// 'running' | 'closed' | 'unsupported'.
+export function audioState() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return 'unsupported';
+  if (!ctx) return 'no-context';
+  return ctx.state;
+}
+
+// Plays a clear test tone IGNORING the mute flag, for the Settings button. We
+// RESUME the context first and only play once it's actually running — a short
+// tone scheduled while still 'suspended' plays silently.
 export function playTest() {
-  thock({ freq: 300, dur: 0.07, type: 'triangle', gain: 0.26, drop: 0.55 });
+  const a = ac();
+  if (!a) return;
+  const go = () => thock({ freq: 440, dur: 0.25, type: 'triangle', gain: 0.32, drop: 0.75 });
+  if (a.state === 'suspended') a.resume().then(go).catch(go);
+  else go();
 }
 
 // A bright rising two-note chime when a move gives check.
