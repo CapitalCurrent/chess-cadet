@@ -293,6 +293,31 @@ button,
   box-shadow: var(--shadow-elevated);
 }
 
+/* ── Move-log placement (inline in the panel vs its own right column) ───────
+   The log markup renders in BOTH a `.cc-log-inline` slot (in the panel) and a
+   `.cc-log-sidebar` slot (third column); CSS shows exactly one based on the
+   root preference class (log-auto / log-sidebar / log-panel) and width. Guard:
+   the sidebar is NEVER shown below lg (1024px), so a too-narrow screen always
+   falls back to inline — no squished/overflowing log. */
+.cc-log-sidebar {
+  display: none;
+}
+.cc-log-sidebar .cc-card {
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+}
+/* AUTO (default): sidebar only on very wide screens. */
+@media (min-width: 1280px) {
+  .log-auto .cc-log-sidebar { display: block; }
+  .log-auto .cc-log-inline { display: none; }
+}
+/* SIDEBAR: sidebar from laptop width up. */
+@media (min-width: 1024px) {
+  .log-sidebar .cc-log-sidebar { display: block; }
+  .log-sidebar .cc-log-inline { display: none; }
+}
+/* PANEL: always inline — no rules needed (the defaults handle it). */
+
 /* ── Animations ────────────────────────────────────────────────────────── */
 
 @keyframes popIn {

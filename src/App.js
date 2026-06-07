@@ -54,6 +54,9 @@ export default function App() {
   const [focusBoard, setFocusBoard] = useState(
     () => localStorage.getItem('chess-cadet-focusboard') === 'on'
   );
+  const [logPlacement, setLogPlacement] = useState(
+    () => localStorage.getItem('chess-cadet-logplacement') || 'auto'
+  ); // move log: auto | sidebar | panel
 
   useEffect(() => {
     localStorage.setItem('chess-cadet-pieceset', pieceSetId);
@@ -67,6 +70,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('chess-cadet-focusboard', focusBoard ? 'on' : 'off');
   }, [focusBoard]);
+  useEffect(() => {
+    localStorage.setItem('chess-cadet-logplacement', logPlacement);
+  }, [logPlacement]);
 
   const opening = getOpening(openingId);
   const pieceSet = getPieceSet(pieceSetId);
@@ -91,7 +97,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen text-frost pb-24 md:pb-10">
+    <div className={`min-h-screen text-frost pb-24 md:pb-10 log-${logPlacement}`}>
       {/* Header — acrylic top bar */}
       <header
         className="sticky top-0 z-20"
@@ -184,6 +190,8 @@ export default function App() {
         setBoardThemeId={setBoardThemeId}
         moveStyle={moveStyle}
         setMoveStyle={setMoveStyle}
+        logPlacement={logPlacement}
+        setLogPlacement={setLogPlacement}
       />
 
       <NotationGuide open={guideOpen} onClose={() => setGuideOpen(false)} />

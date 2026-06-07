@@ -256,6 +256,27 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     />
   );
 
+  // The move log — rendered inline in the panel (default) AND, on wide screens,
+  // in its own sidebar column (PlayLayout decides which via CSS).
+  const historyLog = (
+    <div className="cc-card p-2.5 text-sm">
+      {path.length === 0 ? (
+        <span className="text-frost-dim/90">{opening.icon} {opening.blurb}</span>
+      ) : (
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+          {path.map((n, i) =>
+            i % 2 === 0 ? (
+              <span key={i} className="text-frost/90">
+                <span className="text-gold/50">{i / 2 + 1}.</span> {n.san}{' '}
+                <span className="text-frost-dim">{path[i + 1] ? path[i + 1].san : ''}</span>
+              </span>
+            ) : null
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   const panel = (
     <>
       {/* Top region — variable content (caption, feedback, lesson) scrolls here on
@@ -265,24 +286,8 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
           stays constant across modes and the board never shifts). */}
       {openingSwitcher && <div className="mb-3">{openingSwitcher}</div>}
 
-      {/* History strip — the moves so far in notation (the PAST). Shows the blurb
-          until the first move so there's no empty box. */}
-      <div className="cc-card p-2.5 mb-3 text-sm">
-        {path.length === 0 ? (
-          <span className="text-frost-dim/90">{opening.icon} {opening.blurb}</span>
-        ) : (
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-            {path.map((n, i) =>
-              i % 2 === 0 ? (
-                <span key={i} className="text-frost/90">
-                  <span className="text-gold/50">{i / 2 + 1}.</span> {n.san}{' '}
-                  <span className="text-frost-dim">{path[i + 1] ? path[i + 1].san : ''}</span>
-                </span>
-              ) : null
-            )}
-          </div>
-        )}
-      </div>
+      {/* Move log (inline) — hidden when it's showing in the sidebar column. */}
+      <div className="cc-log-inline mb-3">{historyLog}</div>
 
       {/* The ONE step card — the single focus for the current step. */}
       {atMilestone ? (
@@ -497,5 +502,5 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     </>
   );
 
-  return <PlayLayout board={board} panel={panel} focus={focusBoard} />;
+  return <PlayLayout board={board} panel={panel} history={historyLog} focus={focusBoard} />;
 }

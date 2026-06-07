@@ -479,6 +479,23 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     { id: 'human2', label: '2 Players', icon: <span className="text-base leading-none">👥</span> },
   ];
 
+  // The move log — inline in the panel and/or a sidebar column (PlayLayout + CSS).
+  const historyLog = (
+    <div className="cc-card p-2.5 max-h-24 overflow-y-auto text-sm">
+      {rows.length === 0 ? (
+        <span className="text-frost-dim/70">Moves will appear here in notation…</span>
+      ) : (
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+          {rows.map((r) => (
+            <span key={r.n} className="text-frost/90">
+              <span className="text-gold/50">{r.n}.</span> {r.w} <span className="text-frost-dim">{r.b || ''}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   const panel = (
     <>
       {/* Top region — setup, status, move list, feedback scroll here on desktop so
@@ -608,20 +625,8 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
         </div>
       </div>
 
-      {/* Move list */}
-      <div className="cc-card p-2.5 mb-3 max-h-24 overflow-y-auto text-sm">
-        {rows.length === 0 ? (
-          <span className="text-frost-dim/70">Moves will appear here in notation…</span>
-        ) : (
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-            {rows.map((r) => (
-              <span key={r.n} className="text-frost/90">
-                <span className="text-gold/50">{r.n}.</span> {r.w} <span className="text-frost-dim">{r.b || ''}</span>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Move log (inline) — hidden when it's showing in the sidebar column. */}
+      <div className="cc-log-inline mb-3">{historyLog}</div>
 
       {!twoPlayer && history.length >= 2 && (
         <button onClick={reviewGame} className="cc-btn cc-btn-secondary w-full py-2 text-sm mb-3">
@@ -701,7 +706,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
 
   return (
     <>
-      <PlayLayout board={board} panel={panel} focus={focusBoard} />
+      <PlayLayout board={board} panel={panel} history={historyLog} focus={focusBoard} />
 
       {pendingPromotion && (
         <div

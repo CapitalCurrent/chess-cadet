@@ -14,6 +14,8 @@ export default function Settings({
   setBoardThemeId,
   moveStyle,
   setMoveStyle,
+  logPlacement,
+  setLogPlacement,
 }) {
   const [showCustom, setShowCustom] = useState(false);
   const [soundOn, setSoundOn] = useState(!isMuted());
@@ -71,6 +73,30 @@ export default function Settings({
               <button
                 key={m.id}
                 onClick={() => setMoveStyle(m.id)}
+                className={`rounded-xl p-2 ring-1 flex flex-col items-center gap-0.5 transition ${
+                  active ? 'bg-gold/15 ring-gold' : 'bg-bg ring-edge'
+                }`}
+              >
+                <span className={`text-sm font-bold ${active ? 'text-gold' : 'text-frost/80'}`}>{m.name}</span>
+                <span className="text-[10px] text-frost/50">{m.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Move log placement (wide screens) */}
+        <div className="text-xs uppercase tracking-wide text-gold/50 font-bold mb-2">Move log (wide screens)</div>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[
+            { id: 'auto', name: 'Auto', hint: 'side if room' },
+            { id: 'sidebar', name: 'Sidebar', hint: 'right column' },
+            { id: 'panel', name: 'In panel', hint: 'with controls' },
+          ].map((m) => {
+            const active = m.id === logPlacement;
+            return (
+              <button
+                key={m.id}
+                onClick={() => setLogPlacement(m.id)}
                 className={`rounded-xl p-2 ring-1 flex flex-col items-center gap-0.5 transition ${
                   active ? 'bg-gold/15 ring-gold' : 'bg-bg ring-edge'
                 }`}
