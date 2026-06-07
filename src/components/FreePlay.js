@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
@@ -44,6 +44,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   });
   const [studentColor, setStudentColor] = useState(() => (seed && seed.color) || 'w');
   const [flipped, setFlipped] = useState(false); // view-only board flip
+  const [viewPly, setViewPly] = useState(null); // null = live; else # of half-moves to show (review/scrub)
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
   const [level, setLevel] = useState(() => {
     const v = parseInt(localStorage.getItem('chess-cadet-level'), 10);
@@ -112,6 +113,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   }
 
   function pushMove(move) {
+    setViewPly(null); // any new move snaps the board back to the live position
     setFen(gameRef.current.fen());
     setHistory(gameRef.current.history());
     setLastMove({ from: move.from, to: move.to });
@@ -238,6 +240,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     gameRef.current = newGame();
     setStudentColor(color);
     setFlipped(false);
+    setViewPly(null);
     setFen(gameRef.current.fen());
     setHistory(gameRef.current.history());
     setTokens([]);
@@ -438,6 +441,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     // vs an engine, step back a second time so it's her turn again; in pass-and-play
     // a single undo correctly hands the move back to the previous player.
     if (!twoPlayer && g.history().length && g.turn() !== studentColor) g.undo();
+    setViewPly(null);
     setOver(null);
     setFeedback(null);
     setFen(g.fen());
@@ -453,6 +457,47 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     rows.push({ n: i / 2 + 1, w: history[i], b: history[i + 1] });
   }
 
+  // ── Move-history review (scrub) ──────────────────────────────────────────
+  // The position after each half-move, derived (never mutates the live game).
+  // positions[k] = the board after k plies (positions[0] = start).
+  const positions = useMemo(() => {
+    const g = newGame();
+    const out = [{ fen: g.fen(), from: null, to: null }];
+    for (const san of history) {
+      let m = null;
+      try { m = g.move(san); } catch { m = null; }
+      out.push({ fen: g.fen(), from: m ? m.from : null, to: m ? m.to : null });
+    }
+    return out;
+  }, [history]);
+
+  const viewing = viewPly != null && viewPly < history.length; // showing a past position
+  const atLive = !viewing; // viewPly null OR pointing at the final ply
+  const selectedPly = viewPly == null ? history.length : viewPly; // highlight in the log
+  const viewPos = viewing ? positions[viewPly] : null;
+  const displayFen = viewing ? viewPos.fen : fen;
+  const displayLastMove = viewing ? { from: viewPos.from, to: viewPos.to } : lastMove;
+  const viewSan = viewPly > 0 ? history[viewPly - 1] : null;
+
+  function goLive() { setViewPly(null); }
+  function stepBack() { setViewPly((v) => Math.max(0, (v == null ? history.length : v) - 1)); }
+  function stepFwd() {
+    setViewPly((v) => {
+      const nv = (v == null ? history.length : v) + 1;
+      return nv >= history.length ? null : nv; // reaching the end returns to live
+    });
+  }
+
+  // Arrow keys scrub the history (no text inputs on this screen to conflict with).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); stepBack(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); stepFwd(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [history.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const baseOrientation = twoPlayer ? 'w' : studentColor;
   const viewOrientation =
     twoPlayer && autoFlip
@@ -465,16 +510,48 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
 
   const board = (
     <ChessBoard
-      fen={fen}
+      fen={displayFen}
       orientation={viewOrientation}
-      lastMove={lastMove}
-      movableColor={myTurn ? activeColor : null}
+      lastMove={displayLastMove}
+      movableColor={viewing ? null : myTurn ? activeColor : null}
       moveStyle={moveStyle}
       onMove={handleBoardMove}
       pieceSet={pieceSet}
       boardTheme={boardTheme}
       big={focusBoard}
+      silent={viewing}
     />
+  );
+
+  // History scrubber — sits directly under the board (a fixed, predictable spot;
+  // the move log itself moves between the panel and the sidebar by screen width).
+  const scrubber = history.length > 0 && (
+    <div className="flex items-center justify-center gap-2">
+      <button
+        onClick={stepBack}
+        disabled={selectedPly <= 0}
+        className="cc-btn cc-btn-secondary px-4 py-1.5 text-sm disabled:opacity-40"
+        title="Previous move (←)"
+      >
+        ◀
+      </button>
+      <button
+        onClick={goLive}
+        disabled={atLive}
+        className={`cc-btn px-4 py-1.5 text-sm ${atLive ? 'cc-btn-secondary opacity-50' : 'cc-btn-primary'}`}
+        title="Jump to the current position"
+      >
+        ● Live
+      </button>
+      <button
+        onClick={stepFwd}
+        disabled={atLive}
+        className="cc-btn cc-btn-secondary px-4 py-1.5 text-sm disabled:opacity-40"
+        title="Next move (→)"
+      >
+        ▶
+      </button>
+    </div>
   );
 
   const opponentOptions = [
@@ -616,7 +693,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
 
       {/* Move log (inline) — hidden when it's showing in the sidebar column. */}
       <div className="cc-log-inline mb-3">
-        <MoveLog pairs={rows} empty={logEmpty} variant="inline" />
+        <MoveLog pairs={rows} empty={logEmpty} variant="inline" onSelect={setViewPly} selectedPly={selectedPly} />
       </div>
 
       {!twoPlayer && history.length >= 2 && (
@@ -641,7 +718,16 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
 
       {/* Move entry pinned to the bottom (aligns with the board's lower edge) */}
       <div className="md:shrink-0 md:pt-3">
-      {!over && (
+      {viewing ? (
+        <div className="flex items-center gap-2 rounded-cc-lg px-3 py-3 bg-gold/15 text-gold ring-1 ring-gold/40 animate-pop">
+          <span className="text-sm md:text-base font-bold flex-1">
+            👀 Reviewing {viewSan ? `move ${Math.ceil(viewPly / 2)}${viewPly % 2 ? '.' : '…'} ${viewSan}` : 'the start position'} — keypad paused.
+          </span>
+          <button onClick={goLive} className="cc-btn cc-btn-primary px-3 py-1.5 text-xs shrink-0">
+            ⏭ Back to live
+          </button>
+        </div>
+      ) : !over ? (
         <>
           {coachActive && (
             <div className="flex items-center gap-2 mb-2">
@@ -684,9 +770,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
             canSubmit={!!input && myTurn}
           />
         </>
-      )}
-
-      {over && (
+      ) : (
         <button onClick={() => startNew(studentColor)} className="cc-btn cc-btn-grass w-full py-3 text-lg">
           ↺ Play again
         </button>
@@ -697,7 +781,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
 
   return (
     <>
-      <PlayLayout board={board} panel={panel} history={<MoveLog pairs={rows} empty={logEmpty} variant="sidebar" />} focus={focusBoard} />
+      <PlayLayout board={board} panel={panel} boardFooter={scrubber} history={<MoveLog pairs={rows} empty={logEmpty} variant="sidebar" onSelect={setViewPly} selectedPly={selectedPly} />} focus={focusBoard} />
 
       {pendingPromotion && (
         <div

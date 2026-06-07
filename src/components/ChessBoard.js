@@ -68,6 +68,7 @@ export default function ChessBoard({
   pieceSet,
   boardTheme,
   big = false, // focus mode — let the board fill much more of a large screen
+  silent = false, // suppress move sounds (e.g. while scrubbing the move history)
 }) {
   const set = pieceSet || getPieceSet('classic');
   const theme = boardTheme || getBoardTheme('wood');
@@ -117,7 +118,7 @@ export default function ChessBoard({
   useEffect(() => {
     const count = cells.reduce((a, c) => a + (c.piece ? 1 : 0), 0);
     const prev = soundRef.current;
-    if (prev.fen !== null && prev.fen !== fen && lastMove) {
+    if (!silent && prev.fen !== null && prev.fen !== fen && lastMove) {
       if (prev.count !== null && count < prev.count) playCapture();
       else playMove();
       try {
