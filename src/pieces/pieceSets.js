@@ -39,7 +39,10 @@ const SETS = [
   // --- Custom / novelty sets ---------------------------------------------
   // Full Grok-generated dragon set (all 6 pieces), sliced from the white row
   // and matched-black derived by inversion. public/pieces/dragons/*.png
-  { id: 'dragons', name: 'Dragons', dir: 'dragons', ext: 'png', scale: 1.1 },
+  // Distinct front-facing dragon PAWN (Grok) overrides the sliced pawn so it
+  // doesn't read like the side-profile knight. public/pieces/dragon-pawn/*.png
+  { id: 'dragons', name: 'Dragons', dir: 'dragons', ext: 'png', scale: 1.1,
+    overrides: { p: { dir: 'dragon-pawn', ext: 'png' } } },
   // Bold variant: each piece fills the square (chunkier, easiest to see).
   // flipPawns mirrors the pawns so they face opposite the knights (a quick
   // differentiation stopgap until Grok redraws a clearly distinct pawn).
