@@ -32,7 +32,7 @@ ys, xs = np.where(alpha > 0)
 crop = out.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
 
 side = max(crop.size)
-pad = int(side * 0.08)
+pad = int(side * 0.04)  # less padding so it sizes up to match the bold set
 canvas = Image.new("RGBA", (side + 2 * pad, side + 2 * pad), (0, 0, 0, 0))
 canvas.paste(crop, ((canvas.size[0] - crop.size[0]) // 2, (canvas.size[1] - crop.size[1]) // 2), crop)
 canvas = canvas.resize((512, 512), Image.LANCZOS)
