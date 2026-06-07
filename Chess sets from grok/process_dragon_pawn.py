@@ -32,11 +32,30 @@ ys, xs = np.where(alpha > 0)
 crop = out.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
 
 side = max(crop.size)
-pad = int(side * 0.04)  # less padding so it sizes up to match the bold set
+pad = int(side * 0.22)  # generous margin so the pawn reads SMALLER than the majors
 canvas = Image.new("RGBA", (side + 2 * pad, side + 2 * pad), (0, 0, 0, 0))
 canvas.paste(crop, ((canvas.size[0] - crop.size[0]) // 2, (canvas.size[1] - crop.size[1]) // 2), crop)
 canvas = canvas.resize((512, 512), Image.LANCZOS)
+
+# Match the cream tone to the rest of the bold set (sample the knight's cream) so
+# the white pawn isn't a darker shade than the other white pieces.
+def cream_mean(a):
+    op = a[:, :, 3] > 0
+    lum = a[:, :, :3].mean(axis=2)
+    m = op & (lum > 150)
+    return a[:, :, :3][m].mean(axis=0) if m.any() else np.array([255.0, 255.0, 255.0])
+
+ref = np.array(Image.open("F:/Software Builds/chess-cadet/public/pieces/dragons-bold/wN.png").convert("RGBA"))
+cv = np.array(canvas).astype(float)
+shift = cream_mean(ref) - cream_mean(np.array(canvas))
+op = cv[:, :, 3] > 0
+lum = cv[:, :, :3].mean(axis=2)
+mask = op & (lum > 120)            # the cream fill (leave the dark outline alone)
+for c in range(3):
+    cv[:, :, c][mask] = np.clip(cv[:, :, c][mask] + shift[c], 0, 255)
+canvas = Image.fromarray(cv.astype(np.uint8), "RGBA")
 canvas.save(os.path.join(OUT, "wP.png"))
+print("cream shift applied:", shift.round(1))
 
 # Black = invert RGB on opaque pixels (matches how the dragon black set is made).
 b = np.array(canvas)
