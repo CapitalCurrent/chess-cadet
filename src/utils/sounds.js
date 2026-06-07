@@ -5,6 +5,16 @@
 let ctx = null;
 let muted = localStorage.getItem('chess-cadet-sound') === 'off';
 
+// Real recorded piece sounds (lichess "standard" set) for a wooden-board feel.
+// They're decoded into AudioBuffers once; if they haven't loaded (or fail), we
+// fall back to the synthesized tones below — so it always works, even offline.
+const SAMPLE_URLS = {
+  move: `${process.env.PUBLIC_URL}/sounds/Move.mp3`,
+  capture: `${process.env.PUBLIC_URL}/sounds/Capture.mp3`,
+};
+const samples = {};
+let samplesRequested = false;
+
 function ac() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -13,6 +23,32 @@ function ac() {
   }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
+}
+
+function loadSamples() {
+  const a = ac();
+  if (!a || samplesRequested) return;
+  samplesRequested = true;
+  Object.entries(SAMPLE_URLS).forEach(([name, url]) => {
+    fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((buf) => a.decodeAudioData(buf))
+      .then((b) => { samples[name] = b; })
+      .catch(() => { /* keep the synthesized fallback */ });
+  });
+}
+
+// Play a decoded sample if available; returns false if it isn't loaded yet.
+function playBuffer(name, gain = 0.85) {
+  const a = ac();
+  if (!a || !samples[name]) return false;
+  const src = a.createBufferSource();
+  src.buffer = samples[name];
+  const g = a.createGain();
+  g.gain.value = gain;
+  src.connect(g).connect(a.destination);
+  src.start(0);
+  return true;
 }
 
 // Resume/create the context on the first user interaction so later sounds
@@ -31,6 +67,7 @@ function unlock() {
     } catch {
       /* ignore */
     }
+    loadSamples(); // now that we have a context, fetch + decode the real samples
   }
   window.removeEventListener('pointerdown', unlock);
   window.removeEventListener('keydown', unlock);
@@ -98,11 +135,20 @@ function tone({ freq, dur = 0.12, type = 'sine', gain = 0.12, when = 0 }) {
   o.stop(t + dur + 0.02);
 }
 
+// A percussive wooden "knock" — a short low thump with a tiny click on top,
+// so it reads as a piece tapping the board rather than a tonal beep.
+function moveSound() {
+  thock({ freq: 150, dur: 0.05, type: 'sine', gain: 0.22, drop: 0.5 });
+  noiseClick({ dur: 0.018, gain: 0.07, hp: 2000 });
+}
+function captureSound() {
+  thock({ freq: 110, dur: 0.08, type: 'triangle', gain: 0.24, drop: 0.4 });
+  noiseClick({ dur: 0.05, gain: 0.15, hp: 1000 });
+}
+
 export function playMove() {
   if (muted) return;
-  // A clearer, slightly louder "tock" — the old one was easy to miss on laptop
-  // and phone speakers.
-  thock({ freq: 300, dur: 0.07, type: 'triangle', gain: 0.26, drop: 0.55 });
+  if (!playBuffer('move')) moveSound();
 }
 
 // Reports the AudioContext state for diagnostics: 'no-context' | 'suspended' |
@@ -120,7 +166,11 @@ export function audioState() {
 export function playTest() {
   const a = ac();
   if (!a) return;
-  const go = () => thock({ freq: 440, dur: 0.25, type: 'triangle', gain: 0.32, drop: 0.75 });
+  const go = () => {
+    loadSamples();
+    if (!playBuffer('move')) moveSound();
+    setTimeout(() => { if (!playBuffer('capture')) captureSound(); }, 350);
+  };
   if (a.state === 'suspended') a.resume().then(go).catch(go);
   else go();
 }
@@ -149,6 +199,5 @@ export function playCheckmate() {
 
 export function playCapture() {
   if (muted) return;
-  thock({ freq: 150, dur: 0.09, type: 'triangle', gain: 0.18, drop: 0.42 });
-  noiseClick({ dur: 0.05, gain: 0.13 });
+  if (!playBuffer('capture')) captureSound();
 }
