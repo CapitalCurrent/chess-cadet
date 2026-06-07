@@ -1,24 +1,38 @@
 import React from 'react';
 
-// Responsive shell for the trainer/game screens.
-//  - Phone: single column (board on top, controls below) — unchanged feel.
-//  - Desktop (md+): two columns — a big board on the left, a compact control
-//    panel on the right, so we stop wasting the wide empty margins.
-export default function PlayLayout({ board, panel, history, boardFooter, focus = false }) {
+// Responsive shell for the trainer/game screens — an LMS-style frame.
+//  - Phone: single column (rail content is shown inline by each screen, then
+//    board, then controls) — clean and unchanged in spirit.
+//  - Desktop (lg+): a left RAIL (course outline / game setup) · big board +
+//    scrubber · controls panel · move-log column. The rail makes the app's
+//    structure always visible and uses the wide screen instead of wasting it.
+//  - Maximize (focus): the rail and move-log hide so the board can grow, while
+//    the controls panel stays so play/drilling is still functional.
+export default function PlayLayout({ rail, board, panel, history, boardFooter, focus = false }) {
   return (
     <div
       className={`w-full px-3 mx-auto max-w-md md:max-w-6xl ${
-        focus ? 'xl:max-w-[1700px]' : 'xl:max-w-[1640px]'
+        focus ? 'xl:max-w-[1760px]' : 'xl:max-w-[1760px]'
       }`}
     >
-      <div className="md:flex md:items-stretch md:justify-center md:gap-6 lg:gap-8">
+      <div className="md:flex md:items-stretch md:justify-center md:gap-5 lg:gap-6">
+        {/* Left rail — desktop only; on phone each screen renders it inline. */}
+        {rail && !focus && (
+          <aside className="hidden lg:block lg:w-60 xl:w-64 md:shrink-0 self-start">{rail}</aside>
+        )}
+
+        {/* Board + scrubber */}
         <div className="flex flex-col items-center mb-3 md:mb-0 md:shrink-0">
           {board}
           {boardFooter && <div className="mt-2 w-full">{boardFooter}</div>}
         </div>
-        <div className={`md:flex md:flex-col md:flex-1 md:min-w-[320px] ${focus ? 'md:max-w-sm' : 'md:max-w-lg'}`}>{panel}</div>
-        {history && (
-          <aside className="cc-log-sidebar md:shrink-0 md:w-64 lg:w-72">{history}</aside>
+
+        {/* Active step / controls / keypad (stays tall so the keypad pins to the board's lower edge) */}
+        <div className={`md:flex md:flex-col md:flex-1 md:min-w-[300px] ${focus ? 'md:max-w-sm' : 'md:max-w-md'}`}>{panel}</div>
+
+        {/* Move log column */}
+        {history && !focus && (
+          <aside className="cc-log-sidebar md:shrink-0 md:w-56 lg:w-64 self-start">{history}</aside>
         )}
       </div>
     </div>

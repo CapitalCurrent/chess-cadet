@@ -562,94 +562,100 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
 
   const logEmpty = 'Moves will appear here in notation…';
 
+  // Match setup — opponent, side, difficulty, coach. Rendered in the left rail on
+  // desktop, and inline at the top of the panel on phone/tablet.
+  const matchSetup = (
+    <div className="cc-card p-3 space-y-3">
+      {seed && (
+        <div className="text-sm font-bold text-grass">▶ Continuing from your opening — play it out!</div>
+      )}
+      <Segmented options={opponentOptions} value={opponentType} onChange={selectOpponent} size="sm" />
+
+      {/* Play-as side (engine modes only; hidden in pass-and-play and when
+          continuing a seeded opening, where her color is fixed) */}
+      {!twoPlayer && !seed && (
+        <Segmented
+          options={[
+            { id: 'w', label: '♔ White' },
+            { id: 'b', label: '♚ Black' },
+          ]}
+          value={studentColor}
+          onChange={(c) => { if (c !== studentColor) startNew(c); }}
+          size="sm"
+        />
+      )}
+
+      {opponentType === 'stockfish' ? (
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] uppercase tracking-wide text-frost-dim font-bold">Level</span>
+            <input type="range" min="1" max="20" value={level} onChange={(e) => setLevel(Number(e.target.value))} className="flex-1 accent-gold" />
+            <div className="w-24 text-right whitespace-nowrap leading-tight">
+              <div className="text-xs font-bold text-gold">{level} · {levelTier(level)}</div>
+              <div className="text-[10px] text-frost-dim">{levelEloLabel(level)} Elo</div>
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-frost-dim">🤖 A chess computer — slide to set how strong it plays.</div>
+        </div>
+      ) : opponentType === 'maia' ? (
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] uppercase tracking-wide text-frost-dim font-bold">Rating</span>
+            <input type="range" min="1100" max="1900" step="100" value={humanRating} onChange={(e) => setHumanRating(Number(e.target.value))} className="flex-1 accent-gold" />
+            <span className="text-xs font-bold text-gold whitespace-nowrap w-16 text-right">{humanRating}</span>
+          </div>
+          <div className="mt-2 text-xs">
+            {maia.status === 'ready' ? (
+              <span className="text-grass font-bold">🙂 MaiaBot is ready — plays like a real {humanRating} player.</span>
+            ) : maia.status === 'downloading' ? (
+              <div>
+                <div className="text-frost-dim mb-1">Downloading MaiaBot… {maia.progress}%</div>
+                <div className="h-1.5 rounded-full bg-edge overflow-hidden">
+                  <div className="h-full bg-gold transition-all" style={{ width: `${maia.progress}%` }} />
+                </div>
+              </div>
+            ) : maia.status === 'error' ? (
+              <span className="text-coral">Couldn’t load MaiaBot — using StockBot instead.</span>
+            ) : navigator.onLine ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <button onClick={downloadMaia} className="cc-btn cc-btn-grass px-3 py-1.5 text-xs">⬇ Get MaiaBot (~44 MB)</button>
+                <span className="text-frost-dim">🙂 Plays like a human. StockBot fills in until ready.</span>
+              </div>
+            ) : (
+              <span className="text-frost-dim">Connect to the internet once to download MaiaBot. Using StockBot for now.</span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="text-xs text-frost-dim leading-snug">
+          <span className="font-bold text-gold">Pass-and-play</span> — two players share this device and take turns typing each move. No engine plays.{autoFlip ? ' The board flips to each player automatically.' : ''}
+        </div>
+      )}
+
+      {/* Coach (Spar) — grade her moves + hints. Only vs an engine. */}
+      {!twoPlayer && (
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <span className="text-sm font-bold text-frost">
+            🎓 Coach me <span className="font-normal text-frost-dim">— rate my moves &amp; give hints</span>
+          </span>
+          <button
+            onClick={() => setCoach((c) => !c)}
+            className={`cc-btn px-3 py-1 text-xs ${coach ? 'cc-btn-primary' : 'cc-btn-secondary'}`}
+          >
+            {coach ? 'ON' : 'OFF'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   const panel = (
     <>
       {/* Top region — setup, status, move list, feedback scroll here on desktop so
           the move-entry block stays pinned to the board's bottom edge. */}
       <div className="md:flex-1 md:min-h-0 md:overflow-y-auto md:-mr-1 md:pr-1">
-      {/* Match setup — opponent, side, and difficulty grouped in one card */}
-      <div className="cc-card p-3 mb-3 space-y-3">
-        {seed && (
-          <div className="text-sm font-bold text-grass">▶ Continuing from your opening — play it out!</div>
-        )}
-        <Segmented options={opponentOptions} value={opponentType} onChange={selectOpponent} size="sm" />
-
-        {/* Play-as side (engine modes only; hidden in pass-and-play and when
-            continuing a seeded opening, where her color is fixed) */}
-        {!twoPlayer && !seed && (
-          <Segmented
-            options={[
-              { id: 'w', label: '♔ White' },
-              { id: 'b', label: '♚ Black' },
-            ]}
-            value={studentColor}
-            onChange={(c) => { if (c !== studentColor) startNew(c); }}
-            size="sm"
-          />
-        )}
-
-        {opponentType === 'stockfish' ? (
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="text-[11px] uppercase tracking-wide text-frost-dim font-bold">Level</span>
-              <input type="range" min="1" max="20" value={level} onChange={(e) => setLevel(Number(e.target.value))} className="flex-1 accent-gold" />
-              <div className="w-28 text-right whitespace-nowrap leading-tight">
-                <div className="text-xs font-bold text-gold">{level} · {levelTier(level)}</div>
-                <div className="text-[10px] text-frost-dim">{levelEloLabel(level)} Elo</div>
-              </div>
-            </div>
-            <div className="mt-2 text-xs text-frost-dim">🤖 A chess computer — slide to set how strong it plays.</div>
-          </div>
-        ) : opponentType === 'maia' ? (
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="text-[11px] uppercase tracking-wide text-frost-dim font-bold">Rating</span>
-              <input type="range" min="1100" max="1900" step="100" value={humanRating} onChange={(e) => setHumanRating(Number(e.target.value))} className="flex-1 accent-gold" />
-              <span className="text-xs font-bold text-gold whitespace-nowrap w-16 text-right">{humanRating}</span>
-            </div>
-            <div className="mt-2 text-xs">
-              {maia.status === 'ready' ? (
-                <span className="text-grass font-bold">🙂 MaiaBot is ready — plays like a real {humanRating} player.</span>
-              ) : maia.status === 'downloading' ? (
-                <div>
-                  <div className="text-frost-dim mb-1">Downloading MaiaBot… {maia.progress}%</div>
-                  <div className="h-1.5 rounded-full bg-edge overflow-hidden">
-                    <div className="h-full bg-gold transition-all" style={{ width: `${maia.progress}%` }} />
-                  </div>
-                </div>
-              ) : maia.status === 'error' ? (
-                <span className="text-coral">Couldn’t load MaiaBot — using StockBot instead.</span>
-              ) : navigator.onLine ? (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button onClick={downloadMaia} className="cc-btn cc-btn-grass px-3 py-1.5 text-xs">⬇ Get MaiaBot (~44 MB)</button>
-                  <span className="text-frost-dim">🙂 Plays like a human. StockBot fills in until ready.</span>
-                </div>
-              ) : (
-                <span className="text-frost-dim">Connect to the internet once to download MaiaBot. Using StockBot for now.</span>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="text-xs text-frost-dim leading-snug">
-            <span className="font-bold text-gold">Pass-and-play</span> — two players share this device and take turns typing each move. No engine plays.{autoFlip ? ' The board flips to each player automatically.' : ''}
-          </div>
-        )}
-
-        {/* Coach (Spar) — grade her moves + hints. Only vs an engine. */}
-        {!twoPlayer && (
-          <div className="flex items-center justify-between gap-2 pt-1">
-            <span className="text-sm font-bold text-frost">
-              🎓 Coach me <span className="font-normal text-frost-dim">— rate my moves &amp; give hints</span>
-            </span>
-            <button
-              onClick={() => setCoach((c) => !c)}
-              className={`cc-btn px-3 py-1 text-xs ${coach ? 'cc-btn-primary' : 'cc-btn-secondary'}`}
-            >
-              {coach ? 'ON' : 'OFF'}
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Match setup — shown here on phone/tablet; on desktop it's in the left rail. */}
+      <div className="lg:hidden mb-3">{matchSetup}</div>
 
       {/* Status + controls */}
       <div className="flex items-center justify-between gap-2 mb-3">
@@ -754,11 +760,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
             </div>
           )}
           <div className="flex items-center gap-2 mb-2">
-            <div className="text-xs md:text-sm text-frost-dim font-bold whitespace-nowrap">
-              {activeColor === 'w' ? 'White' : 'Black'} types:
+            <div className="text-xs text-frost-dim font-bold whitespace-nowrap">
+              {activeColor === 'w' ? 'White' : 'Black'}:
             </div>
-            <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 min-h-[44px] flex items-center text-xl md:text-2xl font-extrabold tracking-wider text-gold">
-              {input || <span className="text-gold/30">{myTurn ? 'type, or move on the board…' : 'waiting…'}</span>}
+            <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 min-h-[40px] flex items-center text-lg md:text-xl font-extrabold tracking-wider text-gold">
+              {input || <span className="text-gold/30 text-sm font-bold">{myTurn ? 'type or tap the board…' : 'waiting…'}</span>}
             </div>
           </div>
           <NotationKeypad
@@ -781,7 +787,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
 
   return (
     <>
-      <PlayLayout board={board} panel={panel} boardFooter={scrubber} history={<MoveLog pairs={rows} empty={logEmpty} variant="sidebar" onSelect={setViewPly} selectedPly={selectedPly} />} focus={focusBoard} />
+      <PlayLayout rail={matchSetup} board={board} panel={panel} boardFooter={scrubber} history={<MoveLog pairs={rows} empty={logEmpty} variant="sidebar" onSelect={setViewPly} selectedPly={selectedPly} />} focus={focusBoard} />
 
       {pendingPromotion && (
         <div

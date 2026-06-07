@@ -283,6 +283,15 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
   }
   const logEmpty = `${opening.icon} ${opening.blurb}`;
 
+  // The course rail — switcher + Progressive-Lines outline. Rendered in the left
+  // rail on desktop, and inline at the top of the panel on phone/tablet.
+  const courseRail = (
+    <div className="space-y-3">
+      {openingSwitcher}
+      {linesPicker}
+    </div>
+  );
+
   const panel = (
     <>
       {/* Top region — variable content (caption, feedback, lesson) scrolls here on
@@ -290,10 +299,9 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       <div className="md:flex-1 md:min-h-0 md:overflow-y-auto md:-mr-1 md:pr-1">
       {/* Opening switcher (lives here, not the global header, so the header height
           stays constant across modes and the board never shifts). */}
-      {openingSwitcher && <div className="mb-3">{openingSwitcher}</div>}
-
-      {/* Progressive-Lines picker — grows as she masters each line. */}
-      {linesPicker && <div className="mb-3">{linesPicker}</div>}
+      {/* Course outline (switcher + lines) — shown here on phone/tablet; on
+          desktop it lives in the left rail instead. */}
+      <div className="lg:hidden mb-3 space-y-3">{courseRail}</div>
 
       {/* Move log (inline) — hidden when it's showing in the sidebar column. */}
       <div className="cc-log-inline mb-3">
@@ -467,11 +475,11 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
 
           {/* Input line */}
           <div className="flex items-center gap-2 mb-2">
-            <div className="text-xs md:text-base text-gold/60 font-bold whitespace-nowrap">
-              {student === 'w' ? 'White' : 'Black'} to play:
+            <div className="text-xs text-gold/60 font-bold whitespace-nowrap">
+              {student === 'w' ? 'White' : 'Black'}:
             </div>
-            <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 md:py-3 min-h-[42px] md:min-h-[52px] flex items-center text-xl md:text-2xl font-extrabold tracking-wider text-gold">
-              {input || <span className="text-gold/30">type your move…</span>}
+            <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 min-h-[40px] md:min-h-[44px] flex items-center text-lg md:text-xl font-extrabold tracking-wider text-gold">
+              {input || <span className="text-gold/30 text-sm font-bold">type your move…</span>}
             </div>
           </div>
 
@@ -509,6 +517,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
 
   return (
     <PlayLayout
+      rail={courseRail}
       board={board}
       panel={panel}
       history={<MoveLog pairs={histPairs} empty={logEmpty} variant="sidebar" />}
