@@ -57,7 +57,7 @@ const bc5Line = chain([
   { san: 'd3',  note: 'Hold up your e4 pawn and open a window for your other bishop. This calm setup is the Giuoco Pianissimo — “Very Quiet Game.”' },
   { san: 'd6',  note: 'Black props up e5 and frees their bishop too.' },
   { san: 'O-O', note: 'Castle! Tuck your king into the corner and wake up your rook.' },
-  { san: 'O-O', note: 'Black castles too. Both kings are safe — now bring out the rest of your army!' },
+  { san: 'O-O', milestone: true, note: 'Black castles too. Both kings are safe — you’ve completed the opening! 🎉' },
 ], develop);
 
 const nf6Line = chain([
@@ -68,7 +68,7 @@ const nf6Line = chain([
   { san: 'c3',  note: 'Add your ramp for a future d4 push, just like the other line.' },
   { san: 'd6',  note: 'Black supports e5 and frees their bishop.' },
   { san: 'O-O', note: 'Castle to safety and wake up your rook.' },
-  { san: 'O-O', note: 'Black castles too. Both kings safe — time to develop the rest of your pieces!' },
+  { san: 'O-O', milestone: true, note: 'Black castles too. Both kings safe — you’ve completed the opening! 🎉' },
 ], develop);
 
 // A third common reply to 3.Bc4: the solid Hungarian (…Be7).

@@ -57,6 +57,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
   const [wrong, setWrong] = useState(0);
   const [doneRewarded, setDoneRewarded] = useState(false);
   const cleanRef = useRef(true); // this Drill run used no hints and made no wrong moves
+  const [continued, setContinued] = useState(false); // chose to keep going past the castling milestone
 
   // Reset everything when the opening or mode changes.
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     setHint(0);
     setWrong(0);
     setDoneRewarded(false);
+    setContinued(false);
     cleanRef.current = true;
   }, [opening.id, mode]);
 
@@ -75,6 +77,11 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
   const finished = options.length === 0;
   const mover = finished ? null : moverAt(depth);
   const myTurn = !finished && mover === student;
+  // Milestone (castling): the core opening is complete here; the development plan
+  // is an optional, gated continuation. coreComplete = the lesson's done for now.
+  const lastNode = path.length ? path[path.length - 1] : null;
+  const atMilestone = !finished && !continued && !!(lastNode && lastNode.milestone) && options.length > 0;
+  const coreComplete = finished || atMilestone;
   const isBranch = options.length > 1;
   const branchHasTrap = options.some((o) => o.trap); // a "fall for it vs defend" choice
   const branchIsOpeningFork = options.some((o) => o.opening); // e.g. 1.e4 → …e5 / …d5
@@ -145,7 +152,9 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
   // Completion reward (once). In Drill, also record the run toward mastery stars
   // (clean = no hints, no wrong moves).
   useEffect(() => {
-    if (finished && !doneRewarded) {
+    // The core lesson is "done" at the castling milestone (or the true end) —
+    // that's when mastery is recorded, so the core stays short and achievable.
+    if (coreComplete && !doneRewarded) {
       finishLine(opening.id);
       if (mode === 'drill' && recordDrillRun) {
         const prevClean = (progress && progress.mastery && progress.mastery[opening.id] && progress.mastery[opening.id].cleanRuns) || 0;
@@ -155,7 +164,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
       }
       setDoneRewarded(true);
     }
-  }, [finished, doneRewarded, finishLine, opening.id, mode, recordDrillRun, onMastered, progress]);
+  }, [coreComplete, doneRewarded, finishLine, opening.id, mode, recordDrillRun, onMastered, progress]);
 
   const masteryStars = starsFor(progress, opening.id);
 
@@ -210,7 +219,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
   let boardArrows = [];
   let boardHighlights = [];
   let boardMovable = null;
-  if (!finished) {
+  if (!coreComplete) {
     if (mode === 'learn') {
       if (myTurn && targetMove) {
         boardArrows = [{ from: targetMove.from, to: targetMove.to, color: '#ff8a3d' }];
@@ -276,7 +285,39 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
       </div>
 
       {/* The ONE step card — the single focus for the current step. */}
-      {finished ? (
+      {atMilestone ? (
+        /* Castling milestone — the opening is complete; deeper content is gated. */
+        <div className="cc-card p-4 md:p-5 text-center animate-pop">
+          <div className="text-lg md:text-3xl font-extrabold text-gold">🎉 Opening complete — you castled!</div>
+          {mode === 'drill' && (
+            <div className="text-2xl tracking-[0.2em] text-gold mt-2">
+              {'★'.repeat(masteryStars)}
+              <span className="text-frost/20">{'☆'.repeat(3 - masteryStars)}</span>
+            </div>
+          )}
+          {masteryStars >= 3 ? (
+            <button
+              onClick={() => setContinued(true)}
+              className="cc-btn cc-btn-grass w-full py-3 mt-3 text-base md:text-lg"
+            >
+              ▶ Keep going — what to do after you castle
+            </button>
+          ) : (
+            <div className="mt-3 text-sm text-frost-dim">
+              🔒 Drill this opening clean (no hints, no slips) to unlock the next moves — your plan after castling.
+            </div>
+          )}
+          {onContinue && (
+            <button
+              onClick={() => onContinue(path.map((n) => n.san), opening.student)}
+              className="cc-btn cc-btn-secondary w-full py-2.5 mt-2 text-sm"
+            >
+              ▶ Or play it out vs the computer
+            </button>
+          )}
+          <div className="text-xs text-gold/60 mt-3">Tap ↻ Restart to practice the opening again.</div>
+        </div>
+      ) : finished ? (
         <div className="cc-card p-4 md:p-5 text-center animate-pop">
           <div className="text-lg md:text-3xl font-extrabold text-gold">🎉 You finished {opening.name}!</div>
           <div className="text-sm md:text-lg text-gold/70 mt-1">
@@ -397,7 +438,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
 
       {/* DRILL MODE — move entry pinned to the bottom (aligns with board's lower edge).
           Only on her turn; the "opponent thinking" state lives in the step card above. */}
-      {mode === 'drill' && !finished && myTurn && (
+      {mode === 'drill' && !coreComplete && myTurn && (
         <div className="md:shrink-0 md:pt-3">
           {/* Right/wrong feedback for her typed move */}
           {feedback && (
