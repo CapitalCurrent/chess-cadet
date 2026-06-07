@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PIECE_SETS, getPieceSet } from '../pieces/pieceSets';
 import { BOARD_THEMES, getBoardTheme } from '../pieces/boardThemes';
 import { THEME_PRESETS, activePresetId } from '../pieces/themePresets';
-import { isMuted, setMuted } from '../utils/sounds';
+import { isMuted, setMuted, playTest } from '../utils/sounds';
 import { IconSettings, IconClose, IconSoundOn, IconSoundOff } from './icons';
 
 export default function Settings({
@@ -46,8 +46,8 @@ export default function Settings({
         {/* Sound */}
         <div className="text-xs uppercase tracking-wide text-gold/50 font-bold mb-2">Sound</div>
         <button
-          onClick={() => { const next = !soundOn; setSoundOn(next); setMuted(!next); }}
-          className={`w-full mb-4 rounded-xl p-2.5 ring-1 flex items-center justify-between transition ${
+          onClick={() => { const next = !soundOn; setSoundOn(next); setMuted(!next); if (next) playTest(); }}
+          className={`w-full mb-2 rounded-xl p-2.5 ring-1 flex items-center justify-between transition ${
             soundOn ? 'bg-gold/15 ring-gold' : 'bg-bg ring-edge'
           }`}
         >
@@ -58,6 +58,12 @@ export default function Settings({
           <span className={`text-xs font-bold ${soundOn ? 'text-gold' : 'text-frost/50'}`}>
             {soundOn ? 'ON' : 'OFF'}
           </span>
+        </button>
+        <button
+          onClick={playTest}
+          className="w-full mb-4 rounded-xl p-2 ring-1 ring-edge bg-bg text-sm font-bold text-frost/80 active:translate-y-px"
+        >
+          🔊 Play a test sound
         </button>
 
         {/* Move input style */}

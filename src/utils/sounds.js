@@ -16,9 +16,22 @@ function ac() {
 }
 
 // Resume/create the context on the first user interaction so later sounds
-// (incl. the opponent's, which aren't from a direct gesture) are allowed.
+// (incl. the opponent's, which aren't from a direct gesture) are allowed. We
+// also play a 1-sample silent buffer here — that fully "wakes" the audio on
+// iOS Safari, which otherwise stays muted until a sound plays during a gesture.
 function unlock() {
-  ac();
+  const a = ac();
+  if (a) {
+    try {
+      const b = a.createBuffer(1, 1, a.sampleRate);
+      const s = a.createBufferSource();
+      s.buffer = b;
+      s.connect(a.destination);
+      s.start(0);
+    } catch {
+      /* ignore */
+    }
+  }
   window.removeEventListener('pointerdown', unlock);
   window.removeEventListener('keydown', unlock);
 }
@@ -87,7 +100,14 @@ function tone({ freq, dur = 0.12, type = 'sine', gain = 0.12, when = 0 }) {
 
 export function playMove() {
   if (muted) return;
-  thock({ freq: 210, dur: 0.07, type: 'sine', gain: 0.15, drop: 0.6 });
+  // A clearer, slightly louder "tock" — the old one was easy to miss on laptop
+  // and phone speakers.
+  thock({ freq: 300, dur: 0.07, type: 'triangle', gain: 0.26, drop: 0.55 });
+}
+
+// Plays a sound IGNORING the mute flag — for the Settings "Test sound" button.
+export function playTest() {
+  thock({ freq: 300, dur: 0.07, type: 'triangle', gain: 0.26, drop: 0.55 });
 }
 
 // A bright rising two-note chime when a move gives check.
