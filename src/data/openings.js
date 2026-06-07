@@ -1,5 +1,3 @@
-import { starsFor } from '../state/progress';
-
 // Opening curriculum as a VARIATION TREE. Each node is one ply (half-move) in
 // Standard Algebraic Notation, with a kid-voiced `note` (its "why") and an
 // optional `coach` tip. `children` are the possible NEXT plies:
@@ -90,6 +88,12 @@ bc5Line[0].freq = 3;
 nf6Line[0].freq = 3;
 be7Line[0].freq = 1;
 
+// Human names for each line (used by the Progressive-Lines picker). The deepest
+// named node on a path names that line.
+bc5Line[0].line = 'Giuoco Piano';
+nf6Line[0].line = 'Two Knights';
+be7Line[0].line = 'Hungarian Defense';
+
 // After 1.e4 e5 2.Nf3 Black usually plays 2…Nc6 (Italian), but 2…d6 (the
 // Philidor) is common at club level — meet it by striking the center with 3.d4.
 const nc6Main = chain(
@@ -117,6 +121,7 @@ const philidor = chain([
 
 nc6Main[0].freq = 4; // 2…Nc6 is far more common than the Philidor
 philidor[0].freq = 1;
+philidor[0].line = 'Philidor Defense';
 
 const italianWhiteTree = chain(
   [
@@ -151,7 +156,7 @@ const italianBlackTree = chain([
 // opponent only falls for it occasionally in Drill.
 
 const friedTrap = chain([
-  { san: 'Nxd5', trap: true, label: '…Nxd5?? — grabs the pawn (the trap!)',
+  { san: 'Nxd5', trap: true, line: 'The Trap (…Nxd5)', label: '…Nxd5?? — grabs the pawn (the trap!)',
     note: 'Black greedily recaptures the pawn — but this walks straight into the Fried Liver!' },
   { san: 'Nxf7', note: 'SACRIFICE! Nxf7 forks the queen and rook and tears open the king.',
     coach: 'The Fried Liver sac: give up the knight to drag the king out into the open where you can hunt it.' },
@@ -164,7 +169,7 @@ const friedTrap = chain([
 ]);
 
 const friedDefense = chain([
-  { san: 'Na5', label: '…Na5! — the cool defense',
+  { san: 'Na5', line: 'The Defense (…Na5)', label: '…Na5! — the cool defense',
     note: 'The smart move! Black ignores the pawn, kicks your bishop, and keeps the king safe.' },
   { san: 'Bb5+', note: 'Check — and your bishop slides to safety with tempo.' },
   { san: 'c6', note: 'Black blocks the check and hits your bishop and the d5 pawn.' },
@@ -239,6 +244,9 @@ const scQd8 = chain([
 scQa5[0].freq = 3;
 scQd6[0].freq = 3;
 scQd8[0].freq = 1;
+scQa5[0].line = 'Queen to a5';
+scQd6[0].line = 'Queen to d6';
+scQd8[0].line = 'Queen home (Qd8)';
 
 const scandinavianTree = chain(
   [
@@ -427,10 +435,68 @@ OPENINGS.forEach((o) => {
   o.when = p.when || o.blurb;
 });
 
-// A course is unlocked when every prerequisite is mastered (3★). No prereqs = open.
+// ── Progressive Lines ────────────────────────────────────────────────────────
+// A course's TREE is enumerated into ordered LINES — each a distinct root→leaf
+// path (stopping at a `milestone` node, e.g. castling). Each line is the atomic
+// learn → drill → master unit; lines unlock one at a time (master line N → line
+// N+1 appears). Mastering ALL lines = course 3★ ⇒ the next course unlocks.
+
+// Walk a course tree and return its lines, common-first (children are authored
+// in common-first order). Each line = { id, name, sans, path, index }.
+export function getLines(opening) {
+  const out = [];
+  const walk = (node, trail, nameSoFar) => {
+    const name = node.line || node.opening || nameSoFar;
+    const newTrail = [...trail, node];
+    const stop = node.milestone || !node.children || node.children.length === 0;
+    if (stop) {
+      out.push({ sans: newTrail.map((n) => n.san), path: newTrail, name });
+      return;
+    }
+    for (const child of node.children) walk(child, newTrail, name);
+  };
+  for (const root of opening.tree) walk(root, [], null);
+  return out.map((l, i) => ({
+    ...l,
+    id: l.sans.join(' '),
+    index: i,
+    name: l.name || opening.variation || opening.name,
+  }));
+}
+
+// Which line ids has she mastered in this course?
+export function masteredLineIds(progress, openingId) {
+  return (progress && progress.lines && progress.lines[openingId] && progress.lines[openingId].mastered) || [];
+}
+
+export function isLineMastered(progress, openingId, lineId) {
+  return masteredLineIds(progress, openingId).includes(lineId);
+}
+
+// Lines with derived UI status: `mastered`, and `unlocked` (line 0 always; later
+// lines unlock once the PREVIOUS line is mastered).
+export function linesWithStatus(progress, opening) {
+  const mastered = new Set(masteredLineIds(progress, opening.id));
+  const lines = getLines(opening).map((l) => ({ ...l, mastered: mastered.has(l.id) }));
+  return lines.map((l, i) => ({ ...l, unlocked: i === 0 || lines[i - 1].mastered }));
+}
+
+// Course stars (0–3) from line coverage: 1★ = some mastered, 2★ = half, 3★ = ALL.
+export function courseStars(progress, opening) {
+  const lines = getLines(opening);
+  const total = lines.length || 1;
+  const valid = new Set(lines.map((l) => l.id));
+  const mastered = masteredLineIds(progress, opening.id).filter((id) => valid.has(id)).length;
+  if (mastered <= 0) return 0;
+  if (mastered >= total) return 3;
+  if (mastered * 2 >= total) return 2;
+  return 1;
+}
+
+// A course is unlocked when every prerequisite is mastered (3★ = all lines). No prereqs = open.
 export function isUnlocked(progress, opening) {
   const reqs = opening.requires || [];
-  return reqs.every((r) => starsFor(progress, r) >= 3);
+  return reqs.every((r) => courseStars(progress, getOpening(r)) >= 3);
 }
 
 // Courses that become newly available the moment `masteredId` reaches 3★.
@@ -438,7 +504,7 @@ export function unlockedBy(masteredId, progress) {
   return OPENINGS.filter(
     (o) =>
       (o.requires || []).includes(masteredId) &&
-      (o.requires || []).every((r) => r === masteredId || starsFor(progress, r) >= 3)
+      (o.requires || []).every((r) => r === masteredId || courseStars(progress, getOpening(r)) >= 3)
   );
 }
 

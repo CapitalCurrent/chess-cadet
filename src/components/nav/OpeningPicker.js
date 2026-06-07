@@ -1,7 +1,6 @@
 import React from 'react';
 import Segmented from './Segmented';
-import { OPENINGS, getSides, familiesOf, variationsOf, isUnlocked } from '../../data/openings';
-import { starsFor } from '../../state/progress';
+import { OPENINGS, getSides, familiesOf, variationsOf, isUnlocked, courseStars } from '../../data/openings';
 
 // Three-tier opening menu (the Learn-hub): Side → Opening → Variation.
 // Mastery stars show on unlocked courses; locked courses show 🔒 and can't be
@@ -19,7 +18,7 @@ export default function OpeningPicker({ value, onChange, progress }) {
   const sideUnlocked = (sideId) => familiesOf(sideId).some((f) => familyUnlocked(f.id));
 
   const stars = (id) => {
-    const n = starsFor(progress, id);
+    const n = courseStars(progress, courseOf(id));
     return n > 0 ? <span className="ml-1 opacity-80">{'★'.repeat(n)}</span> : null;
   };
   const lockLabel = (txt) => <span>🔒 {txt}</span>;

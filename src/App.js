@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { OPENINGS, getOpening, unlockedBy } from './data/openings';
+import { OPENINGS, getOpening, unlockedBy, getLines, linesWithStatus } from './data/openings';
 import { getPieceSet } from './pieces/pieceSets';
 import { getBoardTheme } from './pieces/boardThemes';
 import { useProgress } from './state/progress';
@@ -10,6 +10,7 @@ import NotationGuide from './components/NotationGuide';
 import Logo from './components/nav/Logo';
 import Segmented from './components/nav/Segmented';
 import OpeningPicker from './components/nav/OpeningPicker';
+import LinesPicker from './components/nav/LinesPicker';
 import BottomTabBar from './components/nav/BottomTabBar';
 import {
   IconLearn,
@@ -34,12 +35,14 @@ const MODES = [
 export default function App() {
   // rewardMove/breakStreak/finishLine still drive progress silently (the gems
   // reward bar was removed from the chrome; reinstate intentionally later).
-  const { progress, rewardMove, breakStreak, finishLine, recordDrillRun } = useProgress();
+  const { progress, rewardMove, breakStreak, finishLine, recordDrillRun, masterLine } = useProgress();
   const [openingId, setOpeningId] = useState(OPENINGS[0].id);
   const [mode, setMode] = useState('learn'); // learn first, then drill
   const [restart, setRestart] = useState(0);
+  const [activeLineId, setActiveLineId] = useState(null); // current Progressive Line (null = Mix)
   const [playSeed, setPlaySeed] = useState(null); // { moves, color } for Continue vs Computer
   const [masteredModal, setMasteredModal] = useState(null); // { id, unlocked: [opening] }
+  const [lineModal, setLineModal] = useState(null); // { openingId, lineName, nextLineId, nextLineName, courseComplete, unlocked }
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [pieceSetId, setPieceSetId] = useState(
@@ -78,6 +81,20 @@ export default function App() {
   const pieceSet = getPieceSet(pieceSetId);
   const boardTheme = getBoardTheme(boardThemeId);
 
+  // Progressive Lines: the active line for the current course = the first
+  // unlocked-but-unmastered line (or Mix = null when all are mastered). Reset to
+  // that sensible default whenever the course changes; explicit picks override it.
+  const defaultLineId = (op) => {
+    const ls = linesWithStatus(progress, op);
+    if (ls.length <= 1) return ls[0] ? ls[0].id : null;
+    const current = ls.find((l) => l.unlocked && !l.mastered);
+    return current ? current.id : null; // all mastered → Mix
+  };
+  useEffect(() => {
+    setActiveLineId(defaultLineId(getOpening(openingId)));
+  }, [openingId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const activeLine = getLines(opening).find((l) => l.id === activeLineId) || null;
+
   // Tapping the Play tab directly = a normal game from the start (clear any seed).
   const pickMode = (id) => { if (id === 'play') setPlaySeed(null); setMode(id); setRestart((r) => r + 1); };
   const pickOpening = (id) => { setOpeningId(id); setRestart((r) => r + 1); };
@@ -87,10 +104,43 @@ export default function App() {
     setMode('play');
     setRestart((r) => r + 1);
   };
-  // A course hit 3★ — celebrate and reveal what it unlocked.
-  const handleMastered = (id) => setMasteredModal({ id, unlocked: unlockedBy(id, progress) });
+  // Pick a line from the LinesPicker: a line id → study it in Learn; null → Mix drill.
+  const pickLine = (id) => { setActiveLineId(id); setMode(id == null ? 'drill' : 'learn'); setRestart((r) => r + 1); };
+  // "▶ Drill this line" after learning it.
+  const drillActiveLine = () => { setMode('drill'); setRestart((r) => r + 1); };
+
+  // A LINE was mastered (a clean Drill run). Persist it, then celebrate: reveal
+  // the next line — or, if that was the LAST line, the course-mastery unlock.
+  const handleLineMastered = (oid, lineId) => {
+    masterLine(oid, lineId);
+    const op = getOpening(oid);
+    const cur = (progress.lines && progress.lines[oid] && progress.lines[oid].mastered) || [];
+    const projected = {
+      ...progress,
+      lines: { ...progress.lines, [oid]: { mastered: Array.from(new Set([...cur, lineId])) } },
+    };
+    const ls = linesWithStatus(projected, op);
+    const masteredLine = ls.find((l) => l.id === lineId);
+    const idx = masteredLine ? masteredLine.index : -1;
+    const next = idx >= 0 ? ls[idx + 1] : null;
+    const courseComplete = ls.every((l) => l.mastered);
+    if (courseComplete) {
+      setMasteredModal({ id: oid, unlocked: unlockedBy(oid, projected) });
+    } else {
+      setLineModal({
+        openingId: oid,
+        lineName: masteredLine ? masteredLine.name : 'line',
+        nextLineId: next ? next.id : null,
+        nextLineName: next ? next.name : null,
+      });
+    }
+  };
+  // Tap "Learn the next line" in the line-mastered modal.
+  const learnNextLine = (id) => { setLineModal(null); setActiveLineId(id); setMode('learn'); setRestart((r) => r + 1); };
+
   const jumpToCourse = (id) => {
     setMasteredModal(null);
+    setLineModal(null);
     setOpeningId(id);
     setMode('learn'); // introduce the newly unlocked course in Learn
     setRestart((r) => r + 1);
@@ -159,12 +209,16 @@ export default function App() {
           />
         ) : (
           <OpeningTrainer
-            key={`${openingId}-${mode}-${restart}`}
+            key={`${openingId}-${mode}-${activeLineId}-${restart}`}
             opening={opening}
             mode={mode}
+            activeLine={activeLine}
             focusBoard={focusBoard}
             onContinue={continueVsComputer}
+            onDrillLine={drillActiveLine}
+            onLineMastered={handleLineMastered}
             openingSwitcher={<OpeningPicker value={openingId} onChange={pickOpening} progress={progress} />}
+            linesPicker={<LinesPicker opening={opening} progress={progress} activeLineId={activeLineId} onPick={pickLine} />}
             pieceSet={pieceSet}
             boardTheme={boardTheme}
             moveStyle={moveStyle}
@@ -173,7 +227,6 @@ export default function App() {
             breakStreak={breakStreak}
             finishLine={finishLine}
             recordDrillRun={recordDrillRun}
-            onMastered={handleMastered}
           />
         )}
       </main>
@@ -238,6 +291,42 @@ export default function App() {
 
             <button
               onClick={() => setMasteredModal(null)}
+              className="cc-btn cc-btn-secondary w-full py-2.5 mt-4 text-sm"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {lineModal && (
+        <div className="cc-scrim items-center p-3" onClick={() => setLineModal(null)}>
+          <div className="cc-sheet p-5 text-center animate-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-end -mt-2 -mr-2 mb-1">
+              <button onClick={() => setLineModal(null)} className="cc-icon-btn" aria-label="Close">
+                <IconClose size={18} />
+              </button>
+            </div>
+            <div className="text-4xl">⭐</div>
+            <div className="text-xl md:text-2xl font-extrabold text-gold mt-1">
+              You mastered the {lineModal.lineName}!
+            </div>
+            {lineModal.nextLineId ? (
+              <>
+                <div className="text-sm text-frost-dim mt-2 mb-3">🔓 New line unlocked — added to your course:</div>
+                <button
+                  onClick={() => learnNextLine(lineModal.nextLineId)}
+                  className="cc-btn cc-btn-grass w-full py-3 text-base"
+                >
+                  ▶ Learn the {lineModal.nextLineName}
+                </button>
+                <div className="text-[11px] text-frost-dim mt-3">…or keep practicing this one anytime.</div>
+              </>
+            ) : (
+              <div className="text-sm text-frost-dim mt-2">Nice clean run! ⭐</div>
+            )}
+            <button
+              onClick={() => setLineModal(null)}
               className="cc-btn cc-btn-secondary w-full py-2.5 mt-4 text-sm"
             >
               Done

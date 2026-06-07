@@ -4,8 +4,7 @@ import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import MoveLog from './MoveLog';
 import { newGame, applySan, evaluateInput, coreSan, tryMove } from '../engine/chessEngine';
-import { moverAt, hasBranches } from '../data/openings';
-import { starsFor } from '../state/progress';
+import { moverAt, isLineMastered } from '../data/openings';
 
 const PIECE_WORDS = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight' };
 
@@ -49,7 +48,7 @@ function buildPosition(path) {
   return { fen: game.fen(), lastMove };
 }
 
-export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSet, boardTheme, moveStyle, focusBoard, onContinue, onMastered, progress, rewardMove, breakStreak, finishLine, recordDrillRun }) {
+export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPicker, activeLine, pieceSet, boardTheme, moveStyle, focusBoard, onContinue, onLineMastered, onDrillLine, progress, rewardMove, breakStreak, finishLine, recordDrillRun }) {
   const student = opening.student;
   const [path, setPath] = useState([]); // nodes played so far (the chosen line)
   const [tokens, setTokens] = useState([]);
@@ -86,11 +85,18 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
   const isBranch = options.length > 1;
   const branchHasTrap = options.some((o) => o.trap); // a "fall for it vs defend" choice
   const branchIsOpeningFork = options.some((o) => o.opening); // e.g. 1.e4 → …e5 / …d5
-  const target = finished ? null : options[0]; // her move, or the single forced reply
+  // In LINE mode the active line dictates which branch child to take, so there's
+  // never a chooser — every step is a single forced move. The chooser (and random
+  // Drill replies) only appear in Mix mode (activeLine == null), once all lines
+  // are mastered.
+  const expectedSan = activeLine ? activeLine.sans[depth] : null;
+  const lineChild = activeLine && !finished ? options.find((o) => o.san === expectedSan) : null;
+  const showChooser = isBranch && !activeLine; // free chooser only in Mix mode
+  const target = finished ? null : activeLine ? lineChild || options[0] : options[0];
   const moveNo = Math.floor(depth / 2) + 1;
   const roleLabel = finished
     ? ''
-    : isBranch
+    : showChooser
     ? `${mover === 'w' ? 'White' : 'Black'}’s choice`
     : myTurn
     ? 'Your move'
@@ -106,7 +112,10 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     () => options.map((o) => ({ node: o, mv: tryMove(fen, o.san) })),
     [fen, options]
   );
-  const targetMove = optionMoves[0]?.mv || null;
+  // The move for the CURRENT target (the line's choice at a branch, not just the
+  // first option) — drives the board arrow, highlight, and tap-to-move.
+  const targetEntry = target ? optionMoves.find((o) => o.node === target) : null;
+  const targetMove = (targetEntry || optionMoves[0])?.mv || null;
 
   // Commit a node (her move, the forced reply, or a chosen/random branch).
   function playNode(node) {
@@ -138,36 +147,45 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
     if (mode !== 'drill' || finished) return;
     if (mover === student) return; // her turn — wait for input
     const t = setTimeout(() => {
-      // Prefer the correct/best replies; only fall for a flagged trap occasionally
-      // so she still gets to punish it sometimes (but the bot mostly defends).
-      const best = options.filter((o) => !o.trap);
-      const traps = options.filter((o) => o.trap);
-      const pool =
-        traps.length && best.length && Math.random() < 0.3 ? traps : best.length ? best : options;
-      const choice = weightedPick(pool);
+      let choice;
+      if (activeLine) {
+        // Line mode: the opponent is forced down the active line.
+        choice = lineChild || options[0];
+      } else {
+        // Mix mode: prefer the correct/best replies; only fall for a flagged trap
+        // occasionally so she still gets to punish it (but the bot mostly defends).
+        const best = options.filter((o) => !o.trap);
+        const traps = options.filter((o) => o.trap);
+        const pool =
+          traps.length && best.length && Math.random() < 0.3 ? traps : best.length ? best : options;
+        choice = weightedPick(pool);
+      }
       setPath((p) => [...p, choice]);
     }, 750);
     return () => clearTimeout(t);
-  }, [mode, depth, finished, mover, student]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, depth, finished, mover, student, activeLine]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Completion reward (once). In Drill, also record the run toward mastery stars
   // (clean = no hints, no wrong moves).
   useEffect(() => {
     // The core lesson is "done" at the castling milestone (or the true end) —
-    // that's when mastery is recorded, so the core stays short and achievable.
+    // that's when a line is recorded, so each line stays short and achievable.
     if (coreComplete && !doneRewarded) {
       finishLine(opening.id);
-      if (mode === 'drill' && recordDrillRun) {
-        const prevClean = (progress && progress.mastery && progress.mastery[opening.id] && progress.mastery[opening.id].cleanRuns) || 0;
-        recordDrillRun(opening.id, cleanRef.current);
-        // Newly mastered = this clean run pushes clean count from 1 → 2 (= 3★).
-        if (onMastered && cleanRef.current && prevClean === 1) onMastered(opening.id);
+      if (mode === 'drill') {
+        if (recordDrillRun) recordDrillRun(opening.id, cleanRef.current);
+        // Master the LINE on a clean run (no hints, no slips). App records it,
+        // celebrates, unlocks the next line, and detects course-complete.
+        if (activeLine && cleanRef.current && onLineMastered) onLineMastered(opening.id, activeLine.id);
       }
       setDoneRewarded(true);
     }
-  }, [coreComplete, doneRewarded, finishLine, opening.id, mode, recordDrillRun, onMastered, progress]);
+  }, [coreComplete, doneRewarded, finishLine, opening.id, mode, recordDrillRun, activeLine, onLineMastered]);
 
-  const masteryStars = starsFor(progress, opening.id);
+  const cleanRun = cleanRef.current; // this run used no hints and made no slips
+  const lineName = activeLine ? activeLine.name : opening.name;
+  const lineAlreadyMastered = activeLine ? isLineMastered(progress, opening.id, activeLine.id) : false;
+  const hasDevelop = atMilestone; // the milestone node has a gated "after castling" plan
 
   const input = tokens.join('');
 
@@ -226,7 +244,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
         boardArrows = [{ from: targetMove.from, to: targetMove.to, color: '#ff8a3d' }];
         boardHighlights = [targetMove.from, targetMove.to];
         boardMovable = student;
-      } else if (!myTurn && isBranch) {
+      } else if (!myTurn && showChooser) {
         // Preview every branch reply with its own color (matches the buttons).
         boardArrows = optionMoves
           .filter((o) => o.mv)
@@ -274,71 +292,68 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
           stays constant across modes and the board never shifts). */}
       {openingSwitcher && <div className="mb-3">{openingSwitcher}</div>}
 
+      {/* Progressive-Lines picker — grows as she masters each line. */}
+      {linesPicker && <div className="mb-3">{linesPicker}</div>}
+
       {/* Move log (inline) — hidden when it's showing in the sidebar column. */}
       <div className="cc-log-inline mb-3">
         <MoveLog pairs={histPairs} empty={logEmpty} variant="inline" />
       </div>
 
       {/* The ONE step card — the single focus for the current step. */}
-      {atMilestone ? (
-        /* Castling milestone — the opening is complete; deeper content is gated. */
+      {coreComplete ? (
+        /* Line complete — the loop's payoff card (learn → drill → master → next). */
         <div className="cc-card p-4 md:p-5 text-center animate-pop">
-          <div className="text-lg md:text-3xl font-extrabold text-gold">🎉 Opening complete — you castled!</div>
-          {mode === 'drill' && (
-            <div className="text-2xl tracking-[0.2em] text-gold mt-2">
-              {'★'.repeat(masteryStars)}
-              <span className="text-frost/20">{'☆'.repeat(3 - masteryStars)}</span>
-            </div>
+          {mode === 'learn' ? (
+            <>
+              <div className="text-lg md:text-2xl font-extrabold text-gold">🎉 You learned the {lineName}!</div>
+              <p className="text-sm md:text-base text-frost-dim mt-1.5">
+                Now drill it — type the moves yourself with no hints to <b className="text-gold">master</b> it and unlock the next line.
+              </p>
+              {onDrillLine && (
+                <button onClick={onDrillLine} className="cc-btn cc-btn-grass w-full py-3 mt-3 text-base md:text-lg">
+                  ▶ Drill this line
+                </button>
+              )}
+            </>
+          ) : activeLine ? (
+            cleanRun ? (
+              <>
+                <div className="text-lg md:text-2xl font-extrabold text-grass">⭐ {lineName} mastered!</div>
+                <div className="text-2xl tracking-[0.2em] text-gold mt-1">★</div>
+                <p className="text-sm text-frost-dim mt-1.5">Clean run — no hints, no slips. The next line is unlocked! 🔓</p>
+              </>
+            ) : (
+              <>
+                <div className="text-lg md:text-2xl font-extrabold text-gold">So close — {lineName} complete!</div>
+                <p className="text-sm text-frost-dim mt-1.5">
+                  To <b className="text-gold">master</b> it (and unlock the next line), drill it with <b>no hints and no slips</b>. Tap ↻ Restart to try again.
+                </p>
+              </>
+            )
+          ) : (
+            <>
+              <div className="text-lg md:text-2xl font-extrabold text-gold">🎉 Nice — you found the plan!</div>
+              <p className="text-sm text-frost-dim mt-1.5">You spotted the line and played it. Tap ↻ Restart for another mix.</p>
+            </>
           )}
-          {masteryStars >= 3 ? (
-            <button
-              onClick={() => setContinued(true)}
-              className="cc-btn cc-btn-grass w-full py-3 mt-3 text-base md:text-lg"
-            >
+
+          {/* The gated "what to do after castling" plan — only some lines have one. */}
+          {hasDevelop && (lineAlreadyMastered || (mode === 'drill' && cleanRun)) && (
+            <button onClick={() => setContinued(true)} className="cc-btn cc-btn-secondary w-full py-2.5 mt-3 text-sm">
               ▶ Keep going — what to do after you castle
             </button>
-          ) : (
-            <div className="mt-3 text-sm text-frost-dim">
-              🔒 Drill this opening clean (no hints, no slips) to unlock the next moves — your plan after castling.
-            </div>
           )}
+
           {onContinue && (
             <button
               onClick={() => onContinue(path.map((n) => n.san), opening.student)}
-              className="cc-btn cc-btn-secondary w-full py-2.5 mt-2 text-sm"
+              className={`cc-btn ${mode === 'learn' ? 'cc-btn-secondary' : 'cc-btn-grass'} w-full py-2.5 mt-2 text-sm`}
             >
-              ▶ Or play it out vs the computer
+              ▶ Play it out vs the computer
             </button>
           )}
-          <div className="text-xs text-gold/60 mt-3">Tap ↻ Restart to practice the opening again.</div>
-        </div>
-      ) : finished ? (
-        <div className="cc-card p-4 md:p-5 text-center animate-pop">
-          <div className="text-lg md:text-3xl font-extrabold text-gold">🎉 You finished {opening.name}!</div>
-          <div className="text-sm md:text-lg text-gold/70 mt-1">
-            {hasBranches(opening) ? 'Tap ↻ Restart to try the other line!' : 'Tap ↻ Restart to play it again.'}
-          </div>
-          {mode === 'drill' && (
-            <div className="mt-3">
-              <div className="text-2xl tracking-[0.2em] text-gold">
-                {'★'.repeat(masteryStars)}
-                <span className="text-frost/20">{'☆'.repeat(3 - masteryStars)}</span>
-              </div>
-              <div className="text-xs md:text-sm text-gold/70 mt-1">
-                {masteryStars >= 3
-                  ? 'Mastered! ⭐ You can always come back to practice.'
-                  : 'Drill it clean (no hints, no slips) to earn another star!'}
-              </div>
-            </div>
-          )}
-          {onContinue && (
-            <button
-              onClick={() => onContinue(path.map((n) => n.san), opening.student)}
-              className="cc-btn cc-btn-grass mt-4 w-full py-3 text-base md:text-lg"
-            >
-              ▶ Keep playing vs the computer
-            </button>
-          )}
+          <div className="text-xs text-gold/60 mt-3">Tap ↻ Restart to practice this line again.</div>
         </div>
       ) : (
         <div className="cc-card p-3 md:p-4">
@@ -371,7 +386,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, pieceSe
                   Show me ▶
                 </button>
               </>
-            ) : isBranch ? (
+            ) : showChooser ? (
               /* Opponent decision point — she picks which reply to explore */
               <>
                 <p className="text-sm md:text-lg md:leading-snug text-frost/90 mb-2 md:mb-3">

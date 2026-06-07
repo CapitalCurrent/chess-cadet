@@ -8,7 +8,8 @@ const DEFAULT = {
   bestStreak: 0,
   stars: 0, // bonus stars (e.g. spotting a check, no-hint moves)
   completed: {}, // openingId -> times finished
-  mastery: {}, // openingId -> { runs, cleanRuns, lastPracticed } (Drill mastery)
+  mastery: {}, // openingId -> { runs, cleanRuns, lastPracticed } (legacy whole-course Drill mastery)
+  lines: {}, // openingId -> { mastered: [lineId] } (Progressive Lines per-line mastery)
 };
 
 // Per-course mastery stars (0–3): 1★ drilled it, 2★ a clean run (no hints/errors),
@@ -105,5 +106,20 @@ export function useProgress() {
     [update]
   );
 
-  return { progress, rewardMove, breakStreak, finishLine, recordDrillRun };
+  // Mark one LINE of a course as mastered (a clean Drill run of that line).
+  // Idempotent — re-mastering a line is a no-op.
+  const masterLine = useCallback(
+    (openingId, lineId) =>
+      update((p) => {
+        const cur = (p.lines && p.lines[openingId] && p.lines[openingId].mastered) || [];
+        if (cur.includes(lineId)) return p;
+        return {
+          ...p,
+          lines: { ...p.lines, [openingId]: { mastered: [...cur, lineId] } },
+        };
+      }),
+    [update]
+  );
+
+  return { progress, rewardMove, breakStreak, finishLine, recordDrillRun, masterLine };
 }
