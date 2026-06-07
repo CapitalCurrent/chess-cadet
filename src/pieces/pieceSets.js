@@ -19,14 +19,14 @@ function pieceSrc(set, color, type) {
   return srcFor(o?.dir || set.dir, color, type, o?.ext || set.ext);
 }
 
-function PieceImg({ src }) {
+function PieceImg({ src, flip }) {
   return (
     <img
       src={src}
       alt=""
       draggable={false}
       className="w-full h-full select-none"
-      style={{ pointerEvents: 'none' }}
+      style={{ pointerEvents: 'none', transform: flip ? 'scaleX(-1)' : undefined }}
     />
   );
 }
@@ -41,13 +41,15 @@ const SETS = [
   // and matched-black derived by inversion. public/pieces/dragons/*.png
   { id: 'dragons', name: 'Dragons', dir: 'dragons', ext: 'png', scale: 1.1 },
   // Bold variant: each piece fills the square (chunkier, easiest to see).
-  { id: 'dragons-bold', name: 'Dragons Bold', dir: 'dragons-bold', ext: 'png' },
+  // flipPawns mirrors the pawns so they face opposite the knights (a quick
+  // differentiation stopgap until Grok redraws a clearly distinct pawn).
+  { id: 'dragons-bold', name: 'Dragons Bold', dir: 'dragons-bold', ext: 'png', flipPawns: true },
 ];
 
 export const PIECE_SETS = SETS.map((s) => ({
   ...s,
   previewSrc: pieceSrc(s, 'w', 'n'), // white knight = the set thumbnail
-  render: (color, type) => <PieceImg src={pieceSrc(s, color, type)} />,
+  render: (color, type) => <PieceImg src={pieceSrc(s, color, type)} flip={s.flipPawns && type === 'p'} />,
 }));
 
 export function getPieceSet(id) {
