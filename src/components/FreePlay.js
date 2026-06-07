@@ -232,7 +232,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   }
 
   function startNew(color) {
-    gameRef.current = seededGame(seed); // a seeded game restarts from the opening
+    // "New" / "Play again" is always a fresh standard game. The seed is a
+    // one-time handoff from a drilled opening (Continue vs Computer) and only
+    // applies on the initial mount — pressing New here should NOT replay it.
+    gameRef.current = newGame();
     setStudentColor(color);
     setFlipped(false);
     setFen(gameRef.current.fen());
