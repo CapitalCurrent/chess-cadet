@@ -57,11 +57,16 @@ canvas = Image.fromarray(cv.astype(np.uint8), "RGBA")
 canvas.save(os.path.join(OUT, "wP.png"))
 print("cream shift applied:", shift.round(1))
 
-# Black = invert RGB on opaque pixels (matches how the dragon black set is made).
-b = np.array(canvas)
-op = b[:, :, 3] > 0
-for c in range(3):
-    b[:, :, c][op] = 255 - b[:, :, c][op]
-Image.fromarray(b, "RGBA").save(os.path.join(OUT, "bP.png"))
+# Black = invert RGB, then a DARK outer stroke (22,22,28) on the outer 3px ring
+# — exactly like process_full_set.py — so the silhouette stays defined on LIGHT
+# squares (the inverted light rim alone only reads on dark squares).
+warr = np.array(canvas)
+op = warr[:, :, 3] > 0
+inv = warr.copy()
+inv[:, :, :3] = np.where(op[:, :, None], 255 - warr[:, :, :3], warr[:, :, :3])
+inner = ndimage.binary_erosion(op, iterations=3)
+outer_ring = op & ~inner
+inv[outer_ring, :3] = (22, 22, 28)
+Image.fromarray(inv, "RGBA").save(os.path.join(OUT, "bP.png"))
 
 print("opaque pixels:", int((alpha > 0).sum()), "of", alpha.size, "| crop:", crop.size)
