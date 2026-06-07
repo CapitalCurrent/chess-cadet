@@ -32,7 +32,7 @@ ys, xs = np.where(alpha > 0)
 crop = out.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
 
 side = max(crop.size)
-pad = int(side * 0.22)  # generous margin so the pawn reads SMALLER than the majors
+pad = int(side * 0.12)  # middle ground: a bit smaller than the majors, still substantial
 canvas = Image.new("RGBA", (side + 2 * pad, side + 2 * pad), (0, 0, 0, 0))
 canvas.paste(crop, ((canvas.size[0] - crop.size[0]) // 2, (canvas.size[1] - crop.size[1]) // 2), crop)
 canvas = canvas.resize((512, 512), Image.LANCZOS)
