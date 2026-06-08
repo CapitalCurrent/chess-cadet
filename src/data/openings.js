@@ -92,10 +92,13 @@ be7Line[0].freq = 1;
 // named node on a path names that line.
 bc5Line[0].line = 'Giuoco Piano';
 bc5Line[0].lineAbout = "Italian for “the Quiet Game.” Both bishops mirror to c4/c5 and the game builds slowly — classical, strategic chess played since the 1500s.";
+bc5Line[0].lineStrategy = 'Play c3 to prepare the d4 pawn break, castle, then reroute the b1-knight d2–f1–g3 toward Black’s king.';
 nf6Line[0].line = 'Two Knights';
 nf6Line[0].lineAbout = 'Black skips the mirror and jumps the knight to f6, hitting your e4 pawn — more active and sharper; it can even invite the Fried Liver.';
+nf6Line[0].lineStrategy = 'Answer …Nf6 with the calm d3 (not a gambit): defend e4, develop, and castle — keep it solid.';
 be7Line[0].line = 'Hungarian Defense';
 be7Line[0].lineAbout = 'The Hungarian — Black tucks the bishop to e7 instead of the active c5. Modest and solid, sidestepping the sharp lines.';
+be7Line[0].lineStrategy = 'Black is passive, so take the center freely (even d4 is fine), develop, and castle into an easy game.';
 
 // After 1.e4 e5 2.Nf3 Black usually plays 2…Nc6 (Italian), but 2…d6 (the
 // Philidor) is common at club level — meet it by striking the center with 3.d4.
@@ -126,6 +129,7 @@ nc6Main[0].freq = 4; // 2…Nc6 is far more common than the Philidor
 philidor[0].freq = 1;
 philidor[0].line = 'Philidor Defense';
 philidor[0].lineAbout = 'Named after Philidor (1700s). Black props up e5 with …d6 — solid but passive, so you grab space with d4 and get an easy game.';
+philidor[0].lineStrategy = 'Strike with d4 right away to open the center while Black is cramped, then develop and castle.';
 
 const italianWhiteTree = chain(
   [
@@ -160,7 +164,7 @@ const italianBlackTree = chain([
 // opponent only falls for it occasionally in Drill.
 
 const friedTrap = chain([
-  { san: 'Nxd5', trap: true, line: 'The Trap (…Nxd5)', lineAbout: 'Black greedily grabs the pawn — straight into the attack.', label: '…Nxd5?? — grabs the pawn (the trap!)',
+  { san: 'Nxd5', trap: true, line: 'The Trap (…Nxd5)', lineAbout: 'Black greedily recaptures the d5-pawn with the knight — natural-looking, but it walks straight into the Fried Liver sacrifice on f7.', lineStrategy: 'Sacrifice with Nxf7! drag the king out with Qf3+, then pile on with Nc3 — keep checking and attacking the exposed king.', label: '…Nxd5?? — grabs the pawn (the trap!)',
     note: 'Black greedily recaptures the pawn — but this walks straight into the Fried Liver!' },
   { san: 'Nxf7', note: 'SACRIFICE! Nxf7 forks the queen and rook and tears open the king.',
     coach: 'The Fried Liver sac: give up the knight to drag the king out into the open where you can hunt it.' },
@@ -173,7 +177,7 @@ const friedTrap = chain([
 ]);
 
 const friedDefense = chain([
-  { san: 'Na5', line: 'The Defense (…Na5)', lineAbout: 'The correct calm defense — kicks the bishop, stays safe.', label: '…Na5! — the cool defense',
+  { san: 'Na5', line: 'The Defense (…Na5)', lineAbout: '…Na5! — Black ignores the pawn, kicks your bishop, and keeps the king safe. The correct antidote to the Fried Liver.', lineStrategy: 'No sacrifice today — retreat the bishop with Bb5+ then Be2, stay solid, and play a normal game a pawn-for-activity.', label: '…Na5! — the cool defense',
     note: 'The smart move! Black ignores the pawn, kicks your bishop, and keeps the king safe.' },
   { san: 'Bb5+', note: 'Check — and your bishop slides to safety with tempo.' },
   { san: 'c6', note: 'Black blocks the check and hits your bishop and the d5 pawn.' },
@@ -249,11 +253,14 @@ scQa5[0].freq = 3;
 scQd6[0].freq = 3;
 scQd8[0].freq = 1;
 scQa5[0].line = 'Queen to a5';
-scQa5[0].lineAbout = 'The most popular retreat — but a little exposed on a5.';
+scQa5[0].lineAbout = 'The classic retreat to a5 — active, but the queen sits exposed and can be chased with tempo.';
+scQa5[0].lineStrategy = 'Build with d4, Nf3, Bc4 (aim at f7), then castle — and look to gain time on the a5-queen with b4 and Bd2.';
 scQd6[0].line = 'Queen to d6';
-scQd6[0].lineAbout = 'The modern retreat — flexible and harder to chase.';
+scQd6[0].lineAbout = 'The modern retreat — the queen is flexible on d6 and much harder to harass than on a5.';
+scQd6[0].lineStrategy = 'Same friendly setup — d4, Nf3, Bc4, castle; the d6-queen is hard to chase, so just develop and enjoy your space.';
 scQd8[0].line = 'Queen home (Qd8)';
-scQd8[0].lineAbout = 'All the way home — safe but passive; punish it with space.';
+scQd8[0].lineAbout = 'All the way home to d8 — safe but very passive; Black has wasted time, so you get a free hand.';
+scQd8[0].lineStrategy = 'Punish the passive retreat: grab the full center, develop quickly, and play for a big space lead.';
 
 const scandinavianTree = chain(
   [
@@ -477,24 +484,26 @@ OPENINGS.forEach((o) => {
 // in common-first order). Each line = { id, name, sans, path, index }.
 export function getLines(opening) {
   const out = [];
-  const walk = (node, trail, nameSoFar, aboutSoFar) => {
+  const walk = (node, trail, nameSoFar, aboutSoFar, stratSoFar) => {
     const name = node.line || node.opening || nameSoFar;
     const about = node.lineAbout || aboutSoFar;
+    const strategy = node.lineStrategy || stratSoFar;
     const newTrail = [...trail, node];
     const stop = node.milestone || !node.children || node.children.length === 0;
     if (stop) {
-      out.push({ sans: newTrail.map((n) => n.san), path: newTrail, name, about });
+      out.push({ sans: newTrail.map((n) => n.san), path: newTrail, name, about, strategy });
       return;
     }
-    for (const child of node.children) walk(child, newTrail, name, about);
+    for (const child of node.children) walk(child, newTrail, name, about, strategy);
   };
-  for (const root of opening.tree) walk(root, [], null, null);
+  for (const root of opening.tree) walk(root, [], null, null, null);
   return out.map((l, i) => ({
     ...l,
     id: l.sans.join(' '),
     index: i,
     name: l.name || opening.variation || opening.name,
     about: l.about || '',
+    strategy: l.strategy || '',
   }));
 }
 

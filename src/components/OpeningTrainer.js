@@ -359,10 +359,15 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
           <b className="text-gold/70">When to use it:</b> {opening.when}
         </div>
       )}
-      {activeLine && activeLine.about && (
-        <div className="pt-2 mt-1 border-t border-white/10">
-          <div className="text-xs uppercase tracking-wide text-gold/70 font-bold mb-1">📍 This line · {activeLine.name}</div>
-          <div className="text-sm text-frost/90 leading-snug">{activeLine.about}</div>
+      {activeLine && (activeLine.about || activeLine.strategy) && (
+        <div className="pt-2 mt-1 border-t border-white/10 space-y-1.5">
+          <div className="text-xs uppercase tracking-wide text-gold/70 font-bold">📍 This line · {activeLine.name}</div>
+          {activeLine.about && <div className="text-sm text-frost/90 leading-snug">{activeLine.about}</div>}
+          {activeLine.strategy && (
+            <div className="text-sm text-grass/90 leading-snug">
+              <b className="text-grass">🧭 Your plan:</b> {activeLine.strategy}
+            </div>
+          )}
         </div>
       )}
     </div>
