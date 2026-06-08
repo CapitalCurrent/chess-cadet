@@ -21,8 +21,7 @@ function Key({ children, onClick, disabled, className = '', title }) {
       title={title}
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-cc-lg font-bold shadow-card border border-edge-soft active:translate-y-px disabled:opacity-40
-        disabled:active:translate-y-0 transition select-none ${className}`}
+      className={`cc-key w-full select-none ${className}`}
     >
       {children}
     </button>
@@ -45,7 +44,7 @@ export default function NotationKeypad({
           <Key
             key={p}
             onClick={() => onKey(p)}
-            className="py-2.5 md:py-3 text-xl md:text-2xl bg-gold text-bg"
+            className="cc-key-gold py-2.5 md:py-3 text-xl md:text-2xl"
             title="piece"
           >
             {p}
@@ -56,7 +55,7 @@ export default function NotationKeypad({
       {/* Files a–h */}
       <div className="grid grid-cols-8 gap-1.5">
         {FILES.map((f) => (
-          <Key key={f} onClick={() => onKey(f)} className="py-2 md:py-2.5 text-base md:text-xl bg-surface text-gold ring-1 ring-edge">
+          <Key key={f} onClick={() => onKey(f)} className="cc-key-dark text-gold py-2 md:py-2.5 text-base md:text-xl">
             {f}
           </Key>
         ))}
@@ -65,7 +64,7 @@ export default function NotationKeypad({
       {/* Ranks 1–8 */}
       <div className="grid grid-cols-8 gap-1.5">
         {RANKS.map((r) => (
-          <Key key={r} onClick={() => onKey(r)} className="py-2 md:py-2.5 text-base md:text-xl bg-surface text-grass ring-1 ring-edge">
+          <Key key={r} onClick={() => onKey(r)} className="cc-key-dark text-grass py-2 md:py-2.5 text-base md:text-xl">
             {r}
           </Key>
         ))}
@@ -77,7 +76,7 @@ export default function NotationKeypad({
           <Key
             key={s.token}
             onClick={() => onKey(s.token)}
-            className="py-1.5 md:py-2 bg-coral/90 text-white flex flex-col items-center leading-tight"
+            className="cc-key-coral py-1.5 md:py-2 flex flex-col items-center leading-tight"
             title={s.hint}
           >
             <span className="text-base md:text-lg font-extrabold">{s.label}</span>
@@ -88,16 +87,16 @@ export default function NotationKeypad({
 
       {/* Controls */}
       <div className="grid grid-cols-4 gap-2 pt-0.5">
-        <Key onClick={onBackspace} className="py-2.5 md:py-3 text-base md:text-xl bg-edge text-white">
+        <Key onClick={onBackspace} className="cc-key-edge py-2.5 md:py-3 text-base md:text-xl">
           ⌫
         </Key>
-        <Key onClick={onClear} className="py-2.5 md:py-3 text-sm md:text-base bg-edge text-white">
+        <Key onClick={onClear} className="cc-key-edge py-2.5 md:py-3 text-sm md:text-base">
           Clear
         </Key>
         <Key
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="col-span-2 py-2.5 md:py-3 text-base md:text-xl bg-grass text-bg"
+          className="cc-key-grass col-span-2 py-2.5 md:py-3 text-base md:text-xl"
         >
           ✓ Play move
         </Key>

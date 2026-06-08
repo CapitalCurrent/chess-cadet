@@ -68,6 +68,17 @@ button,
   border: 1px solid var(--edge-soft);
 }
 
+/* Fluent flyout/menu — acrylic surface, strong elevation, Win11 rounding. Used
+   for the setup/course popovers opened from a summary chip. */
+.cc-menu {
+  background: rgba(20, 33, 54, 0.88);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  backdrop-filter: blur(28px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-elevated);
+}
+
 /* Card: elevated solid surface with a 1px light edge + soft shadow. */
 .cc-card {
   background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
@@ -169,6 +180,53 @@ button,
 }
 .cc-icon-btn:active {
   transform: translateY(1px);
+}
+
+/* ── Notation keypad keys — Fluent: gradient fills, depth, press feedback ── */
+.cc-key {
+  border-radius: var(--r-md);
+  font-weight: 800;
+  border: 1px solid var(--edge-soft);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    filter var(--dur) var(--ease), opacity var(--dur) var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.cc-key:hover {
+  filter: brightness(1.06);
+  box-shadow: var(--shadow-elevated);
+}
+.cc-key:active {
+  transform: translateY(1px);
+  box-shadow: var(--shadow-card);
+}
+.cc-key:disabled {
+  opacity: 0.4;
+}
+.cc-key:disabled:active {
+  transform: none;
+}
+.cc-key-gold {
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+  color: var(--ink);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+.cc-key-dark {
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
+}
+.cc-key-coral {
+  background: linear-gradient(180deg, #ef8a6e 0%, var(--coral) 100%);
+  color: #fff;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+.cc-key-grass {
+  background: linear-gradient(180deg, #8fdb9b 0%, var(--grass) 100%);
+  color: var(--ink);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+.cc-key-edge {
+  background: linear-gradient(180deg, #2f5078 0%, #233c5b 100%);
+  color: var(--frost);
 }
 
 /* ── Segmented control (replaces mode/opening pills) ───────────────────── */

@@ -627,20 +627,26 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       {seed && (
         <div className="text-sm font-bold text-grass">▶ Continuing from your opening — play it out!</div>
       )}
-      <Segmented options={opponentOptions} value={opponentType} onChange={selectOpponent} size="sm" />
+      <div className="space-y-1">
+        <div className="text-[10px] uppercase tracking-wide text-frost-dim font-bold px-0.5">Opponent</div>
+        <Segmented options={opponentOptions} value={opponentType} onChange={selectOpponent} size="sm" />
+      </div>
 
       {/* Play-as side (engine modes only; hidden in pass-and-play and when
           continuing a seeded opening, where her color is fixed) */}
       {!twoPlayer && !seed && (
-        <Segmented
-          options={[
-            { id: 'w', label: '♔ White' },
-            { id: 'b', label: '♚ Black' },
-          ]}
-          value={studentColor}
-          onChange={(c) => { if (c !== studentColor) startNew(c); }}
-          size="sm"
-        />
+        <div className="space-y-1">
+          <div className="text-[10px] uppercase tracking-wide text-frost-dim font-bold px-0.5">Play as</div>
+          <Segmented
+            options={[
+              { id: 'w', label: '♔ White' },
+              { id: 'b', label: '♚ Black' },
+            ]}
+            value={studentColor}
+            onChange={(c) => { if (c !== studentColor) startNew(c); }}
+            size="sm"
+          />
+        </div>
       )}
 
       {opponentType === 'stockfish' ? (
@@ -724,15 +730,23 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     <div className="relative">
       <button
         onClick={() => setSetupOpen((o) => !o)}
-        className="w-full cc-card px-3 py-2 flex items-center justify-between gap-2 text-sm hover:ring-1 hover:ring-gold/30"
+        className="w-full cc-card cc-reveal px-3 py-2.5 flex items-center justify-between gap-2 text-sm"
       >
         <span className="font-bold text-frost truncate">{seed ? '▶ Continuing your opening' : setupSummary}</span>
-        <span className="text-frost-dim shrink-0">{setupOpen ? 'Close ▴' : 'Setup ▾'}</span>
+        <span className="text-frost-dim shrink-0 flex items-center gap-1 text-xs font-bold">
+          {setupOpen ? 'Close' : 'Setup'} <span className="text-[10px]">{setupOpen ? '▴' : '▾'}</span>
+        </span>
       </button>
       {setupOpen && (
         <>
-          <div className="fixed inset-0 z-20" onClick={() => setSetupOpen(false)} />
-          <div className="absolute z-30 left-0 right-0 mt-1 cc-card p-3 animate-pop">{matchSetup}</div>
+          <div className="fixed inset-0 z-30 bg-black/40" onClick={() => setSetupOpen(false)} />
+          <div className="absolute z-40 left-0 right-0 mt-2 cc-menu p-3 origin-top animate-pop">
+            <div className="flex items-center justify-between mb-2.5 px-0.5">
+              <span className="text-[11px] uppercase tracking-wide text-gold/70 font-bold">Game setup</span>
+              <button onClick={() => setSetupOpen(false)} className="text-frost-dim hover:text-frost text-base leading-none px-1" aria-label="Close">✕</button>
+            </div>
+            {matchSetup}
+          </div>
         </>
       )}
     </div>
