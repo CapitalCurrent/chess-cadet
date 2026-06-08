@@ -204,9 +204,10 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     setWrong(0);
   }
 
-  function submit() {
-    if (!myTurn || !input) return;
-    const res = evaluateInput(fen, input, target.san);
+  // Grade a Drill attempt (from the keypad OR a board move) against the target.
+  function gradeDrillInput(inputStr) {
+    if (!myTurn || !target || !inputStr) return;
+    const res = evaluateInput(fen, inputStr, target.san);
     if (res.status === 'correct') {
       const bonus = (hint === 0 ? 1 : 0) + (res.sawCheck ? 1 : 0);
       rewardMove(bonus);
@@ -224,7 +225,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       breakStreak();
       setFeedback({
         kind: 'legal',
-        text: `${readSan(res.move.san)} is a real move — but the Italian plays ${target.san} here. Try that one!`,
+        text: `${readSan(res.move.san)} is a real move — but the line plays ${target.san} here. Try that one!`,
       });
       setTokens([]);
       setWrong((w) => w + 1);
@@ -239,6 +240,23 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       setWrong((w) => w + 1);
       if (wrong + 1 >= 2) setHint((h) => Math.max(h, 1));
     }
+  }
+
+  function submit() {
+    gradeDrillInput(input);
+  }
+
+  // Drill: move on the board (tap/drag) — graded the same as typing. ChessBoard
+  // only calls this with legal from/to; we convert to SAN and grade it.
+  function handleDrillMove(from, to) {
+    if (!myTurn) return;
+    let m = null;
+    try {
+      m = newGame(fen).move({ from, to, promotion: 'q' });
+    } catch {
+      m = null;
+    }
+    if (m) gradeDrillInput(m.san);
   }
 
   const orientation = student;
@@ -262,7 +280,8 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
         boardArrows = [{ from: targetMove.from, to: targetMove.to, color: '#4fc3f7' }];
         boardHighlights = [targetMove.from, targetMove.to];
       }
-    } else if (mode === 'drill' && myTurn) {
+    } else if (mode === 'drill' && myTurn && !drillGate) {
+      boardMovable = student; // board-first: tap/drag works in Drill too
       if (hint >= 1 && targetMove) boardHighlights = [targetMove.from];
       if (hint >= 2 && targetMove) boardArrows = [{ from: targetMove.from, to: targetMove.to }];
     }
@@ -277,7 +296,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       highlights={boardHighlights}
       movableColor={boardMovable}
       moveStyle={moveStyle}
-      onMove={handleLearnMove}
+      onMove={mode === 'learn' ? handleLearnMove : handleDrillMove}
       pieceSet={pieceSet}
       boardTheme={boardTheme}
       big={focusBoard}
@@ -553,7 +572,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
               {student === 'w' ? 'White' : 'Black'}:
             </div>
             <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 min-h-[40px] flex items-center text-lg md:text-xl font-extrabold tracking-wider text-gold">
-              {input || <span className="text-gold/30 text-sm font-bold">{keypadOpen ? 'type your move…' : 'tap ⌨ to type your move'}</span>}
+              {input || <span className="text-gold/30 text-sm font-bold">{keypadOpen ? 'type your move…' : 'tap the board, or ⌨ to type'}</span>}
             </div>
             <button
               onClick={() => setKeypadOpen((o) => !o)}
