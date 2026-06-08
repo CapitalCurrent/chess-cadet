@@ -14,7 +14,6 @@ import LinesPicker from './components/nav/LinesPicker';
 import BottomTabBar from './components/nav/BottomTabBar';
 import {
   IconLearn,
-  IconDrill,
   IconPlay,
   IconSettings,
   IconGuide,
@@ -25,10 +24,10 @@ import {
 } from './components/icons';
 import { VERSION } from './version';
 
-// Primary modes — used by both the desktop segmented bar and the mobile tabs.
+// Top-level destinations. Drill is NOT a destination — it's the second half of
+// learning a line, reached from the course flow (left column + lesson cards).
 const MODES = [
   { id: 'learn', label: 'Learn', icon: <IconLearn size={22} /> },
-  { id: 'drill', label: 'Drill', icon: <IconDrill size={22} /> },
   { id: 'play', label: 'Play', icon: <IconPlay size={22} /> },
 ];
 
@@ -94,6 +93,8 @@ export default function App() {
     setActiveLineId(defaultLineId(getOpening(openingId)));
   }, [openingId]); // eslint-disable-line react-hooks/exhaustive-deps
   const activeLine = getLines(opening).find((l) => l.id === activeLineId) || null;
+  // Top nav shows Learn vs Play; drilling a line is part of the Learn area.
+  const navValue = mode === 'play' ? 'play' : 'learn';
 
   // Tapping the Play tab directly = a normal game from the start (clear any seed).
   const pickMode = (id) => { if (id === 'play') setPlaySeed(null); setMode(id); setRestart((r) => r + 1); };
@@ -171,7 +172,7 @@ export default function App() {
 
             {/* Modes — desktop only (mobile uses the bottom tab bar) */}
             <div className="hidden md:block flex-1 max-w-md mx-auto">
-              <Segmented options={MODES} value={mode} onChange={pickMode} />
+              <Segmented options={MODES} value={navValue} onChange={pickMode} />
             </div>
 
             {/* Spacer keeps tools right-aligned on mobile */}
@@ -226,7 +227,7 @@ export default function App() {
             onLineMastered={handleLineMastered}
             onLineLearned={handleLineLearned}
             openingSwitcher={<OpeningPicker value={openingId} onChange={pickOpening} progress={progress} />}
-            linesPicker={<LinesPicker opening={opening} progress={progress} activeLineId={activeLineId} onPick={pickLine} onDrill={drillLine} />}
+            linesPicker={<LinesPicker opening={opening} progress={progress} activeLineId={activeLineId} mode={mode} onPick={pickLine} onDrill={drillLine} />}
             pieceSet={pieceSet}
             boardTheme={boardTheme}
             moveStyle={moveStyle}
@@ -240,7 +241,7 @@ export default function App() {
       </main>
 
       {/* Mobile primary navigation */}
-      <BottomTabBar tabs={MODES} value={mode} onChange={pickMode} />
+      <BottomTabBar tabs={MODES} value={navValue} onChange={pickMode} />
 
       <Settings
         open={settingsOpen}

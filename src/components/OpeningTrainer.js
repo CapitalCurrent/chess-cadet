@@ -390,6 +390,27 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
           course rail (chip + lines + moves) in the left column instead. */}
       <div className="xl:hidden">{courseChip}</div>
 
+      {/* Per-line Learn/Drill switch — surfaced here so it's reachable on phone
+          and lets you jump straight to drilling a line you've already learned. */}
+      {activeLine && !coreComplete && !drillGate && (
+        <div className="flex items-center justify-between gap-2 cc-card px-3 py-2">
+          <span className="text-sm font-bold text-frost truncate">
+            {mode === 'drill' ? '🎯 Drilling ' : '📖 Learning '}{lineName}
+          </span>
+          {mode === 'drill'
+            ? onLearnLine && (
+                <button onClick={onLearnLine} className="cc-btn cc-btn-secondary px-3 py-1.5 text-xs shrink-0">
+                  📖 Back to Learn
+                </button>
+              )
+            : lineLearned && onDrillLine && (
+                <button onClick={onDrillLine} className="cc-btn cc-btn-primary px-3 py-1.5 text-xs shrink-0">
+                  🎯 Drill it
+                </button>
+              )}
+        </div>
+      )}
+
       {/* The ONE step card — the single focus for the current step. */}
       {drillGate ? (
         /* A line must be learned once before it can be drilled. */

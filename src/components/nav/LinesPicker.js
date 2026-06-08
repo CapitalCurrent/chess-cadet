@@ -6,7 +6,7 @@ import { linesWithStatus } from '../../data/openings';
 // the rest behind a "master to unlock" hint, and reveals a 🔀 Mix recognition
 // drill once every line is mastered. It also explains the loop in one line so the
 // course flow is obvious. Hidden for single-line courses (nothing to pick).
-export default function LinesPicker({ opening, progress, activeLineId, onPick, onDrill }) {
+export default function LinesPicker({ opening, progress, activeLineId, mode, onPick, onDrill }) {
   const lines = linesWithStatus(progress, opening);
   if (lines.length <= 1) return null;
 
@@ -28,7 +28,7 @@ export default function LinesPicker({ opening, progress, activeLineId, onPick, o
       <div className="space-y-2">
         {unlocked.map((l) => {
           const active = l.id === activeLineId;
-          const showActions = active && !l.mastered;
+          const showActions = active; // the active line always offers its next action
           return (
             <div key={l.id}>
               <button
@@ -51,21 +51,32 @@ export default function LinesPicker({ opening, progress, activeLineId, onPick, o
 
               {showActions && (
                 <div className="mt-1.5 mb-1 px-1 space-y-2 animate-pop">
-                  <div className="text-xs text-frost-dim leading-snug">
-                    {l.learned ? (
-                      <>🎯 <b className="text-gold">To master:</b> finish a <b>Drill</b> of this line with <b>no hints &amp; no mistakes</b> — that unlocks the next line.</>
-                    ) : (
-                      <>📖 <b className="text-gold">Learn it first</b> — step through the line once, then drill it clean to master it.</>
-                    )}
-                  </div>
-                  {l.learned ? (
-                    <button onClick={() => onDrill && onDrill(l.id)} className="cc-btn cc-btn-primary w-full py-2 text-xs">
-                      🎯 Drill to master
+                  {!l.learned ? (
+                    <>
+                      <div className="text-xs text-frost-dim leading-snug">
+                        📖 <b className="text-gold">Learn it first</b> — step through it once, then drill it clean to master it.
+                      </div>
+                      <button disabled className="cc-btn cc-btn-secondary w-full py-2 text-xs opacity-50">
+                        🔒 Drilling unlocks after you learn it
+                      </button>
+                    </>
+                  ) : mode === 'drill' ? (
+                    <button onClick={() => onPick(l.id)} className="cc-btn cc-btn-secondary w-full py-2 text-xs">
+                      📖 Back to Learn
                     </button>
                   ) : (
-                    <button disabled className="cc-btn cc-btn-secondary w-full py-2 text-xs opacity-50">
-                      🔒 Drilling unlocks after you learn it
-                    </button>
+                    <>
+                      <div className="text-xs text-frost-dim leading-snug">
+                        {l.mastered ? (
+                          <>✅ Mastered — drill again anytime to stay sharp.</>
+                        ) : (
+                          <>🎯 <b className="text-gold">To master:</b> drill it with <b>no hints &amp; no mistakes</b> — that unlocks the next line.</>
+                        )}
+                      </div>
+                      <button onClick={() => onDrill && onDrill(l.id)} className="cc-btn cc-btn-primary w-full py-2 text-xs">
+                        🎯 Drill it{l.mastered ? ' again' : ' to master'}
+                      </button>
+                    </>
                   )}
                 </div>
               )}
