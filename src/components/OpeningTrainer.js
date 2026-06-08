@@ -61,6 +61,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
   const [keypadOpen, setKeypadOpen] = useState(
     () => localStorage.getItem('chess-cadet-drillkeypad') !== 'closed'
   ); // Drill is typing practice → keypad open by default (minimizable)
+  const [courseMenuOpen, setCourseMenuOpen] = useState(false); // course-picker flyout
 
   // Reset everything when the opening or mode changes.
   useEffect(() => {
@@ -291,11 +292,39 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     localStorage.setItem('chess-cadet-drillkeypad', keypadOpen ? 'open' : 'closed');
   }, [keypadOpen]);
 
-  // The course rail — switcher + Progressive-Lines outline + move log. Rendered in
-  // the left rail on desktop, and inline at the top of the panel on phone/tablet.
+  // The course picker is minimized behind a summary chip → Fluent flyout (the
+  // same pattern as Play's setup chip). The Lines list stays visible below it.
+  const courseChip = (
+    <div className="relative">
+      <button
+        onClick={() => setCourseMenuOpen((o) => !o)}
+        className="w-full cc-card cc-reveal px-3 py-2.5 flex items-center justify-between gap-2 text-sm"
+      >
+        <span className="font-bold text-frost truncate">{opening.icon} {opening.name}</span>
+        <span className="text-frost-dim shrink-0 flex items-center gap-1 text-xs font-bold">
+          {courseMenuOpen ? 'Close' : 'Change'} <span className="text-[10px]">{courseMenuOpen ? '▴' : '▾'}</span>
+        </span>
+      </button>
+      {courseMenuOpen && (
+        <>
+          <div className="fixed inset-0 z-30 bg-black/40" onClick={() => setCourseMenuOpen(false)} />
+          <div className="absolute z-40 left-0 right-0 mt-2 cc-menu p-3 origin-top animate-pop">
+            <div className="flex items-center justify-between mb-2.5 px-0.5">
+              <span className="text-[11px] uppercase tracking-wide text-gold/70 font-bold">Choose a course</span>
+              <button onClick={() => setCourseMenuOpen(false)} className="text-frost-dim hover:text-frost text-base leading-none px-1" aria-label="Close">✕</button>
+            </div>
+            {openingSwitcher}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // The course rail — course chip + Progressive-Lines outline + move log. Rendered
+  // in the left rail on desktop, and inline at the top of the panel below xl.
   const courseRail = (
     <div className="space-y-3">
-      {openingSwitcher}
+      {courseChip}
       {linesPicker}
       {path.length > 0 && (
         <div className="max-h-[34vh] overflow-y-auto">
