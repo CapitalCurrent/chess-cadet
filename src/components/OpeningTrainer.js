@@ -205,7 +205,9 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
   }
 
   // Grade a Drill attempt (from the keypad OR a board move) against the target.
-  function gradeDrillInput(inputStr) {
+  // `immediate` (board moves) advances on the same render as the drop — no
+  // snap-back flash; typed moves get a brief celebratory pause first.
+  function gradeDrillInput(inputStr, { immediate = false } = {}) {
     if (!myTurn || !target || !inputStr) return;
     const res = evaluateInput(fen, inputStr, target.san);
     if (res.status === 'correct') {
@@ -218,8 +220,9 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
           readSan(res.move.san) +
           (res.sawCheck ? ' ⭐ You spotted the check!' : ''),
       });
-      // brief pause to celebrate, then move on
-      setTimeout(() => playNode(target), 650);
+      // board move: advance now (no snap-back); typed: brief pause to celebrate
+      if (immediate) playNode(target);
+      else setTimeout(() => playNode(target), 650);
     } else if (res.status === 'legal') {
       cleanRef.current = false;
       breakStreak();
@@ -256,7 +259,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     } catch {
       m = null;
     }
-    if (m) gradeDrillInput(m.san);
+    if (m) gradeDrillInput(m.san, { immediate: true });
   }
 
   const orientation = student;
