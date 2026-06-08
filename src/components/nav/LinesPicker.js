@@ -16,31 +16,31 @@ export default function LinesPicker({ opening, progress, activeLineId, onPick })
   const allMastered = masteredCount === lines.length;
 
   return (
-    <div className="cc-card p-3">
+    <div className="cc-card p-3.5">
       <div className="flex items-center justify-between mb-1.5">
-        <div className="text-[11px] uppercase tracking-wide text-gold/60 font-bold">Lines in this course</div>
-        <div className="text-[11px] text-frost-dim">{masteredCount}/{lines.length} mastered</div>
+        <div className="text-xs uppercase tracking-wide text-gold/70 font-bold">Lines in this course</div>
+        <div className="text-xs text-frost-dim">{masteredCount}/{lines.length} mastered</div>
       </div>
-      <div className="text-xs text-frost-dim mb-2.5 leading-snug">
+      <div className="text-sm text-frost-dim mb-3 leading-snug">
         📚 Learn a line, then drill it clean to <b className="text-gold">master</b> it — that unlocks the next one!
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {unlocked.map((l) => {
           const active = l.id === activeLineId;
           return (
             <button
               key={l.id}
               onClick={() => onPick(l.id)}
-              className={`w-full flex items-center gap-2 rounded-cc-lg px-3 py-2 text-left text-sm transition-colors ${
+              className={`w-full flex items-center gap-2.5 rounded-cc-lg px-3 py-2.5 text-left text-[15px] transition-colors ${
                 active
                   ? 'bg-gold/20 ring-1 ring-gold/60 text-gold'
                   : 'bg-bg-2 ring-1 ring-edge hover:ring-gold/40 text-frost'
               }`}
             >
-              <span className="text-base w-5 text-center">{l.mastered ? '✅' : active ? '▶' : '•'}</span>
+              <span className="text-lg w-5 text-center">{l.mastered ? '✅' : active ? '▶' : '•'}</span>
               <span className="flex-1 font-bold truncate">{l.name}</span>
-              <span className={`text-[11px] shrink-0 ${l.mastered ? 'text-grass' : 'text-gold/70'}`}>
+              <span className={`text-xs shrink-0 ${l.mastered ? 'text-grass' : 'text-gold/70'}`}>
                 {l.mastered ? 'Mastered' : 'Learn me'}
               </span>
             </button>
@@ -48,8 +48,8 @@ export default function LinesPicker({ opening, progress, activeLineId, onPick })
         })}
 
         {lockedCount > 0 && (
-          <div className="flex items-center gap-2 rounded-cc-lg px-3 py-2 text-sm bg-bg-2/40 ring-1 ring-edge/50 text-frost-dim">
-            <span className="text-base w-5 text-center">🔒</span>
+          <div className="flex items-center gap-2.5 rounded-cc-lg px-3 py-2.5 text-[15px] bg-bg-2/40 ring-1 ring-edge/50 text-frost-dim">
+            <span className="text-lg w-5 text-center">🔒</span>
             <span className="flex-1">
               {lockedCount} more line{lockedCount > 1 ? 's' : ''} — master the one{unlocked.some((l) => !l.mastered) ? ' above' : 's above'} to unlock
             </span>
@@ -59,15 +59,15 @@ export default function LinesPicker({ opening, progress, activeLineId, onPick })
         {allMastered && (
           <button
             onClick={() => onPick(null)}
-            className={`w-full flex items-center gap-2 rounded-cc-lg px-3 py-2 text-left text-sm transition-colors ${
+            className={`w-full flex items-center gap-2.5 rounded-cc-lg px-3 py-2.5 text-left text-[15px] transition-colors ${
               activeLineId == null
                 ? 'bg-grass/20 ring-1 ring-grass/60 text-grass'
                 : 'bg-bg-2 ring-1 ring-edge hover:ring-grass/40 text-frost'
             }`}
           >
-            <span className="text-base w-5 text-center">🔀</span>
+            <span className="text-lg w-5 text-center">🔀</span>
             <span className="flex-1 font-bold">Mix — spot any line</span>
-            <span className="text-[11px] text-frost-dim shrink-0">Drill</span>
+            <span className="text-xs text-frost-dim shrink-0">Drill</span>
           </button>
         )}
       </div>

@@ -302,7 +302,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     <div className="relative">
       <button
         onClick={() => setCourseMenuOpen((o) => !o)}
-        className="w-full cc-card cc-reveal px-3 py-2.5 flex items-center justify-between gap-2 text-sm"
+        className="w-full cc-card cc-reveal px-3 py-3 flex items-center justify-between gap-2 text-[15px]"
       >
         <span className="font-bold text-frost truncate">{opening.icon} {opening.name}</span>
         <span className="text-frost-dim shrink-0 flex items-center gap-1 text-xs font-bold">
