@@ -60,6 +60,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   const [studentColor, setStudentColor] = useState(
     () => (seed && seed.color) || (savedRef.current && savedRef.current.color) || 'w'
   );
+  const [sidePref, setSidePref] = useState(() => {
+    if (seed && seed.color) return seed.color;
+    const v = localStorage.getItem('chess-cadet-sidepref');
+    return v === 'b' || v === 'random' ? v : 'w';
+  }); // 'w' | 'b' | 'random' — Random re-rolls the color on each new game
   const [flipped, setFlipped] = useState(false); // view-only board flip
   const [viewPly, setViewPly] = useState(null); // null = live; else # of half-moves to show (review/scrub)
   const [keypadOpen, setKeypadOpen] = useState(
@@ -108,6 +113,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   useEffect(() => {
     localStorage.setItem('chess-cadet-playkeypad', keypadOpen ? 'open' : 'closed');
   }, [keypadOpen]);
+  useEffect(() => {
+    localStorage.setItem('chess-cadet-sidepref', sidePref);
+  }, [sidePref]);
   // Persist the in-progress game so leaving/returning to the Play tab keeps it.
   useEffect(() => {
     try {
@@ -287,6 +295,26 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     const h = gameRef.current.history({ verbose: true });
     const last = h[h.length - 1];
     setLastMove(last ? { from: last.from, to: last.to } : null);
+  }
+
+  // Resolve a side preference to an actual color ('random' = coin flip).
+  function resolveSide(pref) {
+    return pref === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : pref;
+  }
+  // Start a fresh game honoring the side preference. Random re-rolls each time,
+  // so New / Play again act as the trigger that spins the randomizer.
+  function startNewWithPref(pref) {
+    const color = resolveSide(pref);
+    startNew(color);
+    if (pref === 'random') {
+      setFeedback({ kind: 'good', text: `🎲 You’re playing ${color === 'w' ? 'White' : 'Black'}!` });
+    }
+  }
+  // Side picker: White / Black / Random. Picking starts a fresh game (Random rolls).
+  function pickSide(pref) {
+    if (pref === sidePref && pref !== 'random') return; // tapping the current fixed side = no-op
+    setSidePref(pref);
+    startNewWithPref(pref);
   }
 
   // Flip the board view only — a temporary peek from the opponent's side.
@@ -645,9 +673,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
             options={[
               { id: 'w', label: '♔ White' },
               { id: 'b', label: '♚ Black' },
+              { id: 'random', label: '🎲 Random' },
             ]}
-            value={studentColor}
-            onChange={(c) => { if (c !== studentColor) startNew(c); }}
+            value={sidePref}
+            onChange={pickSide}
             size="sm"
           />
         </div>
@@ -838,7 +867,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
               <IconFlip size={15} /> Flip
             </button>
           )}
-          <button onClick={() => startNew(studentColor)} className="cc-btn cc-btn-secondary px-2.5 py-1.5 text-xs" title="New game">
+          <button onClick={() => startNewWithPref(sidePref)} className="cc-btn cc-btn-secondary px-2.5 py-1.5 text-xs" title="New game">
             <IconRestart size={15} /> New
           </button>
         </div>
@@ -943,7 +972,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
           )}
         </>
       ) : (
-        <button onClick={() => startNew(studentColor)} className="cc-btn cc-btn-grass w-full py-3 text-lg">
+        <button onClick={() => startNewWithPref(sidePref)} className="cc-btn cc-btn-grass w-full py-3 text-lg">
           ↺ Play again
         </button>
       )}
