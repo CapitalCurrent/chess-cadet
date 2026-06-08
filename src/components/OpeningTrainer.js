@@ -3,8 +3,9 @@ import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import MoveLog from './MoveLog';
+import Collapsible from './Collapsible';
 import { newGame, applySan, evaluateInput, coreSan, tryMove } from '../engine/chessEngine';
-import { moverAt, isLineMastered } from '../data/openings';
+import { moverAt, isLineMastered, getLines } from '../data/openings';
 
 const PIECE_WORDS = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight' };
 
@@ -292,6 +293,9 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     localStorage.setItem('chess-cadet-drillkeypad', keypadOpen ? 'open' : 'closed');
   }, [keypadOpen]);
 
+  const movesLog = <MoveLog pairs={histPairs} empty={logEmpty} variant="sidebar" />;
+  const multiLine = getLines(opening).length > 1;
+
   // The course picker is minimized behind a summary chip → Fluent flyout (the
   // same pattern as Play's setup chip). The Lines list stays visible below it.
   const courseChip = (
@@ -326,18 +330,15 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     <div className="space-y-3">
       {courseChip}
       {linesPicker}
-      {path.length > 0 && (
-        <div className="max-h-[34vh] overflow-y-auto">
-          <MoveLog pairs={histPairs} empty={logEmpty} variant="sidebar" />
-        </div>
-      )}
+      {path.length > 0 && <div className="max-h-[34vh] overflow-y-auto">{movesLog}</div>}
     </div>
   );
 
   const panel = (
     <div className="space-y-3">
-      {/* Course outline + moves — shown here below xl; xl shows it in the left rail. */}
-      <div className="xl:hidden">{courseRail}</div>
+      {/* Course chip — below xl it sits at the top of the panel; xl puts the full
+          course rail (chip + lines + moves) in the left column instead. */}
+      <div className="xl:hidden">{courseChip}</div>
 
       {/* The ONE step card — the single focus for the current step. */}
       {coreComplete ? (
@@ -550,6 +551,12 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
           )}
         </>
       )}
+
+      {/* Secondary panels (phone): Lines + moves below the fold, collapsible. */}
+      <div className="xl:hidden space-y-1 pt-1">
+        {multiLine && <Collapsible title="Course lines" defaultOpen>{linesPicker}</Collapsible>}
+        {path.length > 0 && <Collapsible title="Moves">{movesLog}</Collapsible>}
+      </div>
     </div>
   );
 

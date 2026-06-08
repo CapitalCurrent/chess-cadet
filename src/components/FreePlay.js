@@ -4,6 +4,7 @@ import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import Segmented from './nav/Segmented';
 import MoveLog from './MoveLog';
+import Collapsible from './Collapsible';
 import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
 import { detectMotifs, motifsOfMove } from '../engine/tactics';
 import { newGame } from '../engine/chessEngine';
@@ -944,8 +945,12 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
         </button>
       )}
 
-      {/* Move log inline below xl (xl shows it in the left rail). */}
-      <div className="xl:hidden">{rail}</div>
+      {/* Move log below the fold on phone, collapsible (xl shows it in the rail). */}
+      {history.length > 0 && (
+        <div className="xl:hidden pt-1">
+          <Collapsible title="Moves">{rail}</Collapsible>
+        </div>
+      )}
     </div>
   );
 
