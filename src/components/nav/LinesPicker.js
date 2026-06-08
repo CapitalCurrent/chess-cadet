@@ -32,14 +32,17 @@ export default function LinesPicker({ opening, progress, activeLineId, onPick })
             <button
               key={l.id}
               onClick={() => onPick(l.id)}
-              className={`w-full flex items-center gap-2.5 rounded-cc-lg px-3 py-2.5 text-left text-[15px] transition-colors ${
+              className={`w-full flex items-start gap-2.5 rounded-cc-lg px-3 py-2.5 text-left text-[15px] transition-colors ${
                 active
                   ? 'bg-gold/20 ring-1 ring-gold/60 text-gold'
                   : 'bg-bg-2 ring-1 ring-edge hover:ring-gold/40 text-frost'
               }`}
             >
-              <span className="text-lg w-5 text-center">{l.mastered ? '✅' : active ? '▶' : '•'}</span>
-              <span className="flex-1 font-bold truncate">{l.name}</span>
+              <span className="text-lg w-5 text-center shrink-0">{l.mastered ? '✅' : active ? '▶' : '•'}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block font-bold truncate">{l.name}</span>
+                {l.about && <span className="block text-xs text-frost-dim font-normal leading-snug mt-0.5">{l.about}</span>}
+              </span>
               <span className={`text-xs shrink-0 ${l.mastered ? 'text-grass' : 'text-gold/70'}`}>
                 {l.mastered ? 'Mastered' : 'Learn me'}
               </span>

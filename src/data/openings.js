@@ -91,8 +91,11 @@ be7Line[0].freq = 1;
 // Human names for each line (used by the Progressive-Lines picker). The deepest
 // named node on a path names that line.
 bc5Line[0].line = 'Giuoco Piano';
+bc5Line[0].lineAbout = "Italian for “the quiet game” — slow, classical buildup.";
 nf6Line[0].line = 'Two Knights';
+nf6Line[0].lineAbout = 'Black develops actively and pokes e4 — sharper play.';
 be7Line[0].line = 'Hungarian Defense';
+be7Line[0].lineAbout = 'A solid, modest setup — Black tucks the bishop safely.';
 
 // After 1.e4 e5 2.Nf3 Black usually plays 2…Nc6 (Italian), but 2…d6 (the
 // Philidor) is common at club level — meet it by striking the center with 3.d4.
@@ -122,6 +125,7 @@ const philidor = chain([
 nc6Main[0].freq = 4; // 2…Nc6 is far more common than the Philidor
 philidor[0].freq = 1;
 philidor[0].line = 'Philidor Defense';
+philidor[0].lineAbout = 'Named after Philidor (1700s) — Black guards e5 with a pawn.';
 
 const italianWhiteTree = chain(
   [
@@ -156,7 +160,7 @@ const italianBlackTree = chain([
 // opponent only falls for it occasionally in Drill.
 
 const friedTrap = chain([
-  { san: 'Nxd5', trap: true, line: 'The Trap (…Nxd5)', label: '…Nxd5?? — grabs the pawn (the trap!)',
+  { san: 'Nxd5', trap: true, line: 'The Trap (…Nxd5)', lineAbout: 'Black greedily grabs the pawn — straight into the attack.', label: '…Nxd5?? — grabs the pawn (the trap!)',
     note: 'Black greedily recaptures the pawn — but this walks straight into the Fried Liver!' },
   { san: 'Nxf7', note: 'SACRIFICE! Nxf7 forks the queen and rook and tears open the king.',
     coach: 'The Fried Liver sac: give up the knight to drag the king out into the open where you can hunt it.' },
@@ -169,7 +173,7 @@ const friedTrap = chain([
 ]);
 
 const friedDefense = chain([
-  { san: 'Na5', line: 'The Defense (…Na5)', label: '…Na5! — the cool defense',
+  { san: 'Na5', line: 'The Defense (…Na5)', lineAbout: 'The correct calm defense — kicks the bishop, stays safe.', label: '…Na5! — the cool defense',
     note: 'The smart move! Black ignores the pawn, kicks your bishop, and keeps the king safe.' },
   { san: 'Bb5+', note: 'Check — and your bishop slides to safety with tempo.' },
   { san: 'c6', note: 'Black blocks the check and hits your bishop and the d5 pawn.' },
@@ -245,8 +249,11 @@ scQa5[0].freq = 3;
 scQd6[0].freq = 3;
 scQd8[0].freq = 1;
 scQa5[0].line = 'Queen to a5';
+scQa5[0].lineAbout = 'The most popular retreat — but a little exposed on a5.';
 scQd6[0].line = 'Queen to d6';
+scQd6[0].lineAbout = 'The modern retreat — flexible and harder to chase.';
 scQd8[0].line = 'Queen home (Qd8)';
+scQd8[0].lineAbout = 'All the way home — safe but passive; punish it with space.';
 
 const scandinavianTree = chain(
   [
@@ -422,17 +429,42 @@ export function familiesOf(side) {
 // one-line "when do I use this?". Starter courses have no requirements. Stars
 // only ever UNLOCK new content — nothing already available is taken away.
 const PROGRESSION = {
-  'italian-white': { requires: [], when: 'Your main game — Black plays 1…e5 and develops normally.' },
-  'fried-liver':   { requires: ['italian-white'], when: 'An aggressive Italian try: if Black plays 2…Nf6, spring the f7 trap!' },
-  'italian-black': { requires: ['italian-white'], when: 'For when YOU play Black against 1.e4 — mirror the Italian.' },
-  'scandinavian':  { requires: ['italian-white'], when: 'When Black answers 1.e4 with 1…d5 instead of …e5.' },
-  'sicilian-alapin': { requires: ['scandinavian'], when: 'When Black plays 1…c5 — the Sicilian.' },
-  'white-e4':      { requires: ['scandinavian', 'sicilian-alapin'], when: 'Mix ALL your 1.e4 answers together — Black surprises you and you pick the plan.' },
+  'italian-white': {
+    requires: [],
+    when: 'Your main game — Black plays 1…e5 and develops normally.',
+    history: 'One of the oldest openings in chess — Italian masters like Greco analyzed it back in the 1600s.',
+  },
+  'fried-liver': {
+    requires: ['italian-white'],
+    when: 'An aggressive Italian try: if Black plays 2…Nf6, spring the f7 trap!',
+    history: 'A famous attack known for centuries. Its Italian name “fegatello” (fried liver) describes Black’s roasted king.',
+  },
+  'italian-black': {
+    requires: ['italian-white'],
+    when: 'For when YOU play Black against 1.e4 — mirror the Italian.',
+    history: 'The same classical Italian ideas, played from Black’s side of the board.',
+  },
+  'scandinavian': {
+    requires: ['italian-white'],
+    when: 'When Black answers 1.e4 with 1…d5 instead of …e5.',
+    history: 'Also called the Center Counter — one of the oldest recorded openings, mentioned as far back as the 1400s.',
+  },
+  'sicilian-alapin': {
+    requires: ['scandinavian'],
+    when: 'When Black plays 1…c5 — the Sicilian.',
+    history: 'Named after Semyon Alapin (early 1900s) — a calm, low-theory way to meet the Sicilian.',
+  },
+  'white-e4': {
+    requires: ['scandinavian', 'sicilian-alapin'],
+    when: 'Mix ALL your 1.e4 answers together — Black surprises you and you pick the plan.',
+    history: 'Not one opening but all of them — you always play 1.e4 and let Black choose the battle.',
+  },
 };
 OPENINGS.forEach((o) => {
   const p = PROGRESSION[o.id] || {};
   o.requires = p.requires || [];
   o.when = p.when || o.blurb;
+  o.history = p.history || '';
 });
 
 // ── Progressive Lines ────────────────────────────────────────────────────────
@@ -445,22 +477,24 @@ OPENINGS.forEach((o) => {
 // in common-first order). Each line = { id, name, sans, path, index }.
 export function getLines(opening) {
   const out = [];
-  const walk = (node, trail, nameSoFar) => {
+  const walk = (node, trail, nameSoFar, aboutSoFar) => {
     const name = node.line || node.opening || nameSoFar;
+    const about = node.lineAbout || aboutSoFar;
     const newTrail = [...trail, node];
     const stop = node.milestone || !node.children || node.children.length === 0;
     if (stop) {
-      out.push({ sans: newTrail.map((n) => n.san), path: newTrail, name });
+      out.push({ sans: newTrail.map((n) => n.san), path: newTrail, name, about });
       return;
     }
-    for (const child of node.children) walk(child, newTrail, name);
+    for (const child of node.children) walk(child, newTrail, name, about);
   };
-  for (const root of opening.tree) walk(root, [], null);
+  for (const root of opening.tree) walk(root, [], null, null);
   return out.map((l, i) => ({
     ...l,
     id: l.sans.join(' '),
     index: i,
     name: l.name || opening.variation || opening.name,
+    about: l.about || '',
   }));
 }
 

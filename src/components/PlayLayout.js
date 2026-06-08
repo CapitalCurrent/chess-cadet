@@ -17,7 +17,7 @@ export default function PlayLayout({ rail, board, panel, boardFooter, focus = fa
       <div className="md:flex md:items-stretch md:justify-center md:gap-5 lg:gap-6">
         {/* Left rail — desktop only; on phone each screen renders it inline. */}
         {rail && !focus && (
-          <aside className="hidden xl:block xl:w-72 md:shrink-0 self-start">{rail}</aside>
+          <aside className="hidden xl:block xl:w-80 md:shrink-0 self-start">{rail}</aside>
         )}
 
         {/* Board + scrubber */}

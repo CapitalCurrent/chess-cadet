@@ -324,12 +324,28 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     </div>
   );
 
-  // The course rail — course chip + Progressive-Lines outline + move log. Rendered
-  // in the left rail on desktop, and inline at the top of the panel below xl.
+  // "About this opening" — history + description + when-to-use. Gives the rail
+  // real substance and teaches the context behind the course.
+  const aboutCard = (
+    <div className="cc-card p-3.5 space-y-1.5">
+      <div className="text-xs uppercase tracking-wide text-gold/70 font-bold">About {opening.name}</div>
+      {opening.history && <div className="text-sm text-frost/90 leading-snug">{opening.history}</div>}
+      <div className="text-sm text-frost-dim leading-snug">{opening.blurb}</div>
+      {opening.when && (
+        <div className="text-xs text-frost-dim leading-snug pt-0.5">
+          <b className="text-gold/70">When to use it:</b> {opening.when}
+        </div>
+      )}
+    </div>
+  );
+
+  // The course rail — course chip + Progressive-Lines outline + about + move log.
+  // Rendered in the left rail on desktop, inline at the top of the panel below xl.
   const courseRail = (
     <div className="space-y-3">
       {courseChip}
       {linesPicker}
+      {aboutCard}
       {path.length > 0 && <div className="max-h-[34vh] overflow-y-auto">{movesLog}</div>}
     </div>
   );
@@ -552,9 +568,10 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
         </>
       )}
 
-      {/* Secondary panels (phone): Lines + moves below the fold, collapsible. */}
+      {/* Secondary panels (phone): Lines + about + moves below the fold, collapsible. */}
       <div className="xl:hidden space-y-1 pt-1">
         {multiLine && <Collapsible title="Course lines" defaultOpen>{linesPicker}</Collapsible>}
+        <Collapsible title="About this opening">{aboutCard}</Collapsible>
         {path.length > 0 && <Collapsible title="Moves">{movesLog}</Collapsible>}
       </div>
     </div>
