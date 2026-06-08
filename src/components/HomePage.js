@@ -35,7 +35,7 @@ export default function HomePage({ opening, activeLine, onContinue, onLearn, onP
         <div className="relative animate-pop">
           <img
             src={`${process.env.PUBLIC_URL}/logo512.png`}
-            alt="Chess Cadet"
+            alt="Chess Lair"
             className="mx-auto w-20 h-20 md:w-24 md:h-24 rounded-2xl animate-bob"
             style={{ boxShadow: '0 0 0 1px rgba(246,197,68,0.35), 0 18px 44px -12px rgba(246,197,68,0.5)' }}
             draggable={false}

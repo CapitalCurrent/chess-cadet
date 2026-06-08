@@ -29,7 +29,7 @@ export default function Logo({ compact = false, version }) {
       {!compact && (
         <div className="leading-tight min-w-0">
           <div className="font-round font-extrabold text-frost text-lg md:text-xl truncate">
-            Chess Cadet
+            Chess Lair
           </div>
           {version && (
             <div className="text-[10px] font-bold text-frost-dim/70 -mt-0.5">v{version}</div>
