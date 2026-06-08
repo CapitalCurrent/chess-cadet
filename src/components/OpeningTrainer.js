@@ -4,7 +4,7 @@ import NotationKeypad from './NotationKeypad';
 import PlayLayout from './PlayLayout';
 import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
-import { newGame, applySan, evaluateInput, coreSan, tryMove } from '../engine/chessEngine';
+import { newGame, applySan, evaluateInput, coreSan, tryMove, notationHint } from '../engine/chessEngine';
 import { moverAt, isLineMastered, isLineLearned, getLines } from '../data/openings';
 
 const PIECE_WORDS = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight' };
@@ -223,6 +223,13 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       // board move: advance now (no snap-back); typed: brief pause to celebrate
       if (immediate) playNode(target);
       else setTimeout(() => playNode(target), 650);
+    } else if (res.status === 'notation') {
+      // Right move, but the notation is missing a symbol — teach it and retry.
+      setFeedback({
+        kind: 'legal',
+        text: `So close — that’s the right move! But ${notationHint(res.missing)}. Try again.`,
+      });
+      setTokens([]);
     } else if (res.status === 'legal') {
       cleanRef.current = false;
       breakStreak();

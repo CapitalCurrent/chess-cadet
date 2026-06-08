@@ -1,6 +1,6 @@
 {
   "name": "chess-cadet",
-  "version": "0.8.8",
+  "version": "0.8.9",
   "homepage": ".",
   "private": true,
   "dependencies": {

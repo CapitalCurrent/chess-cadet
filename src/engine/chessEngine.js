@@ -42,20 +42,53 @@ export function tryMove(fen, input) {
   }
 }
 
+// Which notation symbols did she leave out of `input` for this move? chess.js is
+// lenient (accepts "ed5" for "exd5", "Qf3" for "Qf3+"), so we teach by comparing
+// what she typed to the canonical SAN. Returns a subset of:
+//   'capture' (x) · 'promote' (=) · 'mate' (#) · 'check' (+)
+export function notationGaps(move, input) {
+  if (!move) return [];
+  const raw = (input || '').trim();
+  const gaps = [];
+  const isCapture = /x/.test(move.san) || (move.flags && /[ce]/.test(move.flags));
+  const isPromo = /=/.test(move.san) || (move.flags && /p/.test(move.flags));
+  const isMate = /#/.test(move.san);
+  const isCheck = /\+/.test(move.san);
+  if (isCapture && !/x/.test(raw)) gaps.push('capture');
+  if (isPromo && !/=/.test(raw)) gaps.push('promote');
+  if (isMate && !/#/.test(raw)) gaps.push('mate');
+  else if (isCheck && !/\+/.test(raw)) gaps.push('check');
+  return gaps;
+}
+
+const GAP_TEXT = {
+  capture: 'don’t forget the ✕ — you’re taking a piece! (like exd5)',
+  check: 'add a + on the end — that move is check!',
+  mate: 'add a # on the end — that’s checkmate!',
+  promote: 'use = for your new piece (like e8=Q)',
+};
+
+// A kid-friendly reminder for the missing symbol(s).
+export function notationHint(gaps) {
+  return (gaps || []).map((g) => GAP_TEXT[g]).join('; and ');
+}
+
 // Classify a typed move against the expected book move for this position.
-// -> { status: 'correct' | 'legal' | 'illegal', move, expectedSan, sawCheck }
+// -> { status: 'correct' | 'notation' | 'legal' | 'illegal', move, expectedSan, sawCheck, missing }
 export function evaluateInput(fen, input, expectedSan) {
   const move = tryMove(fen, input);
   if (!move) return { status: 'illegal', move: null, expectedSan };
 
   const got = coreSan(move.san);
   const want = coreSan(expectedSan);
-  if (got === want) {
-    // Did she also notate the check/mate symbol when one was due?
-    const sawCheck = /[+#]/.test(input) && /[+#]/.test(move.san);
-    return { status: 'correct', move, expectedSan, sawCheck };
-  }
-  return { status: 'legal', move, expectedSan };
+  if (got !== want) return { status: 'legal', move, expectedSan };
+
+  // Right move — but did she write the notation correctly (x / + / # / =)?
+  const missing = notationGaps(move, input);
+  if (missing.length) return { status: 'notation', move, expectedSan, missing };
+
+  const sawCheck = /[+#]/.test(move.san);
+  return { status: 'correct', move, expectedSan, sawCheck };
 }
 
 // Apply a move to a live game instance; returns the move object or null.

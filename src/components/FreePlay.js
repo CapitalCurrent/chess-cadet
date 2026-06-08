@@ -7,7 +7,7 @@ import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
 import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
 import { detectMotifs, motifsOfMove } from '../engine/tactics';
-import { newGame } from '../engine/chessEngine';
+import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine, analyze } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, maiaBestMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
 
@@ -216,17 +216,20 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   function submit() {
     if (!myTurn || !input) return;
     const beforeFen = gameRef.current.fen();
-    let move = null;
-    try {
-      move = gameRef.current.move(input);
-    } catch {
-      move = null;
-    }
-    if (!move) {
+    // Preview without mutating, so we can teach notation before committing.
+    const preview = tryMove(beforeFen, input);
+    if (!preview) {
       setFeedback({ kind: 'bad', text: "That isn't a legal move here — check your notation!" });
       setTokens([]);
       return;
     }
+    const gaps = notationGaps(preview, input);
+    if (gaps.length) {
+      setFeedback({ kind: 'bad', text: `So close — ${notationHint(gaps)}. Try again.` });
+      setTokens([]);
+      return;
+    }
+    const move = gameRef.current.move(input);
     setFeedback({ kind: 'good', text: `${move.san} ✓` });
     setTokens([]);
     pushMove(move);
