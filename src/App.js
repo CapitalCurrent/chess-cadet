@@ -6,6 +6,8 @@ import { useProgress } from './state/progress';
 import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
 import HomePage from './components/HomePage';
+import LearnCatalog from './components/LearnCatalog';
+import NotationCourse from './components/NotationCourse';
 import Settings from './components/Settings';
 import NotationGuide from './components/NotationGuide';
 import Logo from './components/nav/Logo';
@@ -40,6 +42,7 @@ export default function App() {
   const { progress, rewardMove, breakStreak, finishLine, recordDrillRun, learnLine, masterLine } = useProgress();
   const [openingId, setOpeningId] = useState(OPENINGS[0].id);
   const [mode, setMode] = useState('home'); // open on the Home landing (choices), not straight into a lesson
+  const [learnSubject, setLearnSubject] = useState(null); // within Learn: null = catalog | 'openings' | 'notation'
   const [restart, setRestart] = useState(0);
   const [activeLineId, setActiveLineId] = useState(null); // current Progressive Line (null = Mix)
   const [playSeed, setPlaySeed] = useState(null); // { moves, color } for Continue vs Computer
@@ -100,7 +103,14 @@ export default function App() {
   const navValue = mode === 'home' ? 'home' : mode === 'play' ? 'play' : 'learn';
 
   // Tapping the Play tab directly = a normal game from the start (clear any seed).
-  const pickMode = (id) => { if (id === 'play') setPlaySeed(null); setMode(id); setRestart((r) => r + 1); };
+  const pickMode = (id) => {
+    if (id === 'play') setPlaySeed(null);
+    if (id === 'learn') setLearnSubject(null); // the Learn tab lands on the subject catalog
+    setMode(id);
+    setRestart((r) => r + 1);
+  };
+  // Pick a subject from the Learn catalog.
+  const pickSubject = (id) => { setLearnSubject(id); setMode('learn'); setRestart((r) => r + 1); };
   const pickOpening = (id) => { setOpeningId(id); setRestart((r) => r + 1); };
   // Hand the current opening position over to Play vs the computer (Coach on).
   const continueVsComputer = (moves, color) => {
@@ -224,7 +234,16 @@ export default function App() {
             seed={playSeed}
             rewardMove={rewardMove}
           />
-        ) : (
+        ) : learnSubject === 'notation' ? (
+          <NotationCourse
+            key={`notation-${restart}`}
+            pieceSet={pieceSet}
+            boardTheme={boardTheme}
+            moveStyle={moveStyle}
+            focusBoard={focusBoard}
+            onBack={() => setLearnSubject(null)}
+          />
+        ) : learnSubject === 'openings' ? (
           <OpeningTrainer
             key={`${openingId}-${mode}-${activeLineId}-${restart}`}
             opening={opening}
@@ -247,6 +266,8 @@ export default function App() {
             finishLine={finishLine}
             recordDrillRun={recordDrillRun}
           />
+        ) : (
+          <LearnCatalog onPick={pickSubject} />
         )}
       </main>
 
