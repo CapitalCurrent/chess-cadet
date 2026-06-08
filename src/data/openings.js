@@ -91,11 +91,11 @@ be7Line[0].freq = 1;
 // Human names for each line (used by the Progressive-Lines picker). The deepest
 // named node on a path names that line.
 bc5Line[0].line = 'Giuoco Piano';
-bc5Line[0].lineAbout = "Italian for “the quiet game” — slow, classical buildup.";
+bc5Line[0].lineAbout = "Italian for “the Quiet Game.” Both bishops mirror to c4/c5 and the game builds slowly — classical, strategic chess played since the 1500s.";
 nf6Line[0].line = 'Two Knights';
-nf6Line[0].lineAbout = 'Black develops actively and pokes e4 — sharper play.';
+nf6Line[0].lineAbout = 'Black skips the mirror and jumps the knight to f6, hitting your e4 pawn — more active and sharper; it can even invite the Fried Liver.';
 be7Line[0].line = 'Hungarian Defense';
-be7Line[0].lineAbout = 'A solid, modest setup — Black tucks the bishop safely.';
+be7Line[0].lineAbout = 'The Hungarian — Black tucks the bishop to e7 instead of the active c5. Modest and solid, sidestepping the sharp lines.';
 
 // After 1.e4 e5 2.Nf3 Black usually plays 2…Nc6 (Italian), but 2…d6 (the
 // Philidor) is common at club level — meet it by striking the center with 3.d4.
@@ -125,7 +125,7 @@ const philidor = chain([
 nc6Main[0].freq = 4; // 2…Nc6 is far more common than the Philidor
 philidor[0].freq = 1;
 philidor[0].line = 'Philidor Defense';
-philidor[0].lineAbout = 'Named after Philidor (1700s) — Black guards e5 with a pawn.';
+philidor[0].lineAbout = 'Named after Philidor (1700s). Black props up e5 with …d6 — solid but passive, so you grab space with d4 and get an easy game.';
 
 const italianWhiteTree = chain(
   [
