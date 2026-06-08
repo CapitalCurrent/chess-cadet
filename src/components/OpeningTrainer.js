@@ -394,13 +394,22 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
           and lets you jump straight to drilling a line you've already learned. */}
       {activeLine && !coreComplete && !drillGate && (
         <div className="flex items-center justify-between gap-2 cc-card px-3 py-2">
-          <span className="text-sm font-bold text-frost truncate">
-            {mode === 'drill' ? '🎯 Drilling ' : '📖 Learning '}{lineName}
+          <span className="flex items-center gap-2 min-w-0">
+            <span
+              className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide shrink-0 ${
+                mode === 'drill'
+                  ? 'bg-gold/20 text-gold ring-1 ring-gold/40'
+                  : 'bg-grass/20 text-grass ring-1 ring-grass/40'
+              }`}
+            >
+              {mode === 'drill' ? '🎯 Drill' : '📖 Lesson'}
+            </span>
+            <span className="text-sm font-bold text-frost truncate">{lineName}</span>
           </span>
           {mode === 'drill'
             ? onLearnLine && (
                 <button onClick={onLearnLine} className="cc-btn cc-btn-secondary px-3 py-1.5 text-xs shrink-0">
-                  📖 Back to Learn
+                  📖 Lesson
                 </button>
               )
             : lineLearned && onDrillLine && (

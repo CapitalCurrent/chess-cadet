@@ -44,8 +44,8 @@ export default function LinesPicker({ opening, progress, activeLineId, mode, onP
                   <span className="block font-bold truncate">{l.name}</span>
                   {l.about && <span className="block text-xs text-frost-dim font-normal leading-snug mt-0.5">{l.about}</span>}
                 </span>
-                <span className={`text-xs shrink-0 ${l.mastered ? 'text-grass' : 'text-gold/70'}`}>
-                  {l.mastered ? 'Mastered' : active ? 'Current' : 'Learn me'}
+                <span className={`text-xs shrink-0 font-bold ${active ? 'text-gold' : l.mastered ? 'text-grass' : 'text-gold/70'}`}>
+                  {active ? (mode === 'drill' ? '🎯 Drill' : '📖 Lesson') : l.mastered ? 'Mastered' : 'Learn me'}
                 </span>
               </button>
 
