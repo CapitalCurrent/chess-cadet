@@ -395,6 +395,15 @@ button,
   animation: floatUp 0.3s ease-out both;
 }
 
+/* Gentle idle bob — for the Home hero mascot (feels alive without distracting). */
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-bob {
+  animation: bob 3.6s ease-in-out infinite;
+}
+
 /* Slide a moved piece from its origin square to where it lands. Uses the
    `translate:` property (not `transform:`) so it composes with the piece's
    scale() transform. --slide-dx/dy are the start offset in cell-widths (%). */

@@ -208,9 +208,11 @@ export default function App() {
                   <IconRestart />
                 </button>
               )}
-              <button className="cc-icon-btn" title="Notation cheat sheet" onClick={() => setGuideOpen(true)}>
-                <IconGuide />
-              </button>
+              {mode !== 'home' && (
+                <button className="cc-icon-btn" title="Notation cheat sheet" onClick={() => setGuideOpen(true)}>
+                  <IconGuide />
+                </button>
+              )}
               <button className="cc-icon-btn" title="Settings" onClick={() => setSettingsOpen(true)}>
                 <IconSettings />
               </button>
