@@ -166,7 +166,8 @@ export default function ChessBoard({
     if (selected) {
       if (name === selected) return setSelected(null);
       if (targets.includes(name)) {
-        userMoveRef.current = `${selected}${name}`;
+        // Tap-to-move should SLIDE (you didn't physically drag the piece) — so we
+        // do NOT mark it as a user-dragged move here. Only real drags skip the slide.
         onMove && onMove(selected, name);
         return setSelected(null);
       }

@@ -262,6 +262,21 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     if (m) gradeDrillInput(m.san, { immediate: true });
   }
 
+  // Play the opponent's forced move on the board to continue (Learn or Drill) —
+  // an alternative to the "▶ Opponent plays" button. No grading or reward.
+  function handleOpponentMove(from, to) {
+    if (!targetMove) return;
+    if (from === targetMove.from && to === targetMove.to) {
+      setFeedback(null);
+      playNode(target);
+    } else if (mode === 'learn') {
+      setFeedback({
+        kind: 'legal',
+        text: `Almost — slide the ${PIECE_WORDS[target.san[0]] || 'pawn'} to ${targetMove.to} to continue.`,
+      });
+    }
+  }
+
   const orientation = student;
 
   // Board decorations: arrows, highlights, and whether she can drag this step.
@@ -290,6 +305,16 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     }
   }
 
+  // LEARN: the opponent's forced move can be played on the board (drag/tap the
+  // blue-arrow piece) as an alternative to the "▶ Opponent plays" button. Only
+  // for a deterministic reply (single option / fixed line) — never a Mix branch
+  // chooser. (Drill keeps its auto-play for now — separate decision.)
+  const oppMoveForced =
+    !coreComplete && !myTurn && mode === 'learn' && !!targetMove && (!!activeLine || options.length === 1) && !showChooser;
+  if (oppMoveForced) {
+    boardMovable = mover;
+  }
+
   const board = (
     <ChessBoard
       fen={fen}
@@ -299,7 +324,9 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       highlights={boardHighlights}
       movableColor={boardMovable}
       moveStyle={moveStyle}
-      onMove={mode === 'learn' ? handleLearnMove : handleDrillMove}
+      onMove={(from, to) =>
+        myTurn ? (mode === 'learn' ? handleLearnMove(from, to) : handleDrillMove(from, to)) : handleOpponentMove(from, to)
+      }
       pieceSet={pieceSet}
       boardTheme={boardTheme}
       big={focusBoard}
@@ -567,9 +594,12 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
                   <span className="text-sm md:text-xl text-frost">{readSan(target.san)}</span>
                 </div>
                 <p className="text-sm md:text-xl md:leading-snug text-frost/90 mt-1 md:mt-2">{target.note}</p>
+                <div className="mt-2 text-sm md:text-base text-frost-dim">
+                  👉 Slide the piece along the blue arrow, or tap below.
+                </div>
                 <button
                   onClick={() => playNode(target)}
-                  className="cc-btn cc-btn-grass mt-3 w-full py-3 md:py-4 text-lg md:text-2xl"
+                  className="cc-btn cc-btn-grass mt-2 w-full py-3 md:py-4 text-lg md:text-2xl"
                 >
                   Opponent plays ▶
                 </button>
