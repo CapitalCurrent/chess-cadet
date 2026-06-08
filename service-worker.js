@@ -12,7 +12,7 @@
  * Bump CACHE when you change a STABLE-named asset (e.g. a regenerated piece
  * PNG) and want every client to drop the old copy. Hashed bundles don't need it.
  */
-const CACHE = 'chess-cadet-v8';
+const CACHE = 'chess-cadet-v9';
 
 const PRECACHE = [
   './',
