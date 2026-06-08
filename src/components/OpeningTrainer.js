@@ -5,7 +5,7 @@ import PlayLayout from './PlayLayout';
 import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
 import { newGame, applySan, evaluateInput, coreSan, tryMove } from '../engine/chessEngine';
-import { moverAt, isLineMastered, getLines } from '../data/openings';
+import { moverAt, isLineMastered, isLineLearned, getLines } from '../data/openings';
 
 const PIECE_WORDS = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight' };
 
@@ -49,7 +49,7 @@ function buildPosition(path) {
   return { fen: game.fen(), lastMove };
 }
 
-export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPicker, activeLine, pieceSet, boardTheme, moveStyle, focusBoard, onContinue, onLineMastered, onDrillLine, progress, rewardMove, breakStreak, finishLine, recordDrillRun }) {
+export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPicker, activeLine, pieceSet, boardTheme, moveStyle, focusBoard, onContinue, onLineMastered, onLineLearned, onDrillLine, onLearnLine, progress, rewardMove, breakStreak, finishLine, recordDrillRun }) {
   const student = opening.student;
   const [path, setPath] = useState([]); // nodes played so far (the chosen line)
   const [tokens, setTokens] = useState([]);
@@ -177,6 +177,8 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     // that's when a line is recorded, so each line stays short and achievable.
     if (coreComplete && !doneRewarded) {
       finishLine(opening.id);
+      // Completing Learn once marks the line LEARNED — that's what unlocks drilling.
+      if (mode === 'learn' && activeLine && onLineLearned) onLineLearned(opening.id, activeLine.id);
       if (mode === 'drill') {
         if (recordDrillRun) recordDrillRun(opening.id, cleanRef.current);
         // Master the LINE on a clean run (no hints, no slips). App records it,
@@ -185,11 +187,13 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       }
       setDoneRewarded(true);
     }
-  }, [coreComplete, doneRewarded, finishLine, opening.id, mode, recordDrillRun, activeLine, onLineMastered]);
+  }, [coreComplete, doneRewarded, finishLine, opening.id, mode, recordDrillRun, activeLine, onLineMastered, onLineLearned]);
 
   const cleanRun = cleanRef.current; // this run used no hints and made no slips
   const lineName = activeLine ? activeLine.name : opening.name;
   const lineAlreadyMastered = activeLine ? isLineMastered(progress, opening.id, activeLine.id) : false;
+  const lineLearned = !activeLine || isLineLearned(progress, opening.id, activeLine.id);
+  const drillGate = mode === 'drill' && !!activeLine && !lineLearned; // must Learn a line before drilling it
   const hasDevelop = atMilestone; // the milestone node has a gated "after castling" plan
 
   const input = tokens.join('');
@@ -339,14 +343,25 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
     </div>
   );
 
-  // The course rail — course chip + Progressive-Lines outline + about + move log.
-  // Rendered in the left rail on desktop, inline at the top of the panel below xl.
+  // The course rail (desktop left column). Before a lesson starts, Lines + About
+  // show fully. Once moves begin, they collapse so the move log gets room to grow
+  // without scrolling immediately.
+  const started = path.length > 0;
   const courseRail = (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {courseChip}
-      {linesPicker}
-      {aboutCard}
-      {path.length > 0 && <div className="max-h-[34vh] overflow-y-auto">{movesLog}</div>}
+      {started ? (
+        <>
+          {multiLine && <Collapsible title="Course lines">{linesPicker}</Collapsible>}
+          <Collapsible title="About this opening">{aboutCard}</Collapsible>
+          <div className="max-h-[58vh] overflow-y-auto">{movesLog}</div>
+        </>
+      ) : (
+        <>
+          {linesPicker}
+          {aboutCard}
+        </>
+      )}
     </div>
   );
 
@@ -357,7 +372,20 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       <div className="xl:hidden">{courseChip}</div>
 
       {/* The ONE step card — the single focus for the current step. */}
-      {coreComplete ? (
+      {drillGate ? (
+        /* A line must be learned once before it can be drilled. */
+        <div className="cc-card p-4 md:p-5 text-center animate-pop">
+          <div className="text-lg md:text-2xl font-extrabold text-gold">📖 Learn this line first</div>
+          <p className="text-sm md:text-base text-frost-dim mt-1.5">
+            Go through the <b className="text-frost">{lineName}</b> in Learn once — then you can drill it to master it.
+          </p>
+          {onLearnLine && (
+            <button onClick={onLearnLine} className="cc-btn cc-btn-grass w-full py-3 mt-3 text-base md:text-lg">
+              ▶ Learn the {lineName}
+            </button>
+          )}
+        </div>
+      ) : coreComplete ? (
         /* Line complete — the loop's payoff card (learn → drill → master → next). */
         <div className="cc-card p-4 md:p-5 text-center animate-pop">
           {mode === 'learn' ? (
@@ -503,7 +531,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
 
       {/* DRILL — typed move entry. The keypad is the typing-practice tool here; it
           can be minimized with ⌨ but defaults open. */}
-      {mode === 'drill' && !coreComplete && myTurn && (
+      {mode === 'drill' && !drillGate && !coreComplete && myTurn && (
         <>
           {feedback && (
             <div

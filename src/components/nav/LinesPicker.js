@@ -6,7 +6,7 @@ import { linesWithStatus } from '../../data/openings';
 // the rest behind a "master to unlock" hint, and reveals a 🔀 Mix recognition
 // drill once every line is mastered. It also explains the loop in one line so the
 // course flow is obvious. Hidden for single-line courses (nothing to pick).
-export default function LinesPicker({ opening, progress, activeLineId, onPick }) {
+export default function LinesPicker({ opening, progress, activeLineId, onPick, onDrill }) {
   const lines = linesWithStatus(progress, opening);
   if (lines.length <= 1) return null;
 
@@ -28,25 +28,48 @@ export default function LinesPicker({ opening, progress, activeLineId, onPick })
       <div className="space-y-2">
         {unlocked.map((l) => {
           const active = l.id === activeLineId;
+          const showActions = active && !l.mastered;
           return (
-            <button
-              key={l.id}
-              onClick={() => onPick(l.id)}
-              className={`w-full flex items-start gap-2.5 rounded-cc-lg px-3 py-2.5 text-left text-[15px] transition-colors ${
-                active
-                  ? 'bg-gold/20 ring-1 ring-gold/60 text-gold'
-                  : 'bg-bg-2 ring-1 ring-edge hover:ring-gold/40 text-frost'
-              }`}
-            >
-              <span className="text-lg w-5 text-center shrink-0">{l.mastered ? '✅' : active ? '▶' : '•'}</span>
-              <span className="flex-1 min-w-0">
-                <span className="block font-bold truncate">{l.name}</span>
-                {l.about && <span className="block text-xs text-frost-dim font-normal leading-snug mt-0.5">{l.about}</span>}
-              </span>
-              <span className={`text-xs shrink-0 ${l.mastered ? 'text-grass' : 'text-gold/70'}`}>
-                {l.mastered ? 'Mastered' : 'Learn me'}
-              </span>
-            </button>
+            <div key={l.id}>
+              <button
+                onClick={() => onPick(l.id)}
+                className={`w-full flex items-start gap-2.5 rounded-cc-lg px-3 py-2.5 text-left text-[15px] transition-colors ${
+                  active
+                    ? 'bg-gold/20 ring-1 ring-gold/60 text-gold'
+                    : 'bg-bg-2 ring-1 ring-edge hover:ring-gold/40 text-frost'
+                }`}
+              >
+                <span className="text-lg w-5 text-center shrink-0">{l.mastered ? '✅' : active ? '▶' : '•'}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block font-bold truncate">{l.name}</span>
+                  {l.about && <span className="block text-xs text-frost-dim font-normal leading-snug mt-0.5">{l.about}</span>}
+                </span>
+                <span className={`text-xs shrink-0 ${l.mastered ? 'text-grass' : 'text-gold/70'}`}>
+                  {l.mastered ? 'Mastered' : active ? 'Current' : 'Learn me'}
+                </span>
+              </button>
+
+              {showActions && (
+                <div className="mt-1.5 mb-1 px-1 space-y-2 animate-pop">
+                  <div className="text-xs text-frost-dim leading-snug">
+                    {l.learned ? (
+                      <>🎯 <b className="text-gold">To master:</b> finish a <b>Drill</b> of this line with <b>no hints &amp; no mistakes</b> — that unlocks the next line.</>
+                    ) : (
+                      <>📖 <b className="text-gold">Learn it first</b> — step through the line once, then drill it clean to master it.</>
+                    )}
+                  </div>
+                  {l.learned ? (
+                    <button onClick={() => onDrill && onDrill(l.id)} className="cc-btn cc-btn-primary w-full py-2 text-xs">
+                      🎯 Drill to master
+                    </button>
+                  ) : (
+                    <button disabled className="cc-btn cc-btn-secondary w-full py-2 text-xs opacity-50">
+                      🔒 Drilling unlocks after you learn it
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           );
         })}
 
@@ -54,7 +77,7 @@ export default function LinesPicker({ opening, progress, activeLineId, onPick })
           <div className="flex items-center gap-2.5 rounded-cc-lg px-3 py-2.5 text-[15px] bg-bg-2/40 ring-1 ring-edge/50 text-frost-dim">
             <span className="text-lg w-5 text-center">🔒</span>
             <span className="flex-1">
-              {lockedCount} more line{lockedCount > 1 ? 's' : ''} — master the one{unlocked.some((l) => !l.mastered) ? ' above' : 's above'} to unlock
+              {lockedCount} more line{lockedCount > 1 ? 's' : ''} — drill the current line clean (no hints, no slips) to unlock the next
             </span>
           </div>
         )}

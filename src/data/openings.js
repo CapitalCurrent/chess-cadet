@@ -507,11 +507,21 @@ export function isLineMastered(progress, openingId, lineId) {
   return masteredLineIds(progress, openingId).includes(lineId);
 }
 
-// Lines with derived UI status: `mastered`, and `unlocked` (line 0 always; later
-// lines unlock once the PREVIOUS line is mastered).
+// Which line ids has she learned (completed Learn once)? Mastering implies learned.
+export function learnedLineIds(progress, openingId) {
+  return (progress && progress.lines && progress.lines[openingId] && progress.lines[openingId].learned) || [];
+}
+
+export function isLineLearned(progress, openingId, lineId) {
+  return learnedLineIds(progress, openingId).includes(lineId) || isLineMastered(progress, openingId, lineId);
+}
+
+// Lines with derived UI status: `mastered`, `learned` (drill is gated on this),
+// and `unlocked` (line 0 always; later lines unlock once the PREVIOUS is mastered).
 export function linesWithStatus(progress, opening) {
   const mastered = new Set(masteredLineIds(progress, opening.id));
-  const lines = getLines(opening).map((l) => ({ ...l, mastered: mastered.has(l.id) }));
+  const learned = new Set([...learnedLineIds(progress, opening.id), ...mastered]);
+  const lines = getLines(opening).map((l) => ({ ...l, mastered: mastered.has(l.id), learned: learned.has(l.id) }));
   return lines.map((l, i) => ({ ...l, unlocked: i === 0 || lines[i - 1].mastered }));
 }
 

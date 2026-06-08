@@ -35,7 +35,7 @@ const MODES = [
 export default function App() {
   // rewardMove/breakStreak/finishLine still drive progress silently (the gems
   // reward bar was removed from the chrome; reinstate intentionally later).
-  const { progress, rewardMove, breakStreak, finishLine, recordDrillRun, masterLine } = useProgress();
+  const { progress, rewardMove, breakStreak, finishLine, recordDrillRun, learnLine, masterLine } = useProgress();
   const [openingId, setOpeningId] = useState(OPENINGS[0].id);
   const [mode, setMode] = useState('learn'); // learn first, then drill
   const [restart, setRestart] = useState(0);
@@ -106,8 +106,14 @@ export default function App() {
   };
   // Pick a line from the LinesPicker: a line id → study it in Learn; null → Mix drill.
   const pickLine = (id) => { setActiveLineId(id); setMode(id == null ? 'drill' : 'learn'); setRestart((r) => r + 1); };
+  // Jump straight to drilling a specific line (the step that masters it).
+  const drillLine = (id) => { setActiveLineId(id); setMode('drill'); setRestart((r) => r + 1); };
   // "▶ Drill this line" after learning it.
   const drillActiveLine = () => { setMode('drill'); setRestart((r) => r + 1); };
+  // Switch the active line into Learn (used by the drill gate's "Learn it first").
+  const learnActiveLine = () => { setMode('learn'); setRestart((r) => r + 1); };
+  // Completing a Learn run marks the line learned (which unlocks drilling it).
+  const handleLineLearned = (oid, lineId) => learnLine(oid, lineId);
 
   // A LINE was mastered (a clean Drill run). Persist it, then celebrate: reveal
   // the next line — or, if that was the LAST line, the course-mastery unlock.
@@ -216,9 +222,11 @@ export default function App() {
             focusBoard={focusBoard}
             onContinue={continueVsComputer}
             onDrillLine={drillActiveLine}
+            onLearnLine={learnActiveLine}
             onLineMastered={handleLineMastered}
+            onLineLearned={handleLineLearned}
             openingSwitcher={<OpeningPicker value={openingId} onChange={pickOpening} progress={progress} />}
-            linesPicker={<LinesPicker opening={opening} progress={progress} activeLineId={activeLineId} onPick={pickLine} />}
+            linesPicker={<LinesPicker opening={opening} progress={progress} activeLineId={activeLineId} onPick={pickLine} onDrill={drillLine} />}
             pieceSet={pieceSet}
             boardTheme={boardTheme}
             moveStyle={moveStyle}

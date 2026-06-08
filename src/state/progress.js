@@ -106,20 +106,31 @@ export function useProgress() {
     [update]
   );
 
-  // Mark one LINE of a course as mastered (a clean Drill run of that line).
-  // Idempotent — re-mastering a line is a no-op.
-  const masterLine = useCallback(
+  // Mark one LINE of a course as learned (completed Learn mode once). A line must
+  // be learned before it can be drilled. Idempotent; preserves `mastered`.
+  const learnLine = useCallback(
     (openingId, lineId) =>
       update((p) => {
-        const cur = (p.lines && p.lines[openingId] && p.lines[openingId].mastered) || [];
+        const entry = (p.lines && p.lines[openingId]) || {};
+        const cur = entry.learned || [];
         if (cur.includes(lineId)) return p;
-        return {
-          ...p,
-          lines: { ...p.lines, [openingId]: { mastered: [...cur, lineId] } },
-        };
+        return { ...p, lines: { ...p.lines, [openingId]: { ...entry, learned: [...cur, lineId] } } };
       }),
     [update]
   );
 
-  return { progress, rewardMove, breakStreak, finishLine, recordDrillRun, masterLine };
+  // Mark one LINE of a course as mastered (a clean Drill run of that line).
+  // Idempotent; preserves `learned`.
+  const masterLine = useCallback(
+    (openingId, lineId) =>
+      update((p) => {
+        const entry = (p.lines && p.lines[openingId]) || {};
+        const cur = entry.mastered || [];
+        if (cur.includes(lineId)) return p;
+        return { ...p, lines: { ...p.lines, [openingId]: { ...entry, mastered: [...cur, lineId] } } };
+      }),
+    [update]
+  );
+
+  return { progress, rewardMove, breakStreak, finishLine, recordDrillRun, learnLine, masterLine };
 }
