@@ -3,6 +3,7 @@ import { OPENINGS, getOpening, unlockedBy, getLines, linesWithStatus } from './d
 import { getPieceSet } from './pieces/pieceSets';
 import { getBoardTheme } from './pieces/boardThemes';
 import { useProgress } from './state/progress';
+import { useProfiles, playGameKey } from './state/profiles';
 import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
 import HomePage from './components/HomePage';
@@ -10,7 +11,9 @@ import LearnCatalog from './components/LearnCatalog';
 import NotationCourse from './components/NotationCourse';
 import Settings from './components/Settings';
 import NotationGuide from './components/NotationGuide';
+import ProfileGate from './components/ProfileGate';
 import Logo from './components/nav/Logo';
+import ProfileMenu from './components/nav/ProfileMenu';
 import Segmented from './components/nav/Segmented';
 import OpeningPicker from './components/nav/OpeningPicker';
 import LinesPicker from './components/nav/LinesPicker';
@@ -37,9 +40,11 @@ const MODES = [
 ];
 
 export default function App() {
+  // Local multi-profile: each player keeps their own progress + saved game.
+  const { profiles, activeId, activeProfile, createProfile, selectProfile, updateProfile, deleteProfile } = useProfiles();
   // rewardMove/breakStreak/finishLine still drive progress silently (the gems
   // reward bar was removed from the chrome; reinstate intentionally later).
-  const { progress, rewardMove, breakStreak, finishLine, recordDrillRun, learnLine, masterLine } = useProgress();
+  const { progress, rewardMove, breakStreak, finishLine, recordDrillRun, learnLine, masterLine } = useProgress(activeId);
   const [openingId, setOpeningId] = useState(OPENINGS[0].id);
   const [mode, setMode] = useState('home'); // open on the Home landing (choices), not straight into a lesson
   const [learnSubject, setLearnSubject] = useState(null); // within Learn: null = catalog | 'openings' | 'notation'
@@ -166,6 +171,11 @@ export default function App() {
     setRestart((r) => r + 1);
   };
 
+  // No active player yet → first-run create / pick screen (blocks the app shell).
+  if (!activeProfile) {
+    return <ProfileGate profiles={profiles} onCreate={createProfile} onSelect={selectProfile} />;
+  }
+
   return (
     <div className={`min-h-screen text-frost pb-24 md:pb-10 log-${logPlacement}`}>
       {/* Header — acrylic top bar */}
@@ -216,6 +226,14 @@ export default function App() {
               <button className="cc-icon-btn" title="Settings" onClick={() => setSettingsOpen(true)}>
                 <IconSettings />
               </button>
+              <ProfileMenu
+                profiles={profiles}
+                activeProfile={activeProfile}
+                onSelect={selectProfile}
+                onCreate={createProfile}
+                onUpdate={updateProfile}
+                onDelete={deleteProfile}
+              />
             </div>
           </div>
 
@@ -228,19 +246,21 @@ export default function App() {
           <HomePage
             opening={opening}
             activeLine={activeLine}
+            playerName={activeProfile.name}
             onContinue={() => { setLearnSubject('openings'); setMode('learn'); setRestart((r) => r + 1); }}
             onLearn={() => pickMode('learn')}
             onPlay={() => pickMode('play')}
           />
         ) : mode === 'play' ? (
           <FreePlay
-            key={`play-${restart}`}
+            key={`play-${activeId}-${restart}`}
             pieceSet={pieceSet}
             boardTheme={boardTheme}
             moveStyle={moveStyle}
             focusBoard={focusBoard}
             seed={playSeed}
             rewardMove={rewardMove}
+            saveKey={playGameKey(activeId)}
           />
         ) : learnSubject === 'notation' ? (
           <NotationCourse

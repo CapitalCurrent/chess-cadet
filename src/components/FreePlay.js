@@ -33,18 +33,17 @@ function seededGame(seed) {
 // The in-progress Play game is persisted so leaving the Play tab and coming back
 // doesn't wipe it. A `seed` (Continue-vs-Computer from a drilled opening) takes
 // priority over the saved game on mount.
-const SAVE_KEY = 'chess-cadet-playgame';
-function loadSavedGame() {
+function loadSavedGame(key) {
   try {
-    const data = JSON.parse(localStorage.getItem(SAVE_KEY));
+    const data = JSON.parse(localStorage.getItem(key));
     return data && Array.isArray(data.moves) && data.moves.length ? data : null;
   } catch {
     return null;
   }
 }
 
-export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, seed, rewardMove }) {
-  const savedRef = useRef(seed ? null : loadSavedGame());
+export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, seed, rewardMove, saveKey }) {
+  const savedRef = useRef(seed ? null : loadSavedGame(saveKey));
   const gameRef = useRef();
   if (!gameRef.current) gameRef.current = seed ? seededGame(seed) : savedRef.current ? seededGame(savedRef.current) : newGame();
   const [fen, setFen] = useState(() => gameRef.current.fen());
@@ -119,11 +118,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   // Persist the in-progress game so leaving/returning to the Play tab keeps it.
   useEffect(() => {
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ moves: gameRef.current.history(), color: studentColor }));
+      localStorage.setItem(saveKey, JSON.stringify({ moves: gameRef.current.history(), color: studentColor }));
     } catch {
       /* ignore */
     }
-  }, [fen, studentColor]);
+  }, [fen, studentColor, saveKey]);
   // If a restored game was already finished, show the end banner on mount.
   useEffect(() => { checkEnd(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

@@ -1,6 +1,5 @@
-import { useCallback, useState } from 'react';
-
-const KEY = 'chess-cadet-progress-v1';
+import { useCallback, useEffect, useState } from 'react';
+import { progressKey } from './profiles';
 
 const DEFAULT = {
   gems: 0,
@@ -23,33 +22,42 @@ export function starsFor(progress, openingId) {
   return 1;
 }
 
-export function loadProgress() {
+export function loadProgress(profileId) {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(progressKey(profileId));
     return raw ? { ...DEFAULT, ...JSON.parse(raw) } : { ...DEFAULT };
   } catch {
     return { ...DEFAULT };
   }
 }
 
-function save(p) {
+function save(p, profileId) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(p));
+    localStorage.setItem(progressKey(profileId), JSON.stringify(p));
   } catch {
     /* ignore */
   }
 }
 
-export function useProgress() {
-  const [progress, setProgress] = useState(loadProgress);
+// `profileId` scopes progress to the active player. Changing it swaps in that
+// player's saved progress (and writes land in their bucket from then on).
+export function useProgress(profileId) {
+  const [progress, setProgress] = useState(() => loadProgress(profileId));
 
-  const update = useCallback((fn) => {
-    setProgress((prev) => {
-      const next = fn(prev);
-      save(next);
-      return next;
-    });
-  }, []);
+  useEffect(() => {
+    setProgress(loadProgress(profileId));
+  }, [profileId]);
+
+  const update = useCallback(
+    (fn) => {
+      setProgress((prev) => {
+        const next = fn(prev);
+        save(next, profileId);
+        return next;
+      });
+    },
+    [profileId]
+  );
 
   // A correct move: +1 gem, bump streak. `bonus` stars for clean/sharp play.
   const rewardMove = useCallback(

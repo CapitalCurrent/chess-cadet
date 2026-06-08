@@ -3,7 +3,7 @@ import { IconLearn, IconPlay } from './icons';
 
 // The landing screen / launcher — a welcoming brand hero, then two big choices
 // (Learn / Play) with a small "Continue" link to resume the current line.
-export default function HomePage({ opening, activeLine, onContinue, onLearn, onPlay }) {
+export default function HomePage({ opening, activeLine, playerName, onContinue, onLearn, onPlay }) {
   const Card = ({ onClick, icon, bg, title, subtitle, delay }) => (
     <button
       onClick={onClick}
@@ -41,7 +41,10 @@ export default function HomePage({ opening, activeLine, onContinue, onLearn, onP
             draggable={false}
           />
         </div>
-        <div className="relative mt-4 text-2xl md:text-4xl font-extrabold text-frost font-round">What do you want to do?</div>
+        {playerName && (
+          <div className="relative mt-4 text-base md:text-lg font-bold text-gold">Hi {playerName}! 👋</div>
+        )}
+        <div className={`relative ${playerName ? 'mt-0.5' : 'mt-4'} text-2xl md:text-4xl font-extrabold text-frost font-round`}>What do you want to do?</div>
         <div className="relative text-sm md:text-base text-frost-dim mt-1.5">Pick a lesson, or play a game.</div>
       </div>
 
