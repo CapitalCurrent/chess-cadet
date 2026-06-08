@@ -29,9 +29,23 @@ function seededGame(seed) {
   return g;
 }
 
+// The in-progress Play game is persisted so leaving the Play tab and coming back
+// doesn't wipe it. A `seed` (Continue-vs-Computer from a drilled opening) takes
+// priority over the saved game on mount.
+const SAVE_KEY = 'chess-cadet-playgame';
+function loadSavedGame() {
+  try {
+    const data = JSON.parse(localStorage.getItem(SAVE_KEY));
+    return data && Array.isArray(data.moves) && data.moves.length ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, seed, rewardMove }) {
+  const savedRef = useRef(seed ? null : loadSavedGame());
   const gameRef = useRef();
-  if (!gameRef.current) gameRef.current = seededGame(seed);
+  if (!gameRef.current) gameRef.current = seed ? seededGame(seed) : savedRef.current ? seededGame(savedRef.current) : newGame();
   const [fen, setFen] = useState(() => gameRef.current.fen());
   const [history, setHistory] = useState(() => gameRef.current.history()); // SAN strings
   const [tokens, setTokens] = useState([]);
@@ -42,12 +56,15 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     const last = h[h.length - 1];
     return last ? { from: last.from, to: last.to } : null;
   });
-  const [studentColor, setStudentColor] = useState(() => (seed && seed.color) || 'w');
+  const [studentColor, setStudentColor] = useState(
+    () => (seed && seed.color) || (savedRef.current && savedRef.current.color) || 'w'
+  );
   const [flipped, setFlipped] = useState(false); // view-only board flip
   const [viewPly, setViewPly] = useState(null); // null = live; else # of half-moves to show (review/scrub)
   const [keypadOpen, setKeypadOpen] = useState(
     () => localStorage.getItem('chess-cadet-playkeypad') === 'open'
   ); // board-first: the typing keypad is minimized by default in Play
+  const [setupOpen, setSetupOpen] = useState(false); // game-setup popover (opponent/side/level/coach)
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
   const [level, setLevel] = useState(() => {
     const v = parseInt(localStorage.getItem('chess-cadet-level'), 10);
@@ -90,6 +107,16 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   useEffect(() => {
     localStorage.setItem('chess-cadet-playkeypad', keypadOpen ? 'open' : 'closed');
   }, [keypadOpen]);
+  // Persist the in-progress game so leaving/returning to the Play tab keeps it.
+  useEffect(() => {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ moves: gameRef.current.history(), color: studentColor }));
+    } catch {
+      /* ignore */
+    }
+  }, [fen, studentColor]);
+  // If a restored game was already finished, show the end banner on mount.
+  useEffect(() => { checkEnd(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     initEngine(); // warm up the Stockfish worker
   }, []);
@@ -388,12 +415,36 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.` };
   }
 
+  // "Mind the reply": after her move, peek at the opponent's BEST reply (engine's
+  // #1 only — keeps it reliable) and, if it's a named tactic, flag it so she
+  // learns to anticipate it. We only name fork/pin/discovered (geometric, on the
+  // engine's chosen move), never guess.
+  async function opponentThreat(afterFen) {
+    try {
+      const cands = (await analyze(afterFen, { multipv: 1, movetime: 700 })) || [];
+      if (!cands.length) return null;
+      const motifs = motifsOfMove(afterFen, cands[0].move);
+      const name = motifs.includes('fork')
+        ? 'a fork'
+        : motifs.includes('discovered')
+        ? 'a discovered attack'
+        : motifs.includes('pin')
+        ? 'a pin'
+        : null;
+      return name ? { san: uciToSan(afterFen, cands[0].move), name } : null;
+    } catch {
+      return null;
+    }
+  }
+
   async function gradeMove(beforeFen, move) {
     const uci = move.from + move.to + (move.promotion || '');
     const afterFen = gameRef.current.fen();
     setCoachNote({ kind: 'pending', text: '🎓 Coach is looking…' });
-    const v = await classifyMove(beforeFen, uci, afterFen, { movetime: 600, useHumanHint: true });
-    setCoachNote(v ? { kind: v.kind, text: v.text } : null);
+    const v = await classifyMove(beforeFen, uci, afterFen, { movetime: 1200, useHumanHint: true });
+    const threat = await opponentThreat(afterFen);
+    if (!v && !threat) return setCoachNote(null);
+    setCoachNote({ kind: v ? v.kind : 'warn', text: v ? v.text : '', threat });
   }
 
   // Game Review: re-walk the game and classify each of HER moves, then summarize.
@@ -410,13 +461,14 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       if (m.color === studentColor) {
         const uci = m.from + m.to + (m.promotion || '');
         const v =
-          (await classifyMove(beforeFen, uci, g.fen(), { movetime: 300, useHumanHint: false })) || {
+          (await classifyMove(beforeFen, uci, g.fen(), { movetime: 600, useHumanHint: false })) || {
             kind: 'good',
             icon: '·',
             label: 'Move',
             text: '',
           };
-        rows.push({ num: Math.ceil(g.history().length / 2), san: m.san, v });
+        // ply = half-moves played up to and including this move → scrub target.
+        rows.push({ num: Math.ceil(g.history().length / 2), san: m.san, v, ply: g.history().length });
         setReview({ running: true, done: rows.length, total, rows: [...rows] });
       }
     }
@@ -568,10 +620,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
 
   const logEmpty = 'Moves will appear here in notation…';
 
-  // Match setup — opponent, side, difficulty, coach. Rendered in the left rail on
-  // desktop, and inline at the top of the panel on phone/tablet.
+  // Match setup — opponent, side, difficulty, coach. Lives inside the setup
+  // popover (opened from the summary chip) so it's minimized by default.
   const matchSetup = (
-    <div className="cc-card p-3 space-y-3">
+    <div className="space-y-3">
       {seed && (
         <div className="text-sm font-bold text-grass">▶ Continuing from your opening — play it out!</div>
       )}
@@ -659,18 +711,80 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     <MoveLog pairs={rows} empty={logEmpty} variant="sidebar" onSelect={setViewPly} selectedPly={selectedPly} />
   );
 
-  // Left rail: game setup + move log (a desktop column; inline on phone).
-  const rail = (
-    <div className="space-y-3">
-      {matchSetup}
-      <div className="max-h-[42vh] overflow-y-auto">{movesLog}</div>
+  // Left rail (desktop) / inline (phone): just the move log now.
+  const rail = <div className="max-h-[60vh] overflow-y-auto">{movesLog}</div>;
+
+  // Game setup is minimized behind a summary chip → popover.
+  const setupSummary = twoPlayer
+    ? '👥 2 Players'
+    : `${opponentType === 'maia' ? `🙂 MaiaBot ${humanRating}` : `🤖 StockBot · L${level}`} · ${
+        studentColor === 'w' ? '♔ White' : '♚ Black'
+      }${coach ? ' · 🎓 Coach' : ''}`;
+  const setupBar = (
+    <div className="relative">
+      <button
+        onClick={() => setSetupOpen((o) => !o)}
+        className="w-full cc-card px-3 py-2 flex items-center justify-between gap-2 text-sm hover:ring-1 hover:ring-gold/30"
+      >
+        <span className="font-bold text-frost truncate">{seed ? '▶ Continuing your opening' : setupSummary}</span>
+        <span className="text-frost-dim shrink-0">{setupOpen ? 'Close ▴' : 'Setup ▾'}</span>
+      </button>
+      {setupOpen && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setSetupOpen(false)} />
+          <div className="absolute z-30 left-0 right-0 mt-1 cc-card p-3 animate-pop">{matchSetup}</div>
+        </>
+      )}
+    </div>
+  );
+
+  // Inline Game Review (replaces the old overlay) — tap a row to scrub the board.
+  const reviewPanel = review && (
+    <div className="cc-card p-3">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-base font-extrabold text-gold">📋 Game Review</h2>
+        <button onClick={() => { setReview(null); goLive(); }} className="cc-icon-btn" aria-label="Close review">
+          <IconClose size={18} />
+        </button>
+      </div>
+      {review.running ? (
+        <div>
+          <div className="text-sm text-frost-dim mb-2">Reviewing… {review.done}/{review.total}</div>
+          <div className="h-1.5 rounded-full bg-edge overflow-hidden">
+            <div className="h-full bg-gold transition-all" style={{ width: `${Math.round((review.done / Math.max(1, review.total)) * 100)}%` }} />
+          </div>
+        </div>
+      ) : (
+        <>
+          {review.summary && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {Object.entries(review.summary).map(([k, n]) => (
+                <span key={k} className="cc-chip text-xs">{k}: {n}</span>
+              ))}
+            </div>
+          )}
+          <div className="text-[11px] text-frost-dim mb-1.5">Tap a move to see it on the board.</div>
+          <div className="space-y-1 max-h-[46vh] overflow-y-auto md:-mr-1 md:pr-1">
+            {review.rows.map((r, i) => (
+              <button
+                key={i}
+                onClick={() => setViewPly(r.ply)}
+                className={`w-full flex items-center gap-2 rounded-cc px-2.5 py-1.5 text-left ${selectedPly === r.ply ? 'ring-1 ring-gold/60 ' : ''}${r.v.kind === 'best' ? 'bg-grass/10' : r.v.kind === 'warn' ? 'bg-gold/10' : 'bg-surface'}`}
+              >
+                <span className="text-base w-6 text-center">{r.v.icon}</span>
+                <span className="font-bold text-frost w-16 shrink-0">{r.num}. {r.san}</span>
+                <span className={`text-sm ${r.v.kind === 'best' ? 'text-grass' : r.v.kind === 'warn' ? 'text-gold' : 'text-frost-dim'}`}>{r.v.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 
   const panel = (
     <div className="space-y-3">
-      {/* Rail inline below xl (xl shows it in the left rail). */}
-      <div className="xl:hidden">{rail}</div>
+      {setupBar}
 
       {/* Status + controls */}
       <div className="flex items-center justify-between gap-2">
@@ -712,13 +826,13 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
         </div>
       </div>
 
-      {!twoPlayer && history.length >= 2 && (
+      {!twoPlayer && history.length >= 2 && !review && (
         <button onClick={reviewGame} className="cc-btn cc-btn-secondary w-full py-2 text-sm">
           📋 Review game
         </button>
       )}
 
-      {feedback && (
+      {feedback && !review && (
         <div
           className={`rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold animate-pop ${
             feedback.kind === 'good'
@@ -730,8 +844,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
         </div>
       )}
 
-      {/* Move entry */}
-      {viewing ? (
+      {/* Review (inline) replaces the move entry while active. */}
+      {review ? (
+        reviewPanel
+      ) : viewing ? (
         <div className="flex items-center gap-2 rounded-cc-lg px-3 py-3 bg-gold/15 text-gold ring-1 ring-gold/40 animate-pop">
           <span className="text-sm md:text-base font-bold flex-1">
             👀 Reviewing {viewSan ? `move ${Math.ceil(viewPly / 2)}${viewPly % 2 ? '.' : '…'} ${viewSan}` : 'the start position'} — keypad paused.
@@ -743,18 +859,27 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       ) : !over ? (
         <>
           {coachActive && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               {coachNote ? (
-                <div
-                  className={`flex-1 rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold animate-pop ${
-                    coachNote.kind === 'best' || coachNote.kind === 'good'
-                      ? 'bg-grass/20 text-grass ring-1 ring-grass/40'
-                      : coachNote.kind === 'warn'
-                      ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
-                      : 'bg-surface text-frost-dim ring-1 ring-edge'
-                  }`}
-                >
-                  {coachNote.text}
+                <div className="flex-1 space-y-1">
+                  {coachNote.text && (
+                    <div
+                      className={`rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold animate-pop ${
+                        coachNote.kind === 'best' || coachNote.kind === 'good'
+                          ? 'bg-grass/20 text-grass ring-1 ring-grass/40'
+                          : coachNote.kind === 'warn'
+                          ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
+                          : 'bg-surface text-frost-dim ring-1 ring-edge'
+                      }`}
+                    >
+                      {coachNote.text}
+                    </div>
+                  )}
+                  {coachNote.threat && (
+                    <div className="rounded-cc-lg px-3 py-2 text-sm font-bold bg-gold/15 text-gold ring-1 ring-gold/40 animate-pop">
+                      👀 Watch out — {studentColor === 'w' ? 'Black' : 'White'} can play {coachNote.threat.san} ({coachNote.threat.name}). Have an answer ready!
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex-1 text-xs md:text-sm text-frost-dim">🎓 Coach is on — play a move and I’ll rate it.</div>
@@ -804,6 +929,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
           ↺ Play again
         </button>
       )}
+
+      {/* Move log inline below xl (xl shows it in the left rail). */}
+      <div className="xl:hidden">{rail}</div>
     </div>
   );
 
@@ -840,62 +968,6 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
         </div>
       )}
 
-      {review && (
-        <div className="cc-scrim items-end sm:items-center p-3" onClick={() => setReview(null)}>
-          <div className="cc-sheet p-4 animate-pop" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-extrabold text-gold flex items-center gap-2">📋 Game Review</h2>
-              <button onClick={() => setReview(null)} className="cc-icon-btn" aria-label="Close">
-                <IconClose size={20} />
-              </button>
-            </div>
-
-            {review.running ? (
-              <div>
-                <div className="text-sm text-frost-dim mb-2">Reviewing your moves… {review.done}/{review.total}</div>
-                <div className="h-1.5 rounded-full bg-edge overflow-hidden">
-                  <div
-                    className="h-full bg-gold transition-all"
-                    style={{ width: `${Math.round((review.done / Math.max(1, review.total)) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <>
-                {review.summary && (
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {Object.entries(review.summary).map(([k, n]) => (
-                      <span key={k} className="cc-chip text-xs">
-                        {k}: {n}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div className="space-y-1 max-h-[55vh] overflow-y-auto md:-mr-1 md:pr-1">
-                  {review.rows.map((r, i) => (
-                    <div
-                      key={i}
-                      className={`flex items-center gap-2 rounded-cc px-2.5 py-1.5 ${
-                        r.v.kind === 'best' ? 'bg-grass/10' : r.v.kind === 'warn' ? 'bg-gold/10' : 'bg-surface'
-                      }`}
-                    >
-                      <span className="text-base w-6 text-center">{r.v.icon}</span>
-                      <span className="font-bold text-frost w-16 shrink-0">{r.num}. {r.san}</span>
-                      <span
-                        className={`text-sm ${
-                          r.v.kind === 'best' ? 'text-grass' : r.v.kind === 'warn' ? 'text-gold' : 'text-frost-dim'
-                        }`}
-                      >
-                        {r.v.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </>
   );
 }
