@@ -86,12 +86,14 @@ export default function ChessBoard({
   const boardRef = useRef(null);
   const downRef = useRef(null);
   const drawRef = useRef(null);
+  const userMoveRef = useRef(null); // "fromto" of a move the user just made on the board (skip its slide animation)
 
   // A move was made / position changed: clear selection AND annotations.
   useEffect(() => {
     setSelected(null);
     setUserArrows([]);
     setUserCircles([]);
+    userMoveRef.current = null; // consumed by this render's slide check; reset for the next move
   }, [fen]);
 
   const { cells, byName } = useMemo(() => {
@@ -164,6 +166,7 @@ export default function ChessBoard({
     if (selected) {
       if (name === selected) return setSelected(null);
       if (targets.includes(name)) {
+        userMoveRef.current = `${selected}${name}`;
         onMove && onMove(selected, name);
         return setSelected(null);
       }
@@ -243,7 +246,10 @@ export default function ChessBoard({
       const from = drag.from;
       setDrag(null);
       try { boardRef.current.releasePointerCapture(e.pointerId); } catch {}
-      if (up && up !== from && legalTargets(fen, from).includes(up)) onMove && onMove(from, up);
+      if (up && up !== from && legalTargets(fen, from).includes(up)) {
+        userMoveRef.current = `${from}${up}`;
+        onMove && onMove(from, up);
+      }
       setSelected(null);
       return;
     }
@@ -295,8 +301,13 @@ export default function ChessBoard({
                     {isHi && <div className="absolute inset-0 ring-4 ring-inset ring-grass/80 pointer-events-none" />}
                     {isSel && <div className="absolute inset-0 ring-4 ring-inset ring-frost pointer-events-none" />}
                     {sq.piece && !isDragging && (() => {
-                      // The piece that just landed slides in from its origin.
-                      const isMoved = lastMove && sq.name === lastMove.to;
+                      // The piece that just landed slides in from its origin —
+                      // but NOT when the user dragged/tapped it there themselves
+                      // (it should stay where they dropped it, no re-slide).
+                      const isMoved =
+                        lastMove &&
+                        sq.name === lastMove.to &&
+                        userMoveRef.current !== `${lastMove.from}${lastMove.to}`;
                       let slide = {};
                       if (isMoved) {
                         const f = squareToXY(lastMove.from, orientation);
