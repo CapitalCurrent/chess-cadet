@@ -183,9 +183,10 @@ export default function App() {
           <div className="flex items-center gap-3">
             <Logo version={VERSION} />
 
-            {/* Modes — desktop only (mobile uses the bottom tab bar) */}
+            {/* Modes — desktop only (mobile uses the bottom tab bar). Hidden on
+                Home, which is a launcher: its cards ARE the navigation. */}
             <div className="hidden md:block flex-1 max-w-md mx-auto">
-              <Segmented options={MODES} value={navValue} onChange={pickMode} />
+              {mode !== 'home' && <Segmented options={MODES} value={navValue} onChange={pickMode} />}
             </div>
 
             {/* Spacer keeps tools right-aligned on mobile */}
@@ -193,16 +194,20 @@ export default function App() {
 
             {/* Tools */}
             <div className="flex items-center gap-1 shrink-0">
-              <button
-                className="cc-icon-btn hidden md:inline-flex"
-                title={focusBoard ? 'Exit big board' : 'Maximize board'}
-                onClick={() => setFocusBoard((f) => !f)}
-              >
-                {focusBoard ? <IconMinimize /> : <IconMaximize />}
-              </button>
-              <button className="cc-icon-btn" title="Restart this line" onClick={() => setRestart((r) => r + 1)}>
-                <IconRestart />
-              </button>
+              {mode !== 'home' && (
+                <button
+                  className="cc-icon-btn hidden md:inline-flex"
+                  title={focusBoard ? 'Exit big board' : 'Maximize board'}
+                  onClick={() => setFocusBoard((f) => !f)}
+                >
+                  {focusBoard ? <IconMinimize /> : <IconMaximize />}
+                </button>
+              )}
+              {mode !== 'home' && (
+                <button className="cc-icon-btn" title="Restart this line" onClick={() => setRestart((r) => r + 1)}>
+                  <IconRestart />
+                </button>
+              )}
               <button className="cc-icon-btn" title="Notation cheat sheet" onClick={() => setGuideOpen(true)}>
                 <IconGuide />
               </button>
@@ -218,7 +223,13 @@ export default function App() {
       {/* Trainer / game (key forces a clean remount on restart / mode change) */}
       <main className="pt-4">
         {mode === 'home' ? (
-          <HomePage onLearn={() => pickMode('learn')} onPlay={() => pickMode('play')} />
+          <HomePage
+            opening={opening}
+            activeLine={activeLine}
+            onContinue={() => { setLearnSubject('openings'); setMode('learn'); setRestart((r) => r + 1); }}
+            onLearn={() => pickMode('learn')}
+            onPlay={() => pickMode('play')}
+          />
         ) : mode === 'play' ? (
           <FreePlay
             key={`play-${restart}`}
@@ -267,7 +278,7 @@ export default function App() {
       </main>
 
       {/* Mobile primary navigation */}
-      <BottomTabBar tabs={MODES} value={navValue} onChange={pickMode} />
+      {mode !== 'home' && <BottomTabBar tabs={MODES} value={navValue} onChange={pickMode} />}
 
       <Settings
         open={settingsOpen}
