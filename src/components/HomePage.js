@@ -2,9 +2,9 @@ import React from 'react';
 import { IconLearn, IconPlay } from './icons';
 
 // The landing screen — shown on open so the app greets you with CHOICES instead
-// of dropping straight into a lesson. Two clear paths for a 7-year-old: keep
-// learning (resumes the current course/line) or play a game.
-export default function HomePage({ opening, activeLine, onLearn, onPlay }) {
+// of dropping straight into a lesson. Learn opens the subject catalog (openings,
+// notation, …); Play starts a game.
+export default function HomePage({ onLearn, onPlay }) {
   const Card = ({ onClick, icon, bg, title, subtitle }) => (
     <button onClick={onClick} className="cc-card cc-reveal w-full p-4 md:p-5 flex items-center gap-4 text-left">
       <span
@@ -22,10 +22,10 @@ export default function HomePage({ opening, activeLine, onLearn, onPlay }) {
   );
 
   return (
-    <div className="w-full max-w-md md:max-w-2xl mx-auto px-4 py-8 md:py-12">
+    <div className="w-full max-w-md md:max-w-2xl mx-auto px-4 py-8 md:min-h-[68vh] md:flex md:flex-col md:justify-center">
       <div className="text-center mb-7">
         <div className="text-2xl md:text-4xl font-extrabold text-frost font-round">What do you want to do?</div>
-        <div className="text-sm md:text-base text-frost-dim mt-1.5">Learn a chess opening, or play a game.</div>
+        <div className="text-sm md:text-base text-frost-dim mt-1.5">Pick a lesson, or play a game.</div>
       </div>
 
       <div className="space-y-3 md:space-y-4">
@@ -33,8 +33,8 @@ export default function HomePage({ opening, activeLine, onLearn, onPlay }) {
           onClick={onLearn}
           icon={<IconLearn size={28} />}
           bg="linear-gradient(180deg,#8fdb9b 0%,#5bbf6e 100%)"
-          title="Learn openings"
-          subtitle={`Continue: ${opening.icon} ${opening.name}${activeLine ? ` · ${activeLine.name}` : ''}`}
+          title="Learn"
+          subtitle="Openings, notation & more"
         />
         <Card
           onClick={onPlay}

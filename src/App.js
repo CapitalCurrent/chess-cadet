@@ -218,12 +218,7 @@ export default function App() {
       {/* Trainer / game (key forces a clean remount on restart / mode change) */}
       <main className="pt-4">
         {mode === 'home' ? (
-          <HomePage
-            opening={opening}
-            activeLine={activeLine}
-            onLearn={() => pickMode('learn')}
-            onPlay={() => pickMode('play')}
-          />
+          <HomePage onLearn={() => pickMode('learn')} onPlay={() => pickMode('play')} />
         ) : mode === 'play' ? (
           <FreePlay
             key={`play-${restart}`}
