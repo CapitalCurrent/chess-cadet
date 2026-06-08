@@ -5,6 +5,7 @@ import { getBoardTheme } from './pieces/boardThemes';
 import { useProgress } from './state/progress';
 import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
+import HomePage from './components/HomePage';
 import Settings from './components/Settings';
 import NotationGuide from './components/NotationGuide';
 import Logo from './components/nav/Logo';
@@ -13,6 +14,7 @@ import OpeningPicker from './components/nav/OpeningPicker';
 import LinesPicker from './components/nav/LinesPicker';
 import BottomTabBar from './components/nav/BottomTabBar';
 import {
+  IconHome,
   IconLearn,
   IconPlay,
   IconSettings,
@@ -27,6 +29,7 @@ import { VERSION } from './version';
 // Top-level destinations. Drill is NOT a destination — it's the second half of
 // learning a line, reached from the course flow (left column + lesson cards).
 const MODES = [
+  { id: 'home', label: 'Home', icon: <IconHome size={22} /> },
   { id: 'learn', label: 'Learn', icon: <IconLearn size={22} /> },
   { id: 'play', label: 'Play', icon: <IconPlay size={22} /> },
 ];
@@ -36,7 +39,7 @@ export default function App() {
   // reward bar was removed from the chrome; reinstate intentionally later).
   const { progress, rewardMove, breakStreak, finishLine, recordDrillRun, learnLine, masterLine } = useProgress();
   const [openingId, setOpeningId] = useState(OPENINGS[0].id);
-  const [mode, setMode] = useState('learn'); // learn first, then drill
+  const [mode, setMode] = useState('home'); // open on the Home landing (choices), not straight into a lesson
   const [restart, setRestart] = useState(0);
   const [activeLineId, setActiveLineId] = useState(null); // current Progressive Line (null = Mix)
   const [playSeed, setPlaySeed] = useState(null); // { moves, color } for Continue vs Computer
@@ -93,8 +96,8 @@ export default function App() {
     setActiveLineId(defaultLineId(getOpening(openingId)));
   }, [openingId]); // eslint-disable-line react-hooks/exhaustive-deps
   const activeLine = getLines(opening).find((l) => l.id === activeLineId) || null;
-  // Top nav shows Learn vs Play; drilling a line is part of the Learn area.
-  const navValue = mode === 'play' ? 'play' : 'learn';
+  // Top nav: Home / Learn / Play; drilling a line is part of the Learn area.
+  const navValue = mode === 'home' ? 'home' : mode === 'play' ? 'play' : 'learn';
 
   // Tapping the Play tab directly = a normal game from the start (clear any seed).
   const pickMode = (id) => { if (id === 'play') setPlaySeed(null); setMode(id); setRestart((r) => r + 1); };
@@ -204,7 +207,14 @@ export default function App() {
 
       {/* Trainer / game (key forces a clean remount on restart / mode change) */}
       <main className="pt-4">
-        {mode === 'play' ? (
+        {mode === 'home' ? (
+          <HomePage
+            opening={opening}
+            activeLine={activeLine}
+            onLearn={() => pickMode('learn')}
+            onPlay={() => pickMode('play')}
+          />
+        ) : mode === 'play' ? (
           <FreePlay
             key={`play-${restart}`}
             pieceSet={pieceSet}
