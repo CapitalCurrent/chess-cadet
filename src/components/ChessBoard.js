@@ -6,6 +6,14 @@ import { playMove, playCapture, playCheck, playCheckmate } from '../utils/sounds
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
+// Hex -> rgba, for translucent (glass) board squares.
+function withAlpha(hex, a) {
+  const h = (hex || '#000').replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const n = parseInt(full, 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+}
+
 // Map a square ("e4") to its center in an 8x8 SVG viewBox, honoring orientation.
 function squareToXY(square, orientation) {
   const f = FILES.indexOf(square[0]);
@@ -73,10 +81,12 @@ export default function ChessBoard({
   const set = pieceSet || getPieceSet('classic');
   const theme = boardTheme || getBoardTheme('wood');
 
+  // Outline for legibility + a deeper soft shadow so pieces sit grounded on the
+  // glass board (Fluent depth) rather than looking pasted on.
   const shadowFor = (color) =>
     color === 'w'
-      ? 'drop-shadow(0 0 1.1px rgba(0,0,0,0.7)) drop-shadow(0 1px 1px rgba(0,0,0,0.35))'
-      : 'drop-shadow(0 0 1.3px rgba(255,255,255,0.65)) drop-shadow(0 1px 1px rgba(0,0,0,0.45))';
+      ? 'drop-shadow(0 0 1.1px rgba(0,0,0,0.7)) drop-shadow(0 3px 4px rgba(0,0,0,0.5))'
+      : 'drop-shadow(0 0 1.3px rgba(255,255,255,0.65)) drop-shadow(0 3px 4px rgba(0,0,0,0.55))';
 
   const [selected, setSelected] = useState(null);
   const [drag, setDrag] = useState(null);
@@ -285,7 +295,15 @@ export default function ChessBoard({
             onPointerUp={onPointerUp}
             onContextMenu={(e) => e.preventDefault()}
           >
-            <div className="grid grid-cols-8 rounded-lg overflow-hidden shadow-2xl ring-2 ring-edge">
+            <div
+              className="grid grid-cols-8 rounded-lg overflow-hidden ring-2 ring-edge"
+              style={{
+                backdropFilter: 'blur(9px) saturate(120%)',
+                WebkitBackdropFilter: 'blur(9px) saturate(120%)',
+                boxShadow:
+                  '0 18px 50px -12px rgba(0,0,0,0.7), 0 0 64px -16px rgb(var(--glow) / 0.5)',
+              }}
+            >
               {ordered.map((sq) => {
                 const isLast = lastMove && (sq.name === lastMove.from || sq.name === lastMove.to);
                 const isSel = sq.name === selected;
@@ -295,7 +313,7 @@ export default function ChessBoard({
                 return (
                   <div
                     key={sq.name}
-                    style={{ containerType: 'inline-size', backgroundColor: sq.light ? theme.light : theme.dark }}
+                    style={{ containerType: 'inline-size', backgroundColor: withAlpha(sq.light ? theme.light : theme.dark, sq.light ? 0.85 : 0.55) }}
                     className={`relative aspect-square flex items-center justify-center ${movableColor ? 'cursor-grab' : ''}`}
                   >
                     {isLast && <div className="absolute inset-0 bg-gold/35 pointer-events-none" />}
