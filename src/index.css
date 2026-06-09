@@ -61,18 +61,20 @@ html[data-theme='neon'] {
 }
 
 html[data-theme='silver'] {
-  --bg: 10 11 13;
-  --bg-2: 5 5 6;
-  --surface: 22 24 29;
-  --surface-2: 32 35 43;
-  --edge: 216 221 230;
-  --edge-soft: rgba(255, 255, 255, 0.09);
-  --frost: 242 244 247;
-  --frost-dim: 169 176 188;
-  --gold: 216 221 230;      /* brushed silver */
-  --gold-deep: 170 177 189;
-  --glow: 231 167 79;       /* warm torchlight */
-  --ink: 11 12 14;
+  /* Warmed: candlelit metal — warm-tinted darks + warm-silver accent + amber glow
+     so it reads distinct from obsidian's cool cyan. (Revert this block if too warm.) */
+  --bg: 14 12 10;
+  --bg-2: 8 7 5;
+  --surface: 28 25 21;
+  --surface-2: 39 35 29;
+  --edge: 224 216 204;
+  --edge-soft: rgba(255, 244, 226, 0.10);
+  --frost: 246 243 238;
+  --frost-dim: 182 174 162;
+  --gold: 226 221 210;      /* warm brushed silver */
+  --gold-deep: 184 177 164;
+  --glow: 236 170 78;       /* torch amber */
+  --ink: 14 12 9;
   --font-head: 'Baloo 2', 'Segoe UI', system-ui, sans-serif;
 }
 
@@ -150,8 +152,12 @@ html[data-theme='obsidian'] body::after {
 }
 /* Silver — warm dot grid (torch amber), softer + premium. */
 html[data-theme='silver'] body::after {
-  background-image: radial-gradient(rgb(var(--glow) / 0.08) 1.2px, transparent 1.6px);
+  background-image: radial-gradient(rgb(var(--glow) / 0.12) 1.2px, transparent 1.6px);
   background-size: 28px 28px;
+}
+/* Silver — a more present warm glow pool (candlelit feel). */
+html[data-theme='silver'] body::before {
+  background: radial-gradient(1100px 780px at 50% 20%, rgb(var(--glow) / 0.08), transparent 64%);
 }
 
 button,
