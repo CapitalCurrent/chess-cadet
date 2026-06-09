@@ -11,7 +11,7 @@ import React from 'react';
 export default function MoveLog({ pairs, empty, variant = 'inline', onSelect, selectedPly }) {
   if (!pairs.length) {
     return (
-      <div className="cc-card p-2.5 text-sm">
+      <div className="cc-glass p-2.5 text-sm">
         <span className="text-frost-dim/80">{empty}</span>
       </div>
     );
@@ -40,7 +40,7 @@ export default function MoveLog({ pairs, empty, variant = 'inline', onSelect, se
 
   if (variant === 'sidebar') {
     return (
-      <div className="cc-card p-2 text-sm">
+      <div className="cc-glass p-2 text-sm">
         <div className="text-[10px] uppercase tracking-wide text-gold/50 font-bold px-1 pb-1">Moves</div>
         <div>
           {pairs.map((p) => (
@@ -56,7 +56,7 @@ export default function MoveLog({ pairs, empty, variant = 'inline', onSelect, se
   }
 
   return (
-    <div className="cc-card p-2.5 text-sm max-h-24 overflow-y-auto">
+    <div className="cc-glass p-2.5 text-sm max-h-24 overflow-y-auto">
       <div className="flex flex-wrap gap-x-3 gap-y-0.5 items-center">
         {pairs.map((p) => (
           <span key={p.n} className="text-frost/90 inline-flex items-center gap-1">

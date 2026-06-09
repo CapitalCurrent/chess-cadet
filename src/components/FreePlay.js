@@ -762,7 +762,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     <div className="relative">
       <button
         onClick={() => setSetupOpen((o) => !o)}
-        className="w-full cc-card cc-reveal px-3 py-2.5 flex items-center justify-between gap-2 text-sm"
+        className="w-full cc-glass cc-reveal px-3 py-2.5 flex items-center justify-between gap-2 text-sm"
       >
         <span className="font-bold text-frost truncate">{seed ? '▶ Continuing your opening' : setupSummary}</span>
         <span className="text-frost-dim shrink-0 flex items-center gap-1 text-xs font-bold">
@@ -786,7 +786,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
 
   // Inline Game Review (replaces the old overlay) — tap a row to scrub the board.
   const reviewPanel = review && (
-    <div className="cc-card p-3">
+    <div className="cc-glass p-3">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-base font-extrabold text-gold">📋 Game Review</h2>
         <button onClick={() => { setReview(null); goLive(); }} className="cc-icon-btn" aria-label="Close review">

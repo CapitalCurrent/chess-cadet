@@ -61,20 +61,20 @@ html[data-theme='neon'] {
 }
 
 html[data-theme='silver'] {
-  /* Warmed: candlelit metal — warm-tinted darks + warm-silver accent + amber glow
-     so it reads distinct from obsidian's cool cyan. (Revert this block if too warm.) */
-  --bg: 14 12 10;
-  --bg-2: 8 7 5;
-  --surface: 28 25 21;
-  --surface-2: 39 35 29;
-  --edge: 224 216 204;
-  --edge-soft: rgba(255, 244, 226, 0.10);
-  --frost: 246 243 238;
-  --frost-dim: 182 174 162;
-  --gold: 226 221 210;      /* warm brushed silver */
-  --gold-deep: 184 177 164;
-  --glow: 236 170 78;       /* torch amber */
-  --ink: 14 12 9;
+  /* Neutral/cool brushed-silver metal; warmth comes ONLY from a subtle amber glow
+     (candlelit hint) so it stays distinct from obsidian's cyan without an orange cast. */
+  --bg: 11 11 12;
+  --bg-2: 6 6 6;
+  --surface: 23 24 26;
+  --surface-2: 33 34 37;
+  --edge: 214 218 224;
+  --edge-soft: rgba(255, 255, 255, 0.09);
+  --frost: 243 244 247;
+  --frost-dim: 173 178 186;
+  --gold: 218 221 228;      /* cool brushed silver */
+  --gold-deep: 172 177 187;
+  --glow: 232 172 84;       /* amber — the only warm element */
+  --ink: 11 12 13;
   --font-head: 'Baloo 2', 'Segoe UI', system-ui, sans-serif;
 }
 
@@ -150,14 +150,14 @@ html[data-theme='obsidian'] body::after {
     repeating-linear-gradient(45deg, rgb(var(--glow) / 0.05) 0 1px, transparent 1px 42px),
     repeating-linear-gradient(-45deg, rgb(var(--glow) / 0.05) 0 1px, transparent 1px 42px);
 }
-/* Silver — warm dot grid (torch amber), softer + premium. */
+/* Silver — subtle warm dot grid (torch amber), softer + premium. */
 html[data-theme='silver'] body::after {
-  background-image: radial-gradient(rgb(var(--glow) / 0.12) 1.2px, transparent 1.6px);
+  background-image: radial-gradient(rgb(var(--glow) / 0.08) 1.2px, transparent 1.6px);
   background-size: 28px 28px;
 }
-/* Silver — a more present warm glow pool (candlelit feel). */
+/* Silver — a faint warm glow pool (candlelit hint, not an orange wash). */
 html[data-theme='silver'] body::before {
-  background: radial-gradient(1100px 780px at 50% 20%, rgb(var(--glow) / 0.08), transparent 64%);
+  background: radial-gradient(1100px 780px at 50% 20%, rgb(var(--glow) / 0.05), transparent 64%);
 }
 
 button,
