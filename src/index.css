@@ -106,24 +106,20 @@ body {
    slowly drift (animated). The glow color follows the theme (--glow). */
 body {
   background:
-    radial-gradient(1100px 620px at 72% -8%, rgb(var(--glow) / 0.10), transparent 60%),
-    radial-gradient(820px 520px at 8% 104%, rgb(var(--glow) / 0.07), transparent 55%),
+    radial-gradient(1600px 1000px at 50% -25%, rgb(var(--glow) / 0.05), transparent 62%),
     linear-gradient(180deg, rgb(var(--bg)) 0%, rgb(var(--bg-2)) 100%);
   background-attachment: fixed;
   position: relative;
 }
-/* Drifting ambient light — a single soft pool that breathes/moves behind content.
-   Pointer-events none, sits at the very back. */
+/* One large, soft, centered glow that breathes — even ambient light, not blotches. */
 body::before {
   content: '';
   position: fixed;
-  inset: -20% -10% -10% -10%;
+  inset: -15%;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(620px 420px at 30% 20%, rgb(var(--glow) / 0.06), transparent 60%),
-    radial-gradient(560px 380px at 80% 70%, rgb(var(--glow) / 0.05), transparent 60%);
-  animation: ambientDrift 24s ease-in-out infinite alternate;
+  background: radial-gradient(1000px 700px at 50% 26%, rgb(var(--glow) / 0.035), transparent 66%);
+  animation: ambientDrift 26s ease-in-out infinite alternate;
 }
 /* Procedural depth texture, per theme — sits under the glow + content (and under
    the acrylic surfaces, Fluent-style). Neon = a faded Tron grid; silver/obsidian

@@ -12,29 +12,19 @@ export default function BackdropEmblem() {
       className="fixed inset-0 -z-10 grid place-items-center overflow-hidden pointer-events-none"
       aria-hidden="true"
     >
-      <div className="relative grid place-items-center" style={{ marginTop: '2vh' }}>
-        {/* Diffuse theme glow behind the metal (breathes slowly). */}
-        <div
-          className="absolute rounded-full animate-aura"
-          style={{
-            width: 'min(86vw, 600px)',
-            height: 'min(86vw, 600px)',
-            background: 'radial-gradient(closest-side, rgb(var(--glow) / 0.16), transparent 70%)',
-            filter: 'blur(26px)',
-          }}
-        />
-        <img
-          src={`${process.env.PUBLIC_URL}/textures/dragon-shield.png`}
-          alt=""
-          draggable={false}
-          className="relative"
-          style={{
-            width: 'min(72vw, 440px)',
-            opacity: 0.5,
-            filter: 'brightness(0.68) contrast(1.05) drop-shadow(0 18px 40px rgba(0,0,0,0.7))',
-          }}
-        />
-      </div>
+      {/* Dark metal shield emerging from the black — no glow behind it (that was
+          washing the center grey); just a deep grounding shadow. */}
+      <img
+        src={`${process.env.PUBLIC_URL}/textures/dragon-shield.png`}
+        alt=""
+        draggable={false}
+        style={{
+          width: 'min(66vw, 400px)',
+          marginTop: '2vh',
+          opacity: 0.4,
+          filter: 'brightness(0.5) contrast(1.12) drop-shadow(0 16px 40px rgba(0,0,0,0.75))',
+        }}
+      />
     </div>
   );
 }
