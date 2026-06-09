@@ -338,7 +338,7 @@ html[data-theme='neon'] .font-round {
   border-color: rgba(0, 0, 0, 0.2);
 }
 .cc-key-dark {
-  background: linear-gradient(180deg, rgb(var(--surface-2)) 0%, rgb(var(--surface)) 100%);
+  background: rgb(var(--surface-2) / 0.55);
   color: rgb(var(--frost));
 }
 .cc-key-coral {

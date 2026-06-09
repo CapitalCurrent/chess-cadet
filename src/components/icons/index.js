@@ -200,6 +200,22 @@ export const IconLockOpen = (p) => (
   </Svg>
 );
 
+// Pin — "this line"
+export const IconPin = (p) => (
+  <Svg {...p}>
+    <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+    <circle cx="12" cy="10" r="3" />
+  </Svg>
+);
+
+// Compass — "your plan"
+export const IconCompass = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="10" />
+    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+  </Svg>
+);
+
 // Pawn — "how the pieces move" / basics
 export const IconPawn = (p) => (
   <Svg {...p}>

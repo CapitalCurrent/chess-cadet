@@ -6,7 +6,7 @@ import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
 import { newGame, applySan, evaluateInput, coreSan, tryMove, notationHint } from '../engine/chessEngine';
 import { moverAt, isLineMastered, isLineLearned, getLines } from '../data/openings';
-import { IconLearn, IconDrill } from './icons';
+import { IconLearn, IconDrill, IconPin, IconCompass } from './icons';
 
 const PIECE_WORDS = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight' };
 
@@ -399,11 +399,11 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       )}
       {activeLine && (activeLine.about || activeLine.strategy) && (
         <div className="pt-2 mt-1 border-t border-white/10 space-y-1.5">
-          <div className="text-xs uppercase tracking-wide text-gold/70 font-bold">📍 This line · {activeLine.name}</div>
+          <div className="text-xs uppercase tracking-wide text-gold/70 font-bold flex items-center gap-1.5"><IconPin size={12} /> This line · {activeLine.name}</div>
           {activeLine.about && <div className="text-sm text-frost/90 leading-snug">{activeLine.about}</div>}
           {activeLine.strategy && (
             <div className="text-sm text-grass/90 leading-snug">
-              <b className="text-grass">🧭 Your plan:</b> {activeLine.strategy}
+              <b className="text-grass inline-flex items-center gap-1 align-middle"><IconCompass size={13} /> Your plan:</b> {activeLine.strategy}
             </div>
           )}
         </div>
@@ -474,7 +474,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       {drillGate ? (
         /* A line must be learned once before it can be drilled. */
         <div className="cc-card p-4 md:p-5 text-center animate-pop">
-          <div className="text-lg md:text-2xl font-extrabold text-gold">📖 Learn this line first</div>
+          <div className="text-lg md:text-2xl font-extrabold text-gold flex items-center justify-center gap-2"><IconLearn size={22} /> Learn this line first</div>
           <p className="text-sm md:text-base text-frost-dim mt-1.5">
             Go through the <b className="text-frost">{lineName}</b> in Learn once — then you can drill it to master it.
           </p>
@@ -541,8 +541,8 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
       ) : (
         <div className="cc-card p-3 md:p-4">
           {enteredOpening && (
-            <div className="mb-2 rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold bg-gold/15 text-gold ring-1 ring-gold/40 animate-pop">
-              🎯 This is the {enteredOpening}! Now find your plan.
+            <div className="mb-2 rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold bg-gold/15 text-gold ring-1 ring-gold/40 animate-pop flex items-center gap-2">
+              <IconDrill size={16} className="shrink-0" /> This is the {enteredOpening}! Now find your plan.
             </div>
           )}
           <div className="text-xs md:text-sm uppercase tracking-wide text-gold/50 mb-1.5">

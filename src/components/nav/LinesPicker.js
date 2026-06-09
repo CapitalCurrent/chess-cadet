@@ -1,5 +1,6 @@
 import React from 'react';
 import { linesWithStatus } from '../../data/openings';
+import { IconLearn, IconDrill } from '../icons';
 
 // The Progressive-Lines picker — the "branch picker" that GROWS as she learns.
 // It shows only the lines she's unlocked (mastered ✅ + the current one ▶), hides
@@ -44,8 +45,8 @@ export default function LinesPicker({ opening, progress, activeLineId, mode, onP
                   <span className="block font-bold truncate">{l.name}</span>
                   {l.about && <span className="block text-xs text-frost-dim font-normal leading-snug mt-0.5">{l.about}</span>}
                 </span>
-                <span className={`text-xs shrink-0 font-bold ${active ? 'text-gold' : l.mastered ? 'text-grass' : 'text-gold/70'}`}>
-                  {active ? (mode === 'drill' ? '🎯 Drill' : '📖 Lesson') : l.mastered ? 'Mastered' : 'Learn me'}
+                <span className={`text-xs shrink-0 font-bold inline-flex items-center gap-1 ${active ? 'text-gold' : l.mastered ? 'text-grass' : 'text-gold/70'}`}>
+                  {active ? (mode === 'drill' ? <><IconDrill size={12} /> Drill</> : <><IconLearn size={12} /> Lesson</>) : l.mastered ? 'Mastered' : 'Learn me'}
                 </span>
               </button>
 
@@ -54,7 +55,7 @@ export default function LinesPicker({ opening, progress, activeLineId, mode, onP
                   {!l.learned ? (
                     <>
                       <div className="text-xs text-frost-dim leading-snug">
-                        📖 <b className="text-gold">Learn it first</b> — step through it once, then drill it clean to master it.
+                        <b className="text-gold">Learn it first</b> — step through it once, then drill it clean to master it.
                       </div>
                       <button disabled className="cc-btn cc-btn-secondary w-full py-2 text-xs opacity-50">
                         🔒 Drilling unlocks after you learn it
@@ -62,7 +63,7 @@ export default function LinesPicker({ opening, progress, activeLineId, mode, onP
                     </>
                   ) : mode === 'drill' ? (
                     <button onClick={() => onPick(l.id)} className="cc-btn cc-btn-secondary w-full py-2 text-xs">
-                      📖 Back to Learn
+                      <IconLearn size={13} /> Back to Learn
                     </button>
                   ) : (
                     <>
@@ -70,11 +71,11 @@ export default function LinesPicker({ opening, progress, activeLineId, mode, onP
                         {l.mastered ? (
                           <>✅ Mastered — drill again anytime to stay sharp.</>
                         ) : (
-                          <>🎯 <b className="text-gold">To master:</b> drill it with <b>no hints &amp; no mistakes</b> — that unlocks the next line.</>
+                          <><b className="text-gold">To master:</b> drill it with <b>no hints &amp; no mistakes</b> — that unlocks the next line.</>
                         )}
                       </div>
                       <button onClick={() => onDrill && onDrill(l.id)} className="cc-btn cc-btn-primary w-full py-2 text-xs">
-                        🎯 Drill it{l.mastered ? ' again' : ' to master'}
+                        <IconDrill size={13} /> Drill it{l.mastered ? ' again' : ' to master'}
                       </button>
                     </>
                   )}

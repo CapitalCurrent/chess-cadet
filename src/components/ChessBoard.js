@@ -275,7 +275,7 @@ export default function ChessBoard({
   return (
     <div className="select-none inline-block">
       <div className="flex">
-        <div className="flex flex-col justify-around pr-1 text-gold/80 font-bold text-sm">
+        <div className="flex flex-col justify-around pr-1 text-frost-dim/70 font-bold text-sm">
           {rankLabels.map((r) => (
             <div key={r} className="h-[12.5%] flex items-center">{r}</div>
           ))}
@@ -391,7 +391,7 @@ export default function ChessBoard({
             )}
           </div>
 
-          <div className="grid grid-cols-8 pt-1 text-gold/80 font-bold text-sm">
+          <div className="grid grid-cols-8 pt-1 text-frost-dim/70 font-bold text-sm">
             {fileLabels.map((f) => (
               <div key={f} className="text-center">{f}</div>
             ))}
