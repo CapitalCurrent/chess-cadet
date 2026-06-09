@@ -18,8 +18,8 @@ export default function BackdropEmblem() {
         src={`${process.env.PUBLIC_URL}/textures/dragon-shield.png`}
         alt=""
         draggable={false}
+        className="backdrop-shield"
         style={{
-          width: 'min(66vw, 400px)',
           marginTop: '2vh',
           opacity: 0.4,
           filter: 'brightness(0.5) contrast(1.12) drop-shadow(0 16px 40px rgba(0,0,0,0.75))',

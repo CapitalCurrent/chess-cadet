@@ -491,6 +491,12 @@ html[data-theme='neon'] .font-round {
   animation: floatUp 0.3s ease-out both;
 }
 
+/* Backdrop dragon shield — grows on larger screens so it fills the space. */
+.backdrop-shield { width: min(74vw, 380px); }
+@media (min-width: 768px) { .backdrop-shield { width: min(64vw, 560px); } }
+@media (min-width: 1280px) { .backdrop-shield { width: min(52vw, 780px); } }
+@media (min-width: 1700px) { .backdrop-shield { width: min(46vw, 900px); } }
+
 /* Gentle idle bob — for the Home hero mascot. */
 @keyframes bob {
   0%, 100% { transform: translateY(0); }
