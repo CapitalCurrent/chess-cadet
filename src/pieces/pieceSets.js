@@ -1,4 +1,5 @@
 import React from 'react';
+import { renderSvgDragon } from './svgDragonSet';
 
 // Piece sets. Each piece is an <img> from public/pieces/<dir>/<color><TYPE>.<ext>
 // (e.g. cburnett/wN.svg). Works with SVG *or* transparent PNG, so Grok-generated
@@ -44,12 +45,24 @@ const SETS = [
   // like the side-profile knight. public/pieces/dragon-pawn/*.png
   { id: 'dragons-bold', name: 'Dragons', dir: 'dragons-bold', ext: 'png',
     overrides: { p: { dir: 'dragon-pawn', ext: 'png' } } },
+
+  // --- Clarity experiments (compare on the board, keep the winners) ----------
+  // Option 1: code-drawn bold vector set — crisp + maximally differentiated.
+  { id: 'dragons-svg', name: 'Dragon Bold', svg: true },
+  // Option 3: clean traditional silhouettes + the ornate dragon knight signature.
+  { id: 'dragons-clear', name: 'Dragon Clear', dir: 'cburnett', ext: 'svg',
+    overrides: { n: { dir: 'dragon-knight-ornate', ext: 'png' } } },
+  // Option 4: the ornate dragon set with the flashier Grok dragon-knight swapped in.
+  { id: 'dragons-ornate', name: 'Dragon Ornate', dir: 'dragons-bold', ext: 'png',
+    overrides: { p: { dir: 'dragon-pawn', ext: 'png' }, n: { dir: 'dragon-knight-ornate', ext: 'png' } } },
 ];
 
 export const PIECE_SETS = SETS.map((s) => ({
   ...s,
-  previewSrc: pieceSrc(s, 'w', 'n'), // white knight = the set thumbnail
-  render: (color, type) => <PieceImg src={pieceSrc(s, color, type)} flip={s.flipPawns && type === 'p'} />,
+  previewSrc: s.svg ? null : pieceSrc(s, 'w', 'n'), // white knight = the set thumbnail
+  render: s.svg
+    ? (color, type) => renderSvgDragon(color, type)
+    : (color, type) => <PieceImg src={pieceSrc(s, color, type)} flip={s.flipPawns && type === 'p'} />,
 }));
 
 export function getPieceSet(id) {

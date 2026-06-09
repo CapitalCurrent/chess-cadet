@@ -201,7 +201,11 @@ export default function Settings({
                     s.id === pieceSetId ? 'bg-gold/15 ring-gold' : 'bg-bg ring-edge'
                   }`}
                 >
-                  <img src={s.previewSrc} alt="" draggable={false} className="w-8 h-8" />
+                  {s.svg ? (
+                    <span className="w-8 h-8 inline-block">{s.render('w', 'n')}</span>
+                  ) : (
+                    <img src={s.previewSrc} alt="" draggable={false} className="w-8 h-8" />
+                  )}
                   <span className={`text-[10px] font-bold ${s.id === pieceSetId ? 'text-gold' : 'text-frost/80'}`}>
                     {s.name}
                   </span>
