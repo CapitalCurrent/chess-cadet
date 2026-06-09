@@ -1,6 +1,5 @@
 import React from 'react';
 import { IconLearn, IconPlay } from './icons';
-import CoatOfArms from './CoatOfArms';
 
 // The landing screen / launcher — a welcoming brand hero, then two big choices
 // (Learn / Play) with a small "Continue" link to resume the current line.
@@ -8,17 +7,16 @@ export default function HomePage({ opening, activeLine, playerName, onContinue, 
   const Card = ({ onClick, icon, title, subtitle, delay }) => (
     <button
       onClick={onClick}
-      className="cc-card cc-reveal w-full p-4 md:p-5 flex items-center gap-4 text-left animate-float"
+      className="cc-glass cc-reveal w-full p-4 md:p-5 flex items-center gap-4 text-left animate-float"
       style={{ animationDelay: `${delay}ms` }}
     >
       <span
         className="grid place-items-center shrink-0 rounded-cc-lg text-gold"
         style={{
-          width: 56,
-          height: 56,
-          background: 'rgb(var(--surface-2))',
+          width: 54,
+          height: 54,
+          background: 'rgb(var(--surface) / 0.4)',
           border: '1px solid var(--edge-soft)',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
       >
         {icon}
@@ -33,22 +31,13 @@ export default function HomePage({ opening, activeLine, playerName, onContinue, 
 
   return (
     <div className="w-full max-w-md md:max-w-2xl mx-auto px-4 py-8 md:min-h-[72vh] md:flex md:flex-col md:justify-center">
-      {/* Brand hero */}
-      <div className="relative text-center mb-7">
-        <div
-          className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-6 w-64 h-64 rounded-full"
-          style={{ background: 'radial-gradient(closest-side, rgba(246,197,68,0.16), transparent)' }}
-        />
-        <div className="relative animate-pop flex justify-center">
-          <div className="animate-bob">
-            <CoatOfArms charge="knight" tint="onyx" size={84} />
-          </div>
-        </div>
+      {/* Hero — the big backdrop shield IS the emblem, so no floating crest here. */}
+      <div className="relative text-center mb-7 pt-2">
         {playerName && (
-          <div className="relative mt-4 text-base md:text-lg font-bold text-gold">Hi {playerName}!</div>
+          <div className="text-base md:text-lg font-bold text-gold">Hi {playerName}!</div>
         )}
-        <div className={`relative ${playerName ? 'mt-0.5' : 'mt-4'} text-2xl md:text-4xl font-extrabold text-frost font-round`}>What do you want to do?</div>
-        <div className="relative text-sm md:text-base text-frost-dim mt-1.5">Pick a lesson, or play a game.</div>
+        <div className="mt-1 text-3xl md:text-5xl font-extrabold text-frost font-round">What do you want to do?</div>
+        <div className="text-sm md:text-base text-frost-dim mt-2">Pick a lesson, or play a game.</div>
       </div>
 
       <div className="space-y-3 md:space-y-4">
