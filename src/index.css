@@ -130,18 +130,15 @@ body::after {
   inset: 0;
   z-index: -2;
   pointer-events: none;
-  background: url('./assets/scales.jpg') center / cover;
-  opacity: 0.17;
-  mix-blend-mode: soft-light;
 }
-/* Neon keeps a faint Tron grid layered over the dragon scales. */
+/* Neon keeps a faint Tron grid (masked so it fades at the edges). */
 html[data-theme='neon'] body::after {
   background-image:
     linear-gradient(rgb(var(--glow) / 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(var(--glow) / 0.06) 1px, transparent 1px),
-    url('./assets/scales.jpg');
-  background-size: 46px 46px, 46px 46px, cover;
-  background-position: center;
+    linear-gradient(90deg, rgb(var(--glow) / 0.06) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 70% at 50% 24%, #000 36%, transparent 80%);
+  mask-image: radial-gradient(ellipse 85% 70% at 50% 24%, #000 36%, transparent 80%);
 }
 
 button,
