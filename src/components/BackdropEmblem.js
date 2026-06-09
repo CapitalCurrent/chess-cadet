@@ -49,8 +49,8 @@ export default function BackdropEmblem() {
           className="backdrop-shield"
           style={{
             marginTop: '2vh',
-            opacity: 0.4,
-            filter: 'brightness(0.5) contrast(1.12) drop-shadow(0 16px 40px rgba(0,0,0,0.75))',
+            opacity: 0.5,
+            filter: 'brightness(0.85) contrast(1.1) drop-shadow(0 16px 40px rgba(0,0,0,0.75))',
           }}
         />
       </div>

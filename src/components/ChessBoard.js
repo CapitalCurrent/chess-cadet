@@ -313,7 +313,7 @@ export default function ChessBoard({
                 return (
                   <div
                     key={sq.name}
-                    style={{ containerType: 'inline-size', backgroundColor: withAlpha(sq.light ? theme.light : theme.dark, sq.light ? 0.82 : 0.28) }}
+                    style={{ containerType: 'inline-size', backgroundColor: withAlpha(sq.light ? theme.light : theme.dark, sq.light ? 0.82 : 0.22) }}
                     className={`relative aspect-square flex items-center justify-center ${movableColor ? 'cursor-grab' : ''}`}
                   >
                     {isLast && <div className="absolute inset-0 bg-gold/35 pointer-events-none" />}
