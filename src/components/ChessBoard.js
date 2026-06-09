@@ -287,7 +287,7 @@ export default function ChessBoard({
             className={
               big
                 ? 'relative w-[min(92vw,520px)] md:w-[min(86vh,760px)] lg:w-[min(90vh,920px)] xl:w-[min(92vh,1100px)]'
-                : 'relative w-[min(86vw,56vh,420px)] md:w-[min(62vh,600px)] lg:w-[min(72vh,700px)] xl:w-[min(74vh,760px)]'
+                : 'relative w-[min(86vw,56vh,420px)] md:w-[min(64vh,620px)] lg:w-[min(78vh,780px)] xl:w-[min(82vh,900px)]'
             }
             style={{ touchAction: movableColor ? 'none' : 'auto', containerType: 'inline-size' }}
             onPointerDown={onPointerDown}
