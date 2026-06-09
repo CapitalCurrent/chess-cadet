@@ -298,8 +298,8 @@ export default function ChessBoard({
             <div
               className="grid grid-cols-8 rounded-lg overflow-hidden ring-2 ring-edge"
               style={{
-                backdropFilter: 'blur(9px) saturate(120%)',
-                WebkitBackdropFilter: 'blur(9px) saturate(120%)',
+                backdropFilter: 'blur(5px) saturate(125%)',
+                WebkitBackdropFilter: 'blur(5px) saturate(125%)',
                 boxShadow:
                   '0 18px 50px -12px rgba(0,0,0,0.7), 0 0 64px -16px rgb(var(--glow) / 0.5)',
               }}
@@ -313,7 +313,7 @@ export default function ChessBoard({
                 return (
                   <div
                     key={sq.name}
-                    style={{ containerType: 'inline-size', backgroundColor: withAlpha(sq.light ? theme.light : theme.dark, sq.light ? 0.85 : 0.55) }}
+                    style={{ containerType: 'inline-size', backgroundColor: withAlpha(sq.light ? theme.light : theme.dark, sq.light ? 0.82 : 0.28) }}
                     className={`relative aspect-square flex items-center justify-center ${movableColor ? 'cursor-grab' : ''}`}
                   >
                     {isLast && <div className="absolute inset-0 bg-gold/35 pointer-events-none" />}

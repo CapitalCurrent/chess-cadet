@@ -342,9 +342,9 @@ html[data-theme='neon'] .font-round {
   color: rgb(var(--frost));
 }
 .cc-key-coral {
-  background: linear-gradient(180deg, rgb(var(--coral) / 0.88) 0%, rgb(var(--coral)) 100%);
-  color: #fff;
-  border-color: rgba(0, 0, 0, 0.2);
+  background: linear-gradient(180deg, rgb(var(--coral) / 0.28) 0%, rgb(var(--coral) / 0.46) 100%);
+  color: rgb(var(--frost));
+  border: 1px solid rgb(var(--coral) / 0.5);
 }
 .cc-key-grass {
   background: linear-gradient(180deg, rgb(var(--grass) / 0.92) 0%, rgb(var(--grass)) 100%);

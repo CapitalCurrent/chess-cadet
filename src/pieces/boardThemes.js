@@ -5,7 +5,7 @@ export const BOARD_THEMES = [
   { id: 'ocean', name: 'Ocean',  light: '#dbe7f0', dark: '#4b7399' },
   { id: 'slate', name: 'Slate',  light: '#cdd5de', dark: '#5b6b7d' },
   { id: 'candy', name: 'Candy',  light: '#ffe3f1', dark: '#e06aa0' },
-  { id: 'night', name: 'Night',  light: '#7886a8', dark: '#333f5c' },
+  { id: 'night', name: 'Night',  light: '#74909a', dark: '#2a3a40' },
 ];
 
 export function getBoardTheme(id) {
