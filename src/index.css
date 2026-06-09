@@ -124,21 +124,34 @@ body::before {
 /* Procedural depth texture, per theme — sits under the glow + content (and under
    the acrylic surfaces, Fluent-style). Neon = a faded Tron grid; silver/obsidian
    = fine grain. Kept whisper-subtle so it reads as depth, not noise. */
+/* Each theme gets a faint structural grid in its glow color, masked so it fades
+   at the edges (the "feel" neon's grid gives, extended to all three). */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -2;
   pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 88% 74% at 50% 26%, #000 34%, transparent 82%);
+  mask-image: radial-gradient(ellipse 88% 74% at 50% 26%, #000 34%, transparent 82%);
 }
-/* Neon keeps a faint Tron grid (masked so it fades at the edges). */
+/* Neon — square Tron grid (cyan). */
 html[data-theme='neon'] body::after {
   background-image:
     linear-gradient(rgb(var(--glow) / 0.06) 1px, transparent 1px),
     linear-gradient(90deg, rgb(var(--glow) / 0.06) 1px, transparent 1px);
   background-size: 46px 46px;
-  -webkit-mask-image: radial-gradient(ellipse 85% 70% at 50% 24%, #000 36%, transparent 80%);
-  mask-image: radial-gradient(ellipse 85% 70% at 50% 24%, #000 36%, transparent 80%);
+}
+/* Obsidian — diagonal diamond grid (cyan), distinct from neon's squares. */
+html[data-theme='obsidian'] body::after {
+  background-image:
+    repeating-linear-gradient(45deg, rgb(var(--glow) / 0.05) 0 1px, transparent 1px 42px),
+    repeating-linear-gradient(-45deg, rgb(var(--glow) / 0.05) 0 1px, transparent 1px 42px);
+}
+/* Silver — warm dot grid (torch amber), softer + premium. */
+html[data-theme='silver'] body::after {
+  background-image: radial-gradient(rgb(var(--glow) / 0.08) 1.2px, transparent 1.6px);
+  background-size: 28px 28px;
 }
 
 button,
