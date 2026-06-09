@@ -1,13 +1,14 @@
 import React from 'react';
+import { IconGuide, IconPlay, IconDrill, IconPawn } from './icons';
 
 // The Learn hub — "what do you want to learn?". Tapping Learn lands here so the
 // app is a catalog of subjects (Notation, Openings, …) rather than dropping
 // straight into one lesson. New subjects slot in as more cards.
 const SUBJECTS = [
-  { id: 'notation', icon: '📝', title: 'Notation', blurb: 'Read & write chess moves' },
-  { id: 'openings', icon: '⚔️', title: 'Openings', blurb: 'Learn opening lines & traps' },
-  { id: 'tactics', icon: '🎯', title: 'Tactics', blurb: 'Forks, pins & skewers', soon: true },
-  { id: 'basics', icon: '♟️', title: 'How to Play', blurb: 'How the pieces move', soon: true },
+  { id: 'notation', Icon: IconGuide, title: 'Notation', blurb: 'Read & write chess moves' },
+  { id: 'openings', Icon: IconPlay, title: 'Openings', blurb: 'Learn opening lines & traps' },
+  { id: 'tactics', Icon: IconDrill, title: 'Tactics', blurb: 'Forks, pins & skewers', soon: true },
+  { id: 'basics', Icon: IconPawn, title: 'How to Play', blurb: 'How the pieces move', soon: true },
 ];
 
 export default function LearnCatalog({ onPick }) {
@@ -24,9 +25,11 @@ export default function LearnCatalog({ onPick }) {
             key={s.id}
             disabled={s.soon}
             onClick={() => !s.soon && onPick(s.id)}
-            className={`cc-card p-4 flex items-center gap-3 text-left ${s.soon ? 'opacity-50 cursor-default' : 'cc-reveal'}`}
+            className={`cc-glass p-4 flex items-center gap-3 text-left ${s.soon ? 'opacity-50 cursor-default' : 'cc-reveal'}`}
           >
-            <span className="text-3xl shrink-0">{s.icon}</span>
+            <span className="shrink-0 text-gold">
+              <s.Icon size={26} />
+            </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2 font-extrabold text-frost text-lg">
                 {s.title}

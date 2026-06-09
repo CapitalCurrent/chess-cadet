@@ -189,9 +189,9 @@ export default function App() {
       <header
         className="sticky top-0 z-20"
         style={{
-          background: 'rgba(14,23,38,0.82)',
-          backdropFilter: 'blur(22px) saturate(140%)',
-          WebkitBackdropFilter: 'blur(22px) saturate(140%)',
+          background: 'rgb(var(--surface) / 0.55)',
+          backdropFilter: 'blur(24px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(140%)',
           borderBottom: '1px solid var(--edge-soft)',
         }}
       >

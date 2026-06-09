@@ -199,3 +199,13 @@ export const IconLockOpen = (p) => (
     <path d="M7 11V7a5 5 0 0 1 9.9-1" />
   </Svg>
 );
+
+// Pawn — "how the pieces move" / basics
+export const IconPawn = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="6" r="3" />
+    <path d="M10.5 8.5 9 14h6l-1.5-5.5" />
+    <path d="M7 21a5 5 0 0 1 10 0z" />
+    <path d="M9 14h6" />
+  </Svg>
+);
