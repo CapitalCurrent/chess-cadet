@@ -6,6 +6,7 @@ import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
 import { newGame, applySan, evaluateInput, coreSan, tryMove, notationHint } from '../engine/chessEngine';
 import { moverAt, isLineMastered, isLineLearned, getLines } from '../data/openings';
+import { IconLearn, IconDrill } from './icons';
 
 const PIECE_WORDS = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight' };
 
@@ -444,25 +445,26 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
         <div className="flex items-center justify-between gap-2 cc-card px-3 py-2">
           <span className="flex items-center gap-2 min-w-0">
             <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide shrink-0 ${
+              className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide shrink-0 flex items-center gap-1.5 ${
                 mode === 'drill'
-                  ? 'bg-gold/20 text-gold ring-1 ring-gold/40'
-                  : 'bg-grass/20 text-grass ring-1 ring-grass/40'
+                  ? 'bg-gold/15 text-gold ring-1 ring-gold/30'
+                  : 'bg-frost/10 text-frost ring-1 ring-[var(--edge-soft)]'
               }`}
             >
-              {mode === 'drill' ? '🎯 Drill' : '📖 Lesson'}
+              {mode === 'drill' ? <IconDrill size={12} /> : <IconLearn size={12} />}
+              {mode === 'drill' ? 'Drill' : 'Lesson'}
             </span>
             <span className="text-sm font-bold text-frost truncate">{lineName}</span>
           </span>
           {mode === 'drill'
             ? onLearnLine && (
-                <button onClick={onLearnLine} className="cc-btn cc-btn-secondary px-3 py-1.5 text-xs shrink-0">
-                  📖 Lesson
+                <button onClick={onLearnLine} className="cc-btn cc-btn-secondary px-3 py-1.5 text-xs shrink-0 gap-1.5">
+                  <IconLearn size={13} /> Lesson
                 </button>
               )
             : lineLearned && onDrillLine && (
-                <button onClick={onDrillLine} className="cc-btn cc-btn-primary px-3 py-1.5 text-xs shrink-0">
-                  🎯 Drill it
+                <button onClick={onDrillLine} className="cc-btn cc-btn-primary px-3 py-1.5 text-xs shrink-0 gap-1.5">
+                  <IconDrill size={13} /> Drill it
                 </button>
               )}
         </div>

@@ -151,3 +151,51 @@ export const IconMinimize = (p) => (
     <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
   </Svg>
 );
+
+// Trophy — course mastery
+export const IconTrophy = (p) => (
+  <Svg {...p}>
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+    <path d="M4 22h16" />
+    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+  </Svg>
+);
+
+// Star — filled (reward). Fill follows currentColor; pass via rest so it wins.
+export const IconStar = (p) => (
+  <Svg fill="currentColor" stroke="none" {...p}>
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </Svg>
+);
+
+// Sparkles — celebration / greeting accent
+export const IconSparkles = (p) => (
+  <Svg {...p}>
+    <path d="M9.94 14.06A2 2 0 0 0 8.5 12.62l-5.14-1.32a.5.5 0 0 1 0-.96l5.14-1.32A2 2 0 0 0 9.94 7.6l1.32-5.14a.5.5 0 0 1 .96 0l1.32 5.14a2 2 0 0 0 1.44 1.44l5.14 1.32a.5.5 0 0 1 0 .96l-5.14 1.32a2 2 0 0 0-1.44 1.44l-1.32 5.14a.5.5 0 0 1-.96 0z" />
+    <path d="M20 3v4" />
+    <path d="M22 5h-4" />
+  </Svg>
+);
+
+// Dice — random side
+export const IconDice = (p) => (
+  <Svg {...p}>
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+    <path d="M16 8h.01" />
+    <path d="M8 8h.01" />
+    <path d="M8 16h.01" />
+    <path d="M16 16h.01" />
+    <path d="M12 12h.01" />
+  </Svg>
+);
+
+// Lock open — unlocked content
+export const IconLockOpen = (p) => (
+  <Svg {...p}>
+    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+  </Svg>
+);

@@ -29,6 +29,9 @@ import {
   IconMaximize,
   IconMinimize,
   IconClose,
+  IconTrophy,
+  IconStar,
+  IconLockOpen,
 } from './components/icons';
 import { VERSION } from './version';
 
@@ -329,15 +332,19 @@ export default function App() {
                 <IconClose size={18} />
               </button>
             </div>
-            <div className="text-4xl">🏆</div>
-            <div className="text-xl md:text-2xl font-extrabold text-gold mt-1">
+            <IconTrophy size={40} className="mx-auto text-gold" />
+            <div className="text-xl md:text-2xl font-extrabold text-gold mt-2">
               You mastered {getOpening(masteredModal.id).name}!
             </div>
-            <div className="text-2xl tracking-[0.3em] text-gold my-2">★★★</div>
+            <div className="flex justify-center gap-1.5 text-gold my-2">
+              <IconStar size={22} /><IconStar size={22} /><IconStar size={22} />
+            </div>
 
             {masteredModal.unlocked.length ? (
               <>
-                <div className="text-sm text-frost-dim mb-2">🔓 You unlocked:</div>
+                <div className="text-sm text-frost-dim mb-2 flex items-center justify-center gap-1.5">
+                  <IconLockOpen size={15} /> You unlocked:
+                </div>
                 <div className="space-y-2 text-left">
                   {masteredModal.unlocked.map((o) => (
                     <button
@@ -379,13 +386,15 @@ export default function App() {
                 <IconClose size={18} />
               </button>
             </div>
-            <div className="text-4xl">⭐</div>
-            <div className="text-xl md:text-2xl font-extrabold text-gold mt-1">
+            <IconStar size={36} className="mx-auto text-gold" />
+            <div className="text-xl md:text-2xl font-extrabold text-gold mt-2">
               You mastered the {lineModal.lineName}!
             </div>
             {lineModal.nextLineId ? (
               <>
-                <div className="text-sm text-frost-dim mt-2 mb-3">🔓 New line unlocked — added to your course:</div>
+                <div className="text-sm text-frost-dim mt-2 mb-3 flex items-center justify-center gap-1.5">
+                  <IconLockOpen size={15} /> New line unlocked — added to your course:
+                </div>
                 <button
                   onClick={() => learnNextLine(lineModal.nextLineId)}
                   className="cc-btn cc-btn-grass w-full py-3 text-base"

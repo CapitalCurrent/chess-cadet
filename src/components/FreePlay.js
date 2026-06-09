@@ -306,7 +306,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     const color = resolveSide(pref);
     startNew(color);
     if (pref === 'random') {
-      setFeedback({ kind: 'good', text: `🎲 You’re playing ${color === 'w' ? 'White' : 'Black'}!` });
+      setFeedback({ kind: 'good', text: `You’re playing ${color === 'w' ? 'White' : 'Black'}!` });
     }
   }
   // Side picker: White / Black / Random. Picking starts a fresh game (Random rolls).
@@ -672,7 +672,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
             options={[
               { id: 'w', label: '♔ White' },
               { id: 'b', label: '♚ Black' },
-              { id: 'random', label: '🎲 Random' },
+              { id: 'random', label: 'Random' },
             ]}
             value={sidePref}
             onChange={pickSide}

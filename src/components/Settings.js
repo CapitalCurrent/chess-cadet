@@ -92,9 +92,9 @@ export default function Settings({
         </button>
         <button
           onClick={() => { playTest(); setTimeout(() => setAudioInfo(audioState()), 120); }}
-          className="w-full mb-4 rounded-xl p-2 ring-1 ring-edge bg-bg text-sm font-bold text-frost/80 active:translate-y-px"
+          className="w-full mb-4 rounded-xl p-2 ring-1 ring-edge bg-bg text-sm font-bold text-frost/80 active:translate-y-px flex items-center justify-center gap-2"
         >
-          🔊 Play a test sound{audioInfo ? ` — audio: ${audioInfo}` : ''}
+          <IconSoundOn size={16} /> Play a test sound{audioInfo ? ` — audio: ${audioInfo}` : ''}
         </button>
 
         {/* Move input style */}

@@ -4,15 +4,21 @@ import { IconLearn, IconPlay } from './icons';
 // The landing screen / launcher — a welcoming brand hero, then two big choices
 // (Learn / Play) with a small "Continue" link to resume the current line.
 export default function HomePage({ opening, activeLine, playerName, onContinue, onLearn, onPlay }) {
-  const Card = ({ onClick, icon, bg, title, subtitle, delay }) => (
+  const Card = ({ onClick, icon, title, subtitle, delay }) => (
     <button
       onClick={onClick}
       className="cc-card cc-reveal w-full p-4 md:p-5 flex items-center gap-4 text-left animate-float"
       style={{ animationDelay: `${delay}ms` }}
     >
       <span
-        className="grid place-items-center shrink-0 rounded-cc-lg"
-        style={{ width: 56, height: 56, background: bg, color: '#0e1726' }}
+        className="grid place-items-center shrink-0 rounded-cc-lg text-gold"
+        style={{
+          width: 56,
+          height: 56,
+          background: 'rgb(var(--surface-2))',
+          border: '1px solid var(--edge-soft)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+        }}
       >
         {icon}
       </span>
@@ -20,7 +26,7 @@ export default function HomePage({ opening, activeLine, playerName, onContinue, 
         <span className="block font-extrabold text-frost text-lg md:text-xl">{title}</span>
         <span className="block text-sm text-frost-dim truncate">{subtitle}</span>
       </span>
-      <span className="text-gold text-2xl shrink-0">▶</span>
+      <span className="text-frost-dim text-2xl shrink-0">›</span>
     </button>
   );
 
@@ -42,7 +48,7 @@ export default function HomePage({ opening, activeLine, playerName, onContinue, 
           />
         </div>
         {playerName && (
-          <div className="relative mt-4 text-base md:text-lg font-bold text-gold">Hi {playerName}! 👋</div>
+          <div className="relative mt-4 text-base md:text-lg font-bold text-gold">Hi {playerName}!</div>
         )}
         <div className={`relative ${playerName ? 'mt-0.5' : 'mt-4'} text-2xl md:text-4xl font-extrabold text-frost font-round`}>What do you want to do?</div>
         <div className="relative text-sm md:text-base text-frost-dim mt-1.5">Pick a lesson, or play a game.</div>
@@ -52,7 +58,6 @@ export default function HomePage({ opening, activeLine, playerName, onContinue, 
         <Card
           onClick={onLearn}
           icon={<IconLearn size={28} />}
-          bg="linear-gradient(180deg,#8fdb9b 0%,#5bbf6e 100%)"
           title="Learn"
           subtitle="Openings, notation & more"
           delay={60}
@@ -60,7 +65,6 @@ export default function HomePage({ opening, activeLine, playerName, onContinue, 
         <Card
           onClick={onPlay}
           icon={<IconPlay size={28} />}
-          bg="linear-gradient(180deg,#f6c544 0%,#e0a92e 100%)"
           title="Play a game"
           subtitle="Challenge the computer"
           delay={140}
