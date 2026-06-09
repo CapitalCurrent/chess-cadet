@@ -182,9 +182,16 @@ export default function App() {
     return <ProfileGate profiles={profiles} onCreate={createProfile} onSelect={selectProfile} />;
   }
 
+  // Board screens (Play / Drill / opening + notation lessons) hide the center
+  // shield so it doesn't peek awkwardly around the board — the board is the focus.
+  const onBoardView =
+    mode === 'play' ||
+    mode === 'drill' ||
+    (mode === 'learn' && (learnSubject === 'openings' || learnSubject === 'notation'));
+
   return (
     <div className={`min-h-screen text-frost pb-24 md:pb-10 log-${logPlacement}`}>
-      <BackdropEmblem />
+      <BackdropEmblem shield={!onBoardView} />
       {/* Header — acrylic top bar */}
       <header
         className="sticky top-0 z-20"

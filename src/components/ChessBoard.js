@@ -301,7 +301,7 @@ export default function ChessBoard({
                 backdropFilter: 'blur(5px) saturate(125%)',
                 WebkitBackdropFilter: 'blur(5px) saturate(125%)',
                 boxShadow:
-                  '0 18px 50px -12px rgba(0,0,0,0.7), 0 0 64px -16px rgb(var(--glow) / 0.5)',
+                  '0 18px 50px -12px rgba(0,0,0,0.7), 0 0 42px -18px rgb(var(--glow) / 0.32)',
               }}
             >
               {ordered.map((sq) => {

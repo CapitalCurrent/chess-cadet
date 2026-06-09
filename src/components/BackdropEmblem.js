@@ -7,7 +7,7 @@ import React from 'react';
 // acrylic (-z-10) for Fluent depth.
 const PUB = process.env.PUBLIC_URL;
 
-export default function BackdropEmblem() {
+export default function BackdropEmblem({ shield = true }) {
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
       {/* Flanking dragon pieces — supporters (desktop only). */}
@@ -40,20 +40,23 @@ export default function BackdropEmblem() {
         }}
       />
 
-      {/* Center shield. */}
-      <div className="absolute inset-0 grid place-items-center">
-        <img
-          src={`${PUB}/textures/dragon-shield.png`}
-          alt=""
-          draggable={false}
-          className="backdrop-shield"
-          style={{
-            marginTop: '2vh',
-            opacity: 0.4,
-            filter: 'brightness(0.5) contrast(1.12) drop-shadow(0 16px 40px rgba(0,0,0,0.75))',
-          }}
-        />
-      </div>
+      {/* Center shield — the landing centerpiece; hidden on board screens where
+          it would peek awkwardly around the board. */}
+      {shield && (
+        <div className="absolute inset-0 grid place-items-center">
+          <img
+            src={`${PUB}/textures/dragon-shield.png`}
+            alt=""
+            draggable={false}
+            className="backdrop-shield"
+            style={{
+              marginTop: '2vh',
+              opacity: 0.4,
+              filter: 'brightness(0.5) contrast(1.12) drop-shadow(0 16px 40px rgba(0,0,0,0.75))',
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
