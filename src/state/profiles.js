@@ -12,9 +12,51 @@ const KEY = 'chess-cadet-profiles-v1';
 const PROGRESS_BASE = 'chess-cadet-progress-v1';
 const PLAYGAME_BASE = 'chess-cadet-playgame';
 
-// Kid-friendly identity options for the create screen.
-export const AVATARS = ['🐉', '🦄', '🐯', '🦁', '🐲', '🦖', '🐼', '🦊', '🐸', '🦉', '🐺', '🐱'];
-export const COLORS = ['#f6c544', '#5bbf6e', '#5aa9e6', '#e06ab0', '#b07ce0', '#e87b4a'];
+// Heraldic identity: a charge (the shield emblem) + a tint (the shield metal).
+// Charges are chess/heraldic Unicode glyphs (filled silhouettes) so the crest
+// renderer can metal-fill them. Tints carry their own 3-stop gradient so each
+// shield looks like brushed metal, not a flat color.
+export const CHARGES = [
+  { id: 'knight', glyph: '♞', label: 'knight' },
+  { id: 'king', glyph: '♚', label: 'king' },
+  { id: 'queen', glyph: '♛', label: 'queen' },
+  { id: 'rook', glyph: '♜', label: 'rook' },
+  { id: 'bishop', glyph: '♝', label: 'bishop' },
+  { id: 'pawn', glyph: '♟', label: 'pawn' },
+  { id: 'star', glyph: '★', label: 'star', size: 40 },
+  { id: 'fleur', glyph: '⚜︎', label: 'fleur-de-lis', size: 40 },
+];
+
+export const TINTS = [
+  { id: 'steel', name: 'Steel', light: '#7fa8d0', base: '#4f7ba6', dark: '#2f4d6e' },
+  { id: 'silver', name: 'Silver', light: '#eef1f5', base: '#c7ccd4', dark: '#8b919b' },
+  { id: 'crimson', name: 'Crimson', light: '#d36b6b', base: '#a23b3b', dark: '#6e2424' },
+  { id: 'emerald', name: 'Emerald', light: '#6fc79a', base: '#3f8d63', dark: '#245a3d' },
+  { id: 'amethyst', name: 'Amethyst', light: '#a98fd0', base: '#6b4f9e', dark: '#43306b' },
+  { id: 'amber', name: 'Amber', light: '#e8c06a', base: '#c8882f', dark: '#8c5a1c' },
+  { id: 'cyan', name: 'Cyan', light: '#6fe6ff', base: '#00aecb', dark: '#066b80' },
+  { id: 'onyx', name: 'Onyx', light: '#4a4f57', base: '#25282e', dark: '#121317' },
+];
+
+const DEFAULT_CHARGE = 'knight';
+const DEFAULT_TINT = 'steel';
+
+// Resolve a charge by id; tolerate a raw glyph/emoji (legacy avatar field).
+export function getCharge(idOrGlyph) {
+  const found = CHARGES.find((c) => c.id === idOrGlyph);
+  if (found) return found;
+  if (typeof idOrGlyph === 'string' && idOrGlyph) return { id: 'custom', glyph: idOrGlyph, label: 'crest', size: 40 };
+  return CHARGES[0];
+}
+// Resolve a tint by id; tolerate a raw hex (legacy color field) as a flat tint.
+export function getTint(idOrHex) {
+  const found = TINTS.find((t) => t.id === idOrHex);
+  if (found) return found;
+  if (typeof idOrHex === 'string' && idOrHex.startsWith('#')) {
+    return { id: 'custom', name: 'Custom', light: idOrHex, base: idOrHex, dark: idOrHex };
+  }
+  return TINTS[0];
+}
 
 // localStorage key holding `profileId`'s learning progress. With no id we fall
 // back to the original un-namespaced bucket (pre-multi-profile saves).
@@ -100,12 +142,12 @@ export function useProfiles() {
   }, []);
 
   const createProfile = useCallback(
-    (name, avatar, color) => {
+    (name, charge, tint) => {
       const profile = {
         id: newId(),
         name: cleanName(name),
-        avatar: avatar || AVATARS[0],
-        color: color || COLORS[0],
+        charge: charge || DEFAULT_CHARGE,
+        tint: tint || DEFAULT_TINT,
         createdAt: Date.now(),
       };
       persist((prev) => {

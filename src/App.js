@@ -4,6 +4,7 @@ import { getPieceSet } from './pieces/pieceSets';
 import { getBoardTheme } from './pieces/boardThemes';
 import { useProgress } from './state/progress';
 import { useProfiles, playGameKey } from './state/profiles';
+import { useAppTheme } from './state/theme';
 import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
 import HomePage from './components/HomePage';
@@ -40,6 +41,7 @@ const MODES = [
 ];
 
 export default function App() {
+  const [appTheme, setAppTheme] = useAppTheme();
   // Local multi-profile: each player keeps their own progress + saved game.
   const { profiles, activeId, activeProfile, createProfile, selectProfile, updateProfile, deleteProfile } = useProfiles();
   // rewardMove/breakStreak/finishLine still drive progress silently (the gems
@@ -313,6 +315,8 @@ export default function App() {
         setMoveStyle={setMoveStyle}
         logPlacement={logPlacement}
         setLogPlacement={setLogPlacement}
+        appTheme={appTheme}
+        setAppTheme={setAppTheme}
       />
 
       <NotationGuide open={guideOpen} onClose={() => setGuideOpen(false)} />

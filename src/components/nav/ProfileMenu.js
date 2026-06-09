@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ProfileForm } from '../ProfileGate';
+import CoatOfArms from '../CoatOfArms';
 
 // Header player chip + dropdown: switch player, add, rename, or delete. The
 // active player's avatar/name is always visible so kids know whose stars they're
@@ -42,12 +43,7 @@ export default function ProfileMenu({ profiles, activeProfile, onSelect, onCreat
         className="flex items-center gap-2 rounded-full pl-1 pr-2.5 py-1 hover:bg-white/5 transition-colors"
         title={`Player: ${activeProfile.name}`}
       >
-        <span
-          className="grid place-items-center rounded-full text-base shrink-0"
-          style={{ width: 30, height: 30, background: activeProfile.color }}
-        >
-          {activeProfile.avatar}
-        </span>
+        <CoatOfArms charge={activeProfile.charge || activeProfile.avatar} tint={activeProfile.tint || activeProfile.color} size={26} glow={false} />
         <span className="hidden sm:block text-sm font-bold text-frost max-w-[10ch] truncate">
           {activeProfile.name}
         </span>
@@ -120,12 +116,7 @@ export default function ProfileMenu({ profiles, activeProfile, onSelect, onCreat
                         className={`flex items-center gap-2.5 rounded-cc-lg p-1.5 ${active ? 'bg-white/10' : 'hover:bg-white/5'}`}
                       >
                         <button onClick={() => pick(p.id)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
-                          <span
-                            className="grid place-items-center rounded-full text-base shrink-0"
-                            style={{ width: 34, height: 34, background: p.color }}
-                          >
-                            {p.avatar}
-                          </span>
+                          <CoatOfArms charge={p.charge || p.avatar} tint={p.tint || p.color} size={30} glow={false} />
                           <span className="font-bold text-frost text-sm truncate flex-1">{p.name}</span>
                           {active && <span className="text-grass text-sm shrink-0">✓</span>}
                         </button>

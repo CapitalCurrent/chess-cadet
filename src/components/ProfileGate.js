@@ -1,31 +1,27 @@
 import React, { useState } from 'react';
-import { AVATARS, COLORS } from '../state/profiles';
+import { CHARGES, TINTS } from '../state/profiles';
+import CoatOfArms from './CoatOfArms';
 
-// Shared create-a-player form: name + avatar + color. Used by the first-run gate
-// and by the header switcher's "Add player" flow.
+// Shared create-a-player form: name + crest charge + shield tint, with a live
+// coat-of-arms preview. Used by the first-run gate and the header "Add player".
 export function ProfileForm({ onSubmit, onCancel, submitLabel = "Let's go!", autoFocus = true }) {
   const [name, setName] = useState('');
-  const [avatar, setAvatar] = useState(AVATARS[0]);
-  const [color, setColor] = useState(COLORS[0]);
+  const [charge, setCharge] = useState(CHARGES[0].id);
+  const [tint, setTint] = useState(TINTS[0].id);
   const canSubmit = name.trim().length > 0;
 
   const submit = (e) => {
     e.preventDefault();
     if (!canSubmit) return;
-    onSubmit(name, avatar, color);
+    onSubmit(name, charge, tint);
   };
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      {/* Live preview chip */}
+      {/* Live crest preview */}
       <div className="flex items-center justify-center gap-3">
-        <span
-          className="grid place-items-center rounded-full text-2xl shrink-0"
-          style={{ width: 52, height: 52, background: color, boxShadow: '0 8px 22px -8px rgba(0,0,0,0.6)' }}
-        >
-          {avatar}
-        </span>
-        <span className="text-lg font-extrabold text-frost truncate max-w-[60vw]">
+        <CoatOfArms charge={charge} tint={tint} size={56} />
+        <span className="text-lg font-extrabold text-frost truncate max-w-[55vw]">
           {name.trim() || 'Your name'}
         </span>
       </div>
@@ -43,43 +39,43 @@ export function ProfileForm({ onSubmit, onCancel, submitLabel = "Let's go!", aut
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-frost-dim mb-1.5">Pick a buddy</label>
-        <div className="grid grid-cols-6 gap-2">
-          {AVATARS.map((a) => (
+        <label className="block text-xs font-bold text-frost-dim mb-1.5">Pick your crest</label>
+        <div className="grid grid-cols-4 gap-2">
+          {CHARGES.map((c) => (
             <button
               type="button"
-              key={a}
-              onClick={() => setAvatar(a)}
-              className="grid place-items-center rounded-cc-lg text-xl py-1.5 transition-colors"
+              key={c.id}
+              onClick={() => setCharge(c.id)}
+              className="grid place-items-center rounded-cc-lg py-1.5 transition-colors"
               style={{
-                background: avatar === a ? color : 'rgba(255,255,255,0.05)',
-                outline: avatar === a ? '2px solid rgba(255,255,255,0.6)' : 'none',
+                background: charge === c.id ? 'rgb(var(--gold) / 0.16)' : 'rgba(255,255,255,0.05)',
+                outline: charge === c.id ? '2px solid rgb(var(--gold))' : '1px solid var(--edge-soft)',
               }}
+              aria-label={c.label}
             >
-              {a}
+              <CoatOfArms charge={c.id} tint={tint} size={30} glow={false} />
             </button>
           ))}
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-frost-dim mb-1.5">Pick a color</label>
-        <div className="flex gap-2.5">
-          {COLORS.map((c) => (
+        <label className="block text-xs font-bold text-frost-dim mb-1.5">Pick your metal</label>
+        <div className="grid grid-cols-8 gap-1.5">
+          {TINTS.map((t) => (
             <button
               type="button"
-              key={c}
-              onClick={() => setColor(c)}
+              key={t.id}
+              onClick={() => setTint(t.id)}
               className="rounded-full transition-transform"
               style={{
-                width: 30,
-                height: 30,
-                background: c,
-                transform: color === c ? 'scale(1.15)' : 'scale(1)',
-                outline: color === c ? '2px solid rgba(255,255,255,0.85)' : 'none',
-                outlineOffset: 2,
+                aspectRatio: '1',
+                background: `linear-gradient(180deg, ${t.light}, ${t.dark})`,
+                transform: tint === t.id ? 'scale(1.12)' : 'scale(1)',
+                outline: tint === t.id ? '2px solid rgb(var(--gold))' : '1px solid rgba(255,255,255,0.15)',
+                outlineOffset: 1,
               }}
-              aria-label={`color ${c}`}
+              aria-label={t.name}
             />
           ))}
         </div>
@@ -149,12 +145,7 @@ export default function ProfileGate({ profiles, onCreate, onSelect }) {
                   onClick={() => onSelect(p.id)}
                   className="cc-card cc-reveal w-full p-3 flex items-center gap-3 text-left"
                 >
-                  <span
-                    className="grid place-items-center rounded-full text-xl shrink-0"
-                    style={{ width: 44, height: 44, background: p.color }}
-                  >
-                    {p.avatar}
-                  </span>
+                  <CoatOfArms charge={p.charge || p.avatar} tint={p.tint || p.color} size={40} />
                   <span className="font-bold text-frost text-base flex-1 truncate">{p.name}</span>
                   <span className="text-gold text-xl">▶</span>
                 </button>

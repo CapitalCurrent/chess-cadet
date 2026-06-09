@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PIECE_SETS, getPieceSet } from '../pieces/pieceSets';
 import { BOARD_THEMES, getBoardTheme } from '../pieces/boardThemes';
 import { THEME_PRESETS, activePresetId } from '../pieces/themePresets';
+import { APP_THEMES } from '../state/theme';
 import { isMuted, setMuted, playTest, audioState } from '../utils/sounds';
 import { IconSettings, IconClose, IconSoundOn, IconSoundOff } from './icons';
 
@@ -16,6 +17,8 @@ export default function Settings({
   setMoveStyle,
   logPlacement,
   setLogPlacement,
+  appTheme,
+  setAppTheme,
 }) {
   const [showCustom, setShowCustom] = useState(false);
   const [soundOn, setSoundOn] = useState(!isMuted());
@@ -42,6 +45,33 @@ export default function Settings({
           <button onClick={onClose} className="cc-icon-btn" aria-label="Close">
             <IconClose size={20} />
           </button>
+        </div>
+
+        {/* App look — chrome theme (distinct from the board/piece set below) */}
+        <div className="text-xs uppercase tracking-wide text-gold/50 font-bold mb-2">App look</div>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {APP_THEMES.map((t) => {
+            const active = t.id === appTheme;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setAppTheme(t.id)}
+                className={`rounded-xl p-2 ring-1 flex flex-col items-center gap-1.5 transition ${
+                  active ? 'bg-gold/15 ring-gold' : 'bg-bg ring-edge'
+                }`}
+              >
+                <span
+                  className="w-full h-9 rounded-md overflow-hidden flex ring-1 ring-black/30"
+                  style={{ background: t.swatch[0] }}
+                >
+                  <span className="flex-1 self-center mx-auto rounded-full" style={{ width: 14, height: 14, background: t.swatch[1], boxShadow: `0 0 8px ${t.swatch[2]}` }} />
+                </span>
+                <span className={`text-[11px] font-bold leading-tight text-center ${active ? 'text-gold' : 'text-frost/80'}`}>
+                  {t.name}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Sound */}
@@ -115,8 +145,8 @@ export default function Settings({
           })}
         </div>
 
-        {/* Themes (board + pieces matched) */}
-        <div className="text-xs uppercase tracking-wide text-gold/50 font-bold mb-2">Theme</div>
+        {/* Board + pieces matched presets */}
+        <div className="text-xs uppercase tracking-wide text-gold/50 font-bold mb-2">Board &amp; pieces</div>
         <div className="grid grid-cols-3 gap-2">
           {THEME_PRESETS.map((t) => {
             const board = getBoardTheme(t.board);
