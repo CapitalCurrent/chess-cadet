@@ -23,37 +23,37 @@ export default function BackdropEmblem() {
       <svg
         viewBox="0 0 200 240"
         className="animate-aura"
-        style={{ width: 'min(80vw, 560px)', opacity: 0.62, marginTop: '3vh' }}
+        style={{ width: 'min(80vw, 560px)', opacity: 0.4, marginTop: '3vh' }}
       >
         <defs>
           <radialGradient id="be-glow" cx="50%" cy="46%" r="62%">
-            <stop offset="0%" stopColor="rgb(var(--glow))" stopOpacity="0.22" />
-            <stop offset="55%" stopColor="rgb(var(--glow))" stopOpacity="0.06" />
+            <stop offset="0%" stopColor="rgb(var(--glow))" stopOpacity="0.14" />
+            <stop offset="55%" stopColor="rgb(var(--glow))" stopOpacity="0.04" />
             <stop offset="100%" stopColor="rgb(var(--glow))" stopOpacity="0" />
           </radialGradient>
           <linearGradient id="be-field" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#363b44" />
-            <stop offset="48%" stopColor="#1d2026" />
-            <stop offset="100%" stopColor="#0c0d10" />
+            <stop offset="0%" stopColor="#191c21" />
+            <stop offset="48%" stopColor="#101216" />
+            <stop offset="100%" stopColor="#070809" />
           </linearGradient>
           <linearGradient id="be-rim" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#565d68" />
-            <stop offset="50%" stopColor="#2a2e35" />
-            <stop offset="100%" stopColor="#15171b" />
+            <stop offset="0%" stopColor="#2a2f36" />
+            <stop offset="50%" stopColor="#16191e" />
+            <stop offset="100%" stopColor="#0a0b0d" />
           </linearGradient>
           <linearGradient id="be-sheen" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.16" />
-            <stop offset="38%" stopColor="#ffffff" stopOpacity="0.03" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.07" />
+            <stop offset="38%" stopColor="#ffffff" stopOpacity="0.015" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="be-charge" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#454b55" />
-            <stop offset="100%" stopColor="#141619" />
+            <stop offset="0%" stopColor="#262a30" />
+            <stop offset="100%" stopColor="#0c0e11" />
           </linearGradient>
           <radialGradient id="be-rivet" cx="38%" cy="34%" r="70%">
-            <stop offset="0%" stopColor="#6b7178" />
-            <stop offset="60%" stopColor="#2b2f35" />
-            <stop offset="100%" stopColor="#0e1013" />
+            <stop offset="0%" stopColor="#3a3f46" />
+            <stop offset="60%" stopColor="#1a1d22" />
+            <stop offset="100%" stopColor="#08090b" />
           </radialGradient>
           <filter id="be-shadow" x="-30%" y="-20%" width="160%" height="150%">
             <feDropShadow dx="0" dy="7" stdDeviation="9" floodColor="#000" floodOpacity="0.6" />
