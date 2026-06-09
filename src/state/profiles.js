@@ -73,10 +73,16 @@ function read() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return { profiles: [], activeId: null };
     const data = JSON.parse(raw);
-    return {
-      profiles: Array.isArray(data.profiles) ? data.profiles : [],
-      activeId: data.activeId || null,
-    };
+    const profiles = (Array.isArray(data.profiles) ? data.profiles : []).map((p) => {
+      // Pre-crest profiles stored {avatar: emoji, color: hex}. Drop those (random
+      // defaults / old gold palette) for a clean heraldic crest.
+      if (!p.charge || !p.tint) {
+        const { avatar, color, ...rest } = p; // eslint-disable-line no-unused-vars
+        return { ...rest, charge: p.charge || DEFAULT_CHARGE, tint: p.tint || DEFAULT_TINT };
+      }
+      return p;
+    });
+    return { profiles, activeId: data.activeId || null };
   } catch {
     return { profiles: [], activeId: null };
   }

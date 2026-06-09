@@ -113,13 +113,9 @@ export default function ProfileGate({ profiles, onCreate, onSelect }) {
             className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-6 w-56 h-56 rounded-full"
             style={{ background: 'radial-gradient(closest-side, rgba(246,197,68,0.16), transparent)' }}
           />
-          <img
-            src={`${process.env.PUBLIC_URL}/logo512.png`}
-            alt="Chess Lair"
-            className="relative mx-auto w-16 h-16 rounded-2xl animate-bob"
-            style={{ boxShadow: '0 0 0 1px rgba(246,197,68,0.35), 0 18px 44px -12px rgba(246,197,68,0.5)' }}
-            draggable={false}
-          />
+          <div className="relative mx-auto w-fit animate-bob">
+            <CoatOfArms charge="knight" tint="onyx" size={62} />
+          </div>
           <div className="relative mt-3 text-2xl font-extrabold text-frost font-round">
             {adding && profiles.length === 0 ? 'Welcome to Chess Lair!' : "Who's playing?"}
           </div>

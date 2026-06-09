@@ -1,5 +1,6 @@
 import React from 'react';
 import { IconLearn, IconPlay } from './icons';
+import CoatOfArms from './CoatOfArms';
 
 // The landing screen / launcher — a welcoming brand hero, then two big choices
 // (Learn / Play) with a small "Continue" link to resume the current line.
@@ -38,14 +39,10 @@ export default function HomePage({ opening, activeLine, playerName, onContinue, 
           className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-6 w-64 h-64 rounded-full"
           style={{ background: 'radial-gradient(closest-side, rgba(246,197,68,0.16), transparent)' }}
         />
-        <div className="relative animate-pop">
-          <img
-            src={`${process.env.PUBLIC_URL}/logo512.png`}
-            alt="Chess Lair"
-            className="mx-auto w-20 h-20 md:w-24 md:h-24 rounded-2xl animate-bob"
-            style={{ boxShadow: '0 0 0 1px rgba(246,197,68,0.35), 0 18px 44px -12px rgba(246,197,68,0.5)' }}
-            draggable={false}
-          />
+        <div className="relative animate-pop flex justify-center">
+          <div className="animate-bob">
+            <CoatOfArms charge="knight" tint="onyx" size={84} />
+          </div>
         </div>
         {playerName && (
           <div className="relative mt-4 text-base md:text-lg font-bold text-gold">Hi {playerName}!</div>
