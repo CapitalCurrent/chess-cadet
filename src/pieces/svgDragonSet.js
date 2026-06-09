@@ -36,13 +36,17 @@ const PIECES = {
     paths: [BASE, COLLAR, 'M16 31.5 C14 25 16.5 19 22.5 15 C28.5 19 31 25 29 31.5 Z'],
     lines: [{ x1: 20, y1: 15, x2: 25, y2: 11 }],
   },
-  // Knight — bold dragon-head profile (the signature piece).
+  // Knight — proven Staunton knight silhouette (clearest; a hand-drawn dragon
+  // head reads as a duck at this size). Dragon flavor lives in the other sets.
   n: {
     paths: [
-      BASE,
-      'M16 35.5 C16 31 15 28 15.5 25 L12.5 26.5 C11 27.2 10 25.8 11 24.3 L14 20 C14.5 16 17 12.5 21 11.5 C24.5 10.6 28 12 29.5 14.5 L32 19 C32.8 21 31.5 22.6 29.5 22.2 L27.5 24 C29 27 29.5 31 29.5 35.5 Z',
+      'M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21',
+      'M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.042-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4.003 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-.994-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-1.992 2.5-3c1 0 1 3 1 3',
     ],
-    dots: [{ cx: 18.5, cy: 17.5, r: 1.2 }],
+    dots: [
+      { cx: 9, cy: 25.3, r: 0.9 },
+      { cx: 14.7, cy: 15.7, r: 1.0 },
+    ],
   },
   // Queen — spiky 4-point crown with ball tips.
   q: {
