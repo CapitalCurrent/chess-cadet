@@ -125,6 +125,31 @@ body::before {
     radial-gradient(560px 380px at 80% 70%, rgb(var(--glow) / 0.05), transparent 60%);
   animation: ambientDrift 24s ease-in-out infinite alternate;
 }
+/* Procedural depth texture, per theme — sits under the glow + content (and under
+   the acrylic surfaces, Fluent-style). Neon = a faded Tron grid; silver/obsidian
+   = fine grain. Kept whisper-subtle so it reads as depth, not noise. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+}
+html[data-theme='neon'] body::after {
+  background-image:
+    linear-gradient(rgb(var(--glow) / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--glow) / 0.07) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 70% at 50% 28%, #000 38%, transparent 82%);
+  mask-image: radial-gradient(ellipse 85% 70% at 50% 28%, #000 38%, transparent 82%);
+}
+html[data-theme='silver'] body::after,
+html[data-theme='obsidian'] body::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  opacity: 0.05;
+  mix-blend-mode: soft-light;
+}
 
 button,
 .no-select {

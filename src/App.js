@@ -13,6 +13,7 @@ import NotationCourse from './components/NotationCourse';
 import Settings from './components/Settings';
 import NotationGuide from './components/NotationGuide';
 import ProfileGate from './components/ProfileGate';
+import BackdropEmblem from './components/BackdropEmblem';
 import Logo from './components/nav/Logo';
 import ProfileMenu from './components/nav/ProfileMenu';
 import Segmented from './components/nav/Segmented';
@@ -183,6 +184,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen text-frost pb-24 md:pb-10 log-${logPlacement}`}>
+      <BackdropEmblem />
       {/* Header — acrylic top bar */}
       <header
         className="sticky top-0 z-20"
