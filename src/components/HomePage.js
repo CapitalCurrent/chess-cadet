@@ -56,12 +56,16 @@ export default function HomePage({ opening, activeLine, playerName, notebookCoun
           subtitle="Challenge the computer"
           delay={140}
         />
-        {notebookCount > 0 && onFixMistakes && (
+        {onFixMistakes && (
           <Card
             onClick={onFixMistakes}
             icon={<IconNotebook size={28} />}
             title="Coach's Notebook"
-            subtitle={`${notebookCount} position${notebookCount === 1 ? '' : 's'} from your games to fix`}
+            subtitle={
+              notebookCount > 0
+                ? `${notebookCount} position${notebookCount === 1 ? '' : 's'} from your games to fix`
+                : 'Play with Coach on — mistakes you can fix land here'
+            }
             delay={220}
           />
         )}
