@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { notebookKey } from './notebook';
 
 // Local multi-profile: each person on the device gets their OWN saved progress
 // and saved Play game. Everything lives in localStorage (no backend yet) under a
@@ -131,6 +132,7 @@ function clearProfileData(profileId) {
   try {
     localStorage.removeItem(progressKey(profileId));
     localStorage.removeItem(playGameKey(profileId));
+    localStorage.removeItem(notebookKey(profileId));
   } catch {
     /* ignore */
   }

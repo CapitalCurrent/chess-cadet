@@ -4,9 +4,11 @@ import { getPieceSet } from './pieces/pieceSets';
 import { getBoardTheme } from './pieces/boardThemes';
 import { useProgress } from './state/progress';
 import { useProfiles, playGameKey } from './state/profiles';
+import { notebookCount } from './state/notebook';
 import { useAppTheme } from './state/theme';
 import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
+import FixMistakes from './components/FixMistakes';
 import HomePage from './components/HomePage';
 import LearnCatalog from './components/LearnCatalog';
 import NotationCourse from './components/NotationCourse';
@@ -110,8 +112,9 @@ export default function App() {
     setActiveLineId(defaultLineId(getOpening(openingId)));
   }, [openingId]); // eslint-disable-line react-hooks/exhaustive-deps
   const activeLine = getLines(opening).find((l) => l.id === activeLineId) || null;
-  // Top nav: Home / Learn / Play; drilling a line is part of the Learn area.
-  const navValue = mode === 'home' ? 'home' : mode === 'play' ? 'play' : 'learn';
+  // Top nav: Home / Learn / Play; drilling a line is part of the Learn area and
+  // Fix Mistakes (Coach's Notebook) is launched from Home.
+  const navValue = mode === 'home' || mode === 'fix' ? 'home' : mode === 'play' ? 'play' : 'learn';
 
   // Tapping the Play tab directly = a normal game from the start (clear any seed).
   const pickMode = (id) => {
@@ -187,7 +190,11 @@ export default function App() {
   const onBoardView =
     mode === 'play' ||
     mode === 'drill' ||
+    mode === 'fix' ||
     (mode === 'learn' && (learnSubject === 'openings' || learnSubject === 'notation'));
+
+  // Coach's Notebook badge for the Home card (cheap localStorage read).
+  const nbCount = mode === 'home' ? notebookCount(activeId) : 0;
 
   return (
     <div className={`min-h-screen text-frost pb-24 md:pb-10 log-${logPlacement}`}>
@@ -261,8 +268,21 @@ export default function App() {
             opening={opening}
             activeLine={activeLine}
             playerName={activeProfile.name}
+            notebookCount={nbCount}
             onContinue={() => { setLearnSubject('openings'); setMode('learn'); setRestart((r) => r + 1); }}
             onLearn={() => pickMode('learn')}
+            onPlay={() => pickMode('play')}
+            onFixMistakes={() => { setMode('fix'); setRestart((r) => r + 1); }}
+          />
+        ) : mode === 'fix' ? (
+          <FixMistakes
+            key={`fix-${activeId}-${restart}`}
+            profileId={activeId}
+            pieceSet={pieceSet}
+            boardTheme={boardTheme}
+            moveStyle={moveStyle}
+            focusBoard={focusBoard}
+            rewardMove={rewardMove}
             onPlay={() => pickMode('play')}
           />
         ) : mode === 'play' ? (
@@ -275,6 +295,7 @@ export default function App() {
             seed={playSeed}
             rewardMove={rewardMove}
             saveKey={playGameKey(activeId)}
+            profileId={activeId}
           />
         ) : learnSubject === 'notation' ? (
           <NotationCourse

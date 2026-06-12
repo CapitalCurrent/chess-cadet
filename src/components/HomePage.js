@@ -1,9 +1,10 @@
 import React from 'react';
-import { IconLearn, IconPlay } from './icons';
+import { IconLearn, IconPlay, IconNotebook } from './icons';
 
 // The landing screen / launcher — a welcoming brand hero, then two big choices
-// (Learn / Play) with a small "Continue" link to resume the current line.
-export default function HomePage({ opening, activeLine, playerName, onContinue, onLearn, onPlay }) {
+// (Learn / Play) with a small "Continue" link to resume the current line. When
+// the coach has collected mistakes to fix, a Notebook card appears between them.
+export default function HomePage({ opening, activeLine, playerName, notebookCount = 0, onContinue, onLearn, onPlay, onFixMistakes }) {
   const Card = ({ onClick, icon, title, subtitle, delay }) => (
     <button
       onClick={onClick}
@@ -55,6 +56,15 @@ export default function HomePage({ opening, activeLine, playerName, onContinue, 
           subtitle="Challenge the computer"
           delay={140}
         />
+        {notebookCount > 0 && onFixMistakes && (
+          <Card
+            onClick={onFixMistakes}
+            icon={<IconNotebook size={28} />}
+            title="Coach's Notebook"
+            subtitle={`${notebookCount} position${notebookCount === 1 ? '' : 's'} from your games to fix`}
+            delay={220}
+          />
+        )}
       </div>
 
       {opening && (

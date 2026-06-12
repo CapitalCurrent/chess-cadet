@@ -10,6 +10,7 @@ import { detectMotifs, motifsOfMove } from '../engine/tactics';
 import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine, analyze } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, maiaBestMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
+import { addMistake } from '../state/notebook';
 
 // Notation-only game. The board is DISPLAY ONLY — every move must be typed on
 // the keypad. A simple random-mover opponent replies (very beatable; a real
@@ -42,7 +43,7 @@ function loadSavedGame(key) {
   }
 }
 
-export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, seed, rewardMove, saveKey }) {
+export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, seed, rewardMove, saveKey, profileId }) {
   const savedRef = useRef(seed ? null : loadSavedGame(saveKey));
   const gameRef = useRef();
   if (!gameRef.current) gameRef.current = seed ? seededGame(seed) : savedRef.current ? seededGame(savedRef.current) : newGame();
@@ -439,12 +440,14 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       ? 'pin'
       : null;
     const missedTactic = bestCp >= 150 && loss >= 200 && (best.capture || best.check || bestMotifs.length);
-    if (missedTactic && missedName) return { kind: 'warn', icon: '💥', label: `Missed ${missedName}`, text: `💥 You missed a ${missedName}! ${best.san} was winning.` };
-    if (missedTactic && herCp > -50) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 You missed a tactic! ${best.san} wins material. Tip: check captures & checks first.` };
-    if (missedTactic) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 Ouch — ${best.san} won material there. Look for captures & checks!` };
+    // Carried on warn verdicts so the Coach's Notebook can save the position.
+    const bestRef = { san: best.san, uci: cands[0].move };
+    if (missedTactic && missedName) return { kind: 'warn', icon: '💥', label: `Missed ${missedName}`, text: `💥 You missed a ${missedName}! ${best.san} was winning.`, best: bestRef, motif: missedName, loss };
+    if (missedTactic && herCp > -50) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 You missed a tactic! ${best.san} wins material. Tip: check captures & checks first.`, best: bestRef, motif: null, loss };
+    if (missedTactic) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 Ouch — ${best.san} won material there. Look for captures & checks!`, best: bestRef, motif: null, loss };
     const sug = useHumanHint ? (await humanSuggestion(beforeFen)) || best.san : best.san;
-    if (loss <= 350) return { kind: 'warn', icon: '🤔', label: 'Inaccuracy', text: `🤔 A little loose — ${sug} keeps you better.` };
-    return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.` };
+    if (loss <= 350) return { kind: 'warn', icon: '🤔', label: 'Inaccuracy', text: `🤔 A little loose — ${sug} keeps you better.`, best: bestRef, motif: null, loss };
+    return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.`, best: bestRef, motif: null, loss };
   }
 
   // "Mind the reply": after her move, peek at the opponent's BEST reply (engine's
@@ -469,11 +472,30 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     }
   }
 
+  // Deposit a coach-flagged blunder/missed tactic into the Coach's Notebook so
+  // Fix Mistakes can replay it later. Inaccuracies are skipped (too noisy to
+  // drill); dedup inside addMistake keeps coach + review from double-saving.
+  function captureMistake(beforeFen, move, v, source) {
+    if (!profileId || !v || v.kind !== 'warn' || !v.best) return;
+    if (!/^Missed/.test(v.label) && v.label !== 'Mistake') return;
+    addMistake(profileId, {
+      fen: beforeFen,
+      played: { san: move.san, uci: move.from + move.to + (move.promotion || '') },
+      best: v.best,
+      label: v.label,
+      motif: v.motif || null,
+      lossCp: v.loss,
+      text: v.text,
+      source,
+    });
+  }
+
   async function gradeMove(beforeFen, move) {
     const uci = move.from + move.to + (move.promotion || '');
     const afterFen = gameRef.current.fen();
     setCoachNote({ kind: 'pending', text: '🎓 Coach is looking…' });
     const v = await classifyMove(beforeFen, uci, afterFen, { movetime: 1200, useHumanHint: true });
+    captureMistake(beforeFen, move, v, 'coach');
     const threat = await opponentThreat(afterFen);
     if (!v && !threat) return setCoachNote(null);
     setCoachNote({ kind: v ? v.kind : 'warn', text: v ? v.text : '', threat });
@@ -492,13 +514,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       g.move(m.san);
       if (m.color === studentColor) {
         const uci = m.from + m.to + (m.promotion || '');
-        const v =
-          (await classifyMove(beforeFen, uci, g.fen(), { movetime: 600, useHumanHint: false })) || {
-            kind: 'good',
-            icon: '·',
-            label: 'Move',
-            text: '',
-          };
+        const raw = await classifyMove(beforeFen, uci, g.fen(), { movetime: 600, useHumanHint: false });
+        if (raw) captureMistake(beforeFen, m, raw, 'review');
+        const v = raw || { kind: 'good', icon: '·', label: 'Move', text: '' };
         // ply = half-moves played up to and including this move → scrub target.
         rows.push({ num: Math.ceil(g.history().length / 2), san: m.san, v, ply: g.history().length });
         setReview({ running: true, done: rows.length, total, rows: [...rows] });
