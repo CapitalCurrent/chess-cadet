@@ -975,8 +975,13 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
             </div>
             <VoiceButton
               fen={fen}
-              disabled={!myTurn}
+              continuous
+              canMove={myTurn}
               onMove={(from, to, promotion) => applyBoardMove(from, to, promotion)}
+              onCommand={(cmd) => {
+                if (cmd === 'undo') takeback();
+                else if (cmd === 'hint' && !twoPlayer) showHint();
+              }}
               onFeedback={setFeedback}
             />
             <button

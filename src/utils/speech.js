@@ -70,3 +70,93 @@ export function listenOnce({ onPartial, onResult, onError, onEnd } = {}) {
     }
   };
 }
+
+// Hands-free listening: stays open across an entire game. The recognizer ends
+// its session after a silence timeout (Chrome does this even with
+// continuous=true), so we transparently restart it until stop() is called.
+// Each final utterance fires onResult(alternatives[]). Routine 'no-speech' /
+// 'aborted' errors are swallowed; repeated or permission errors give up and
+// report once. onEnd() fires exactly once, when listening is truly over.
+export function listenContinuous({ onPartial, onResult, onError, onEnd } = {}) {
+  const SR = getSR();
+  if (!SR) {
+    onError && onError('unavailable');
+    onEnd && onEnd();
+    return () => {};
+  }
+  let stopped = false;
+  let rec = null;
+  let failStreak = 0;
+  let ended = false;
+  const finish = () => {
+    if (ended) return;
+    ended = true;
+    onEnd && onEnd();
+  };
+
+  const start = () => {
+    if (stopped) return;
+    rec = new SR();
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.maxAlternatives = 4;
+    rec.continuous = true;
+    rec.onresult = (e) => {
+      failStreak = 0;
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) {
+          const alts = [];
+          for (let j = 0; j < r.length; j++) alts.push(r[j].transcript);
+          onResult && onResult(alts);
+        } else {
+          interim += r[0].transcript;
+        }
+      }
+      if (interim && onPartial) onPartial(interim);
+    };
+    rec.onerror = (e) => {
+      const code = (e && e.error) || 'error';
+      if (code === 'no-speech' || code === 'aborted') return; // routine in hands-free
+      failStreak += 1;
+      if (code === 'not-allowed' || code === 'service-not-allowed' || failStreak >= 3) {
+        stopped = true;
+        onError && onError(code);
+      }
+    };
+    rec.onend = () => {
+      if (stopped) return finish();
+      // Silence timeout — restart so the mic stays on.
+      setTimeout(() => {
+        if (!stopped) start();
+        else finish();
+      }, 200);
+    };
+    try {
+      rec.start();
+    } catch {
+      failStreak += 1;
+      if (failStreak >= 3) {
+        stopped = true;
+        onError && onError('start-failed');
+        finish();
+        return;
+      }
+      setTimeout(() => {
+        if (!stopped) start();
+        else finish();
+      }, 500);
+    }
+  };
+
+  start();
+  return () => {
+    stopped = true;
+    try {
+      rec && rec.abort();
+    } catch {
+      /* ignore */
+    }
+  };
+}
