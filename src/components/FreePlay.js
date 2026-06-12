@@ -90,9 +90,12 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   ); // Spar: grade her moves + offer hints when playing the engine
   const [coachNote, setCoachNote] = useState(null); // { kind, text }
   const [review, setReview] = useState(null); // null | { running, done, total, rows, summary }
+  // Maia's conditioning range is 600–2600 (matches upstream MAIA_RATINGS;
+  // verified empirically by scripts/maia-elo-probe.mjs). The 600 floor matters
+  // most here — it plays like the kids she'd actually face at a club.
   const [humanRating, setHumanRating] = useState(() => {
     const v = parseInt(localStorage.getItem('chess-cadet-humanrating'), 10);
-    return v >= 1100 && v <= 1900 ? v : 1100;
+    return v >= 600 && v <= 2600 ? v : 1100;
   });
   const [maia, setMaia] = useState(getMaiaStatus); // { status, progress }
 
@@ -718,7 +721,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
         <div>
           <div className="flex items-center gap-3">
             <span className="text-[11px] uppercase tracking-wide text-frost-dim font-bold">Rating</span>
-            <input type="range" min="1100" max="1900" step="100" value={humanRating} onChange={(e) => setHumanRating(Number(e.target.value))} className="flex-1 accent-gold" />
+            <input type="range" min="600" max="2600" step="100" value={humanRating} onChange={(e) => setHumanRating(Number(e.target.value))} className="flex-1 accent-gold" />
             <span className="text-xs font-bold text-gold whitespace-nowrap w-16 text-right">{humanRating}</span>
           </div>
           <div className="mt-2 text-xs">
@@ -867,6 +870,22 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
           )}
         </div>
         <div className="flex gap-1.5 shrink-0">
+          {/* Hands-free mic lives HERE (not the move-entry row) so it stays
+              mounted through game-over and review — "new game" works right
+              after checkmate. Moves are gated to her live turn. */}
+          <VoiceButton
+            fen={fen}
+            continuous
+            small
+            canMove={myTurn && !viewing && !review}
+            onMove={(from, to, promotion) => applyBoardMove(from, to, promotion)}
+            onCommand={(cmd) => {
+              if (cmd === 'undo') takeback();
+              else if (cmd === 'hint' && !twoPlayer) showHint();
+              else if (cmd === 'new') startNewWithPref(sidePref);
+            }}
+            onFeedback={setFeedback}
+          />
           <button onClick={takeback} className="cc-btn cc-btn-secondary px-2.5 py-1.5 text-xs" title="Take back">
             <IconUndo size={15} /> Undo
           </button>
@@ -973,17 +992,6 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
                 </span>
               )}
             </div>
-            <VoiceButton
-              fen={fen}
-              continuous
-              canMove={myTurn}
-              onMove={(from, to, promotion) => applyBoardMove(from, to, promotion)}
-              onCommand={(cmd) => {
-                if (cmd === 'undo') takeback();
-                else if (cmd === 'hint' && !twoPlayer) showHint();
-              }}
-              onFeedback={setFeedback}
-            />
             <button
               onClick={() => setKeypadOpen((o) => !o)}
               className={`cc-btn px-3 py-2 text-sm shrink-0 ${keypadOpen ? 'cc-btn-primary' : 'cc-btn-secondary'}`}

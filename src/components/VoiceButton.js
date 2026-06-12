@@ -21,8 +21,9 @@ import { parseVoiceAlternatives } from '../utils/voiceMoves';
 const CMD_OFF = /\b(mic off|microphone off|stop listening|stop the mic|turn off the mic)\b/;
 const CMD_UNDO = /\b(undo|take back|takeback|take that back|go back)\b/;
 const CMD_HINT = /\b(hint|help me)\b/;
+const CMD_NEW = /\b(new game|start (a )?new game|play again|restart( the)? game)\b/;
 
-export default function VoiceButton({ fen, canMove = true, disabled = false, continuous = false, onMove, onCommand, onFeedback }) {
+export default function VoiceButton({ fen, canMove = true, disabled = false, continuous = false, small = false, onMove, onCommand, onFeedback }) {
   const [on, setOn] = useState(false);
   const stopRef = useRef(null);
   // Latest-value refs: results arrive long after the tap that started
@@ -66,6 +67,12 @@ export default function VoiceButton({ fen, canMove = true, disabled = false, con
     }
     if (onCommandRef.current && CMD_HINT.test(said)) {
       onCommandRef.current('hint');
+      return;
+    }
+    if (onCommandRef.current && CMD_NEW.test(said)) {
+      // Feedback first — the host may follow with its own ("You're playing White!").
+      feedback({ kind: 'voice', text: '🎤 New game — here we go!' });
+      onCommandRef.current('new');
       return;
     }
     if (!canMoveRef.current) return; // opponent's turn — ignore table talk
@@ -114,7 +121,9 @@ export default function VoiceButton({ fen, canMove = true, disabled = false, con
     <button
       onClick={toggle}
       disabled={disabled}
-      className={`cc-btn px-3 py-2 text-sm shrink-0 ${on ? 'cc-btn-primary animate-pulse' : 'cc-btn-secondary'}`}
+      className={`cc-btn shrink-0 ${small ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm'} ${
+        on ? 'cc-btn-primary animate-pulse' : 'cc-btn-secondary'
+      }`}
       title={on ? 'Mic is on — tap to turn off' : continuous ? 'Hands-free: say your moves' : 'Say your move'}
       aria-label={on ? 'Turn the microphone off' : 'Say your move'}
     >
