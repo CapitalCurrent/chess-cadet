@@ -35,6 +35,13 @@ export function getMaiaStatus() {
   return { status, progress };
 }
 
+// A dead worker can never answer — reject every in-flight inference so callers'
+// existing .catch fallbacks (StockBot / random move) fire instead of hanging.
+function rejectPending(message) {
+  pending.forEach((p) => p.reject(new Error(message)));
+  pending.clear();
+}
+
 function ensureWorker() {
   if (worker) return;
   try {
@@ -57,6 +64,7 @@ function ensureWorker() {
           pending.get(msg.id).reject(new Error(msg.message));
           pending.delete(msg.id);
         } else {
+          rejectPending(msg.message || 'Maia worker error');
           setStatus('error');
         }
         break;
@@ -75,7 +83,10 @@ function ensureWorker() {
         break;
     }
   };
-  worker.onerror = () => setStatus('error');
+  worker.onerror = () => {
+    rejectPending('Maia worker crashed');
+    setStatus('error');
+  };
   worker.postMessage({ type: 'init', modelUrl: MODEL_URL, modelVersion: MODEL_VERSION });
 }
 

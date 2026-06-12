@@ -290,6 +290,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     setTokens([]);
     setFeedback(null);
     setCoachNote(null);
+    setReview(null);
     setOver(null);
     const h = gameRef.current.history({ verbose: true });
     const last = h[h.length - 1];
@@ -533,6 +534,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     setViewPly(null);
     setOver(null);
     setFeedback(null);
+    setReview(null);
     setFen(g.fen());
     setHistory(g.history());
     const h = g.history({ verbose: true });

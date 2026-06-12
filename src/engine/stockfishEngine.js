@@ -77,15 +77,50 @@ export function initEngine() {
   ensureReady().catch(() => {});
 }
 
-function doBestMove(fen, skill, movetime) {
+// Tear down a crashed/hung worker so the next request starts a fresh one.
+function resetWorker() {
+  try {
+    if (worker) worker.terminate();
+  } catch {
+    /* ignore */
+  }
+  worker = null;
+  readyPromise = null;
+  active = null;
+  infoMoves = null;
+  infoScores = null;
+}
+
+// Run one search with a watchdog: if `bestmove` never arrives (a crashed or
+// hung worker would otherwise stall the serialized queue FOREVER — permanent
+// "Opponent thinking…"), tear the worker down and resolve `fallback` so every
+// caller's existing null/[] path kicks in (e.g. the random-legal-move fallback).
+function runSearch(setup, movetime, fallback) {
   return new Promise((resolve) => {
-    active = resolve;
+    let timer = null;
+    const finish = (v) => {
+      clearTimeout(timer);
+      resolve(v);
+    };
+    active = finish;
+    timer = setTimeout(() => {
+      if (active === finish) {
+        resetWorker();
+        finish(fallback);
+      }
+    }, movetime + 5000);
+    setup();
+  });
+}
+
+function doBestMove(fen, skill, movetime) {
+  return runSearch(() => {
     infoMoves = null;
     worker.postMessage('setoption name MultiPV value 1');
     worker.postMessage('setoption name Skill Level value ' + skill);
     worker.postMessage('position fen ' + fen);
     worker.postMessage('go movetime ' + movetime);
-  });
+  }, movetime, null);
 }
 
 // Returns a UCI move string ("e2e4", "g1f3", "e7e8q") or null. Never throws.
@@ -100,14 +135,13 @@ export function bestMove(fen, { skill = 20, movetime = 1000 } = {}) {
 }
 
 function doTopMoves(fen, multipv, movetime, skill) {
-  return new Promise((resolve) => {
-    active = resolve;
+  return runSearch(() => {
     infoMoves = {};
     worker.postMessage('setoption name MultiPV value ' + multipv);
     worker.postMessage('setoption name Skill Level value ' + skill);
     worker.postMessage('position fen ' + fen);
     worker.postMessage('go movetime ' + movetime);
-  });
+  }, movetime, []);
 }
 
 // Returns the engine's best candidate moves, best-first (UCI strings). Used to
@@ -123,15 +157,14 @@ export function topMoves(fen, { multipv = 4, movetime = 500, skill = 20 } = {}) 
 }
 
 function doAnalyze(fen, multipv, movetime) {
-  return new Promise((resolve) => {
-    active = resolve;
+  return runSearch(() => {
     infoMoves = {};
     infoScores = {};
     worker.postMessage('setoption name MultiPV value ' + multipv);
     worker.postMessage('setoption name Skill Level value 20');
     worker.postMessage('position fen ' + fen);
     worker.postMessage('go movetime ' + movetime);
-  });
+  }, movetime, []);
 }
 
 // Full-strength analysis: best-first candidates WITH eval scores, as
@@ -149,14 +182,14 @@ export function analyze(fen, { multipv = 5, movetime = 600 } = {}) {
 }
 
 function doShallow(fen, depth, skill) {
-  return new Promise((resolve) => {
-    active = resolve;
+  // Depth 1-2 is near-instant; 2000ms here is just the watchdog base.
+  return runSearch(() => {
     infoMoves = null;
     worker.postMessage('setoption name MultiPV value 1');
     worker.postMessage('setoption name Skill Level value ' + skill);
     worker.postMessage('position fen ' + fen);
     worker.postMessage('go depth ' + depth);
-  });
+  }, 2000, null);
 }
 
 // Best move from a deliberately SHALLOW search (depth 1-2). It plays a natural,
