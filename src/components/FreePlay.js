@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
+import VoiceButton from './VoiceButton';
 import PlayLayout from './PlayLayout';
 import Segmented from './nav/Segmented';
 import MoveLog from './MoveLog';
@@ -903,6 +904,8 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
           className={`rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold animate-pop ${
             feedback.kind === 'good'
               ? 'bg-grass/20 text-grass ring-1 ring-grass/40'
+              : feedback.kind === 'voice' || feedback.kind === 'voice-miss'
+              ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
               : 'bg-coral/15 text-coral ring-1 ring-coral/40'
           }`}
         >
@@ -958,7 +961,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
             </div>
           )}
 
-          {/* Move-entry row: tap the board (primary) or ⌨ to type the notation. */}
+          {/* Move-entry row: tap the board (primary), 🎤 to say it, or ⌨ to type. */}
           <div className="flex items-center gap-2">
             <div className="text-xs text-frost-dim font-bold whitespace-nowrap">
               {activeColor === 'w' ? 'White' : 'Black'}:
@@ -970,6 +973,12 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
                 </span>
               )}
             </div>
+            <VoiceButton
+              fen={fen}
+              disabled={!myTurn}
+              onMove={(from, to, promotion) => applyBoardMove(from, to, promotion)}
+              onFeedback={setFeedback}
+            />
             <button
               onClick={() => setKeypadOpen((o) => !o)}
               className={`cc-btn px-3 py-2 text-sm shrink-0 ${keypadOpen ? 'cc-btn-primary' : 'cc-btn-secondary'}`}

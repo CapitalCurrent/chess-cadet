@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ChessBoard from './ChessBoard';
 import NotationKeypad from './NotationKeypad';
+import VoiceButton from './VoiceButton';
 import PlayLayout from './PlayLayout';
 import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
@@ -640,7 +641,7 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
               className={`rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold animate-pop ${
                 feedback.kind === 'correct'
                   ? 'bg-grass/20 text-grass ring-1 ring-grass/40'
-                  : feedback.kind === 'legal'
+                  : feedback.kind === 'legal' || feedback.kind === 'voice' || feedback.kind === 'voice-miss'
                   ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
                   : 'bg-coral/15 text-coral ring-1 ring-coral/40'
               }`}
@@ -657,6 +658,12 @@ export default function OpeningTrainer({ opening, mode, openingSwitcher, linesPi
             <div className="flex-1 bg-bg-2 rounded-cc-lg ring-1 ring-edge px-3 py-2 min-h-[40px] flex items-center text-lg md:text-xl font-extrabold tracking-wider text-gold">
               {input || <span className="text-gold/30 text-sm font-bold">{keypadOpen ? 'type your move…' : 'tap the board, or ⌨ to type'}</span>}
             </div>
+            <VoiceButton
+              fen={fen}
+              disabled={!myTurn}
+              onMove={(from, to) => handleDrillMove(from, to)}
+              onFeedback={setFeedback}
+            />
             <button
               onClick={() => setKeypadOpen((o) => !o)}
               className={`cc-btn px-3 py-2 text-sm shrink-0 ${keypadOpen ? 'cc-btn-primary' : 'cc-btn-secondary'}`}
