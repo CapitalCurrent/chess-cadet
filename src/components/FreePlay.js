@@ -8,6 +8,7 @@ import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
 import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
 import { detectMotifs, motifsOfMove } from '../engine/tactics';
+import { explainWarn, samePieceNudge, castleNudge } from '../engine/principles';
 import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine, analyze } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, maiaBestMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
@@ -306,6 +307,8 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     setCoachNote(null);
     setReview(null);
     setOver(null);
+    castleNudgedRef.current = false;
+    samePieceNudgesRef.current = 0;
     const h = gameRef.current.history({ verbose: true });
     const last = h[h.length - 1];
     setLastMove(last ? { from: last.from, to: last.to } : null);
@@ -467,11 +470,14 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   // #1 only — keeps it reliable) and, if it's a named tactic, flag it so she
   // learns to anticipate it. We only name fork/pin/discovered (geometric, on the
   // engine's chosen move), never guess.
-  async function opponentThreat(afterFen) {
+  // Also returns the reply uci itself — used to CONFIRM hanging-piece
+  // explanations before the principles coach says them out loud.
+  async function opponentReply(afterFen) {
     try {
       const cands = (await analyze(afterFen, { multipv: 1, movetime: 700 })) || [];
-      if (!cands.length) return null;
-      const motifs = motifsOfMove(afterFen, cands[0].move);
+      if (!cands.length) return { replyUci: null, threat: null };
+      const replyUci = cands[0].move;
+      const motifs = motifsOfMove(afterFen, replyUci);
       const name = motifs.includes('fork')
         ? 'a fork'
         : motifs.includes('discovered')
@@ -479,11 +485,16 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
         : motifs.includes('pin')
         ? 'a pin'
         : null;
-      return name ? { san: uciToSan(afterFen, cands[0].move), name } : null;
+      return { replyUci, threat: name ? { san: uciToSan(afterFen, replyUci), name } : null };
     } catch {
-      return null;
+      return { replyUci: null, threat: null };
     }
   }
+
+  // Habit-nudge rate limits (reset each new game): the principles coach may
+  // mention castling once and piece-wandering twice per game, max.
+  const castleNudgedRef = useRef(false);
+  const samePieceNudgesRef = useRef(0);
 
   // Deposit a coach-flagged blunder/missed tactic into the Coach's Notebook so
   // Fix Mistakes can replay it later. Inaccuracies are skipped (too noisy to
@@ -509,9 +520,36 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     setCoachNote({ kind: 'pending', text: '🎓 Coach is looking…' });
     const v = await classifyMove(beforeFen, uci, afterFen, { movetime: 1200, useHumanHint: true });
     captureMistake(beforeFen, move, v, 'coach');
-    const threat = await opponentThreat(afterFen);
-    if (!v && !threat) return setCoachNote(null);
-    setCoachNote({ kind: v ? v.kind : 'warn', text: v ? v.text : '', threat });
+    const reply = await opponentReply(afterFen);
+
+    // Tier A — attach the broader-concept WHY to engine-flagged generic warns.
+    // (Named tactic messages — missed fork etc. — already explain themselves.)
+    let note = v;
+    if (v && v.kind === 'warn' && (v.label === 'Inaccuracy' || v.label === 'Mistake')) {
+      const why = explainWarn({ afterFen, move, herColor: studentColor, replyUci: reply.replyUci });
+      if (why) note = { ...v, text: `${v.text} ${why}` };
+    }
+
+    // Tier B — gentle habit nudges, only when the move itself wasn't flagged
+    // (no mixed messages) and never on an engine-best move.
+    let habit = null;
+    if (v && v.kind !== 'warn') {
+      if (v.kind !== 'best' && samePieceNudgesRef.current < 2) {
+        habit = samePieceNudge({
+          history: gameRef.current.history({ verbose: true }),
+          beforeFen,
+          herColor: studentColor,
+        });
+        if (habit) samePieceNudgesRef.current += 1;
+      }
+      if (!habit && !castleNudgedRef.current) {
+        habit = castleNudge({ fen: afterFen, herColor: studentColor });
+        if (habit) castleNudgedRef.current = true;
+      }
+    }
+
+    if (!note && !reply.threat && !habit) return setCoachNote(null);
+    setCoachNote({ kind: note ? note.kind : 'warn', text: note ? note.text : '', threat: reply.threat, habit });
   }
 
   // Game Review: re-walk the game and classify each of HER moves, then summarize.
@@ -975,6 +1013,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
                   {coachNote.threat && (
                     <div className="rounded-cc-lg px-3 py-2 text-sm font-bold bg-gold/15 text-gold ring-1 ring-gold/40 animate-pop">
                       👀 Watch out — {studentColor === 'w' ? 'Black' : 'White'} can play {coachNote.threat.san} ({coachNote.threat.name}). Have an answer ready!
+                    </div>
+                  )}
+                  {coachNote.habit && (
+                    <div className="rounded-cc-lg px-3 py-2 text-sm font-bold bg-surface text-frost ring-1 ring-edge animate-pop">
+                      🧭 {coachNote.habit}
                     </div>
                   )}
                 </div>
