@@ -10,6 +10,7 @@ import { useAppTheme } from './state/theme';
 import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
 import FixMistakes from './components/FixMistakes';
+import CheckmateSchool from './components/CheckmateSchool';
 import HomePage from './components/HomePage';
 import LearnCatalog from './components/LearnCatalog';
 import NotationCourse from './components/NotationCourse';
@@ -192,7 +193,7 @@ export default function App() {
     mode === 'play' ||
     mode === 'drill' ||
     mode === 'fix' ||
-    (mode === 'learn' && (learnSubject === 'openings' || learnSubject === 'notation'));
+    (mode === 'learn' && (learnSubject === 'openings' || learnSubject === 'notation' || learnSubject === 'checkmates'));
 
   // Coach's Notebook badge + Today's Lesson plan for Home (cheap reads).
   const nbCount = mode === 'home' ? notebookCount(activeId) : 0;
@@ -330,6 +331,17 @@ export default function App() {
             boardTheme={boardTheme}
             moveStyle={moveStyle}
             focusBoard={focusBoard}
+            onBack={() => setLearnSubject(null)}
+          />
+        ) : learnSubject === 'checkmates' ? (
+          <CheckmateSchool
+            key={`checkmates-${activeId}-${restart}`}
+            profileId={activeId}
+            pieceSet={pieceSet}
+            boardTheme={boardTheme}
+            moveStyle={moveStyle}
+            focusBoard={focusBoard}
+            rewardMove={rewardMove}
             onBack={() => setLearnSubject(null)}
           />
         ) : learnSubject === 'openings' ? (
