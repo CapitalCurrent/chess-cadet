@@ -12,6 +12,7 @@ import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEng
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine, analyze } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, maiaBestMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
 import { addMistake } from '../state/notebook';
+import { recordLessonEvent } from '../state/dailyLesson';
 
 // Notation-only game. The board is DISPLAY ONLY — every move must be typed on
 // the keypad. A simple random-mover opponent replies (very beatable; a real
@@ -128,8 +129,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       /* ignore */
     }
   }, [fen, studentColor, saveKey]);
-  // If a restored game was already finished, show the end banner on mount.
-  useEffect(() => { checkEnd(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // If a restored game was already finished, show the end banner on mount
+  // (live=false: don't credit yesterday's game to today's lesson).
+  useEffect(() => { checkEnd(false); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     initEngine(); // warm up the Stockfish worker
   }, []);
@@ -146,16 +148,23 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   const myTurn = !over && (twoPlayer || toMove === studentColor);
   const inCheck = !over && game.inCheck();
 
-  function checkEnd() {
+  function checkEnd(live = true) {
     const g = gameRef.current;
+    let result = null;
     if (g.isCheckmate()) {
       const winner = g.turn() === 'w' ? 'Black' : 'White';
-      setOver({ text: `Checkmate — ${winner} wins! 🏆`, winner });
+      result = { text: `Checkmate — ${winner} wins! 🏆`, winner };
     } else if (g.isStalemate()) {
-      setOver({ text: 'Stalemate — it’s a draw. 🤝' });
+      result = { text: 'Stalemate — it’s a draw. 🤝' };
     } else if (g.isInsufficientMaterial() || g.isThreefoldRepetition() || g.isDraw()) {
-      setOver({ text: 'Draw. 🤝' });
+      result = { text: 'Draw. 🤝' };
     }
+    if (!result) return;
+    setOver(result);
+    // A real engine game finishing counts toward Today's Lesson — not the
+    // mount-time re-check of an already-finished saved game, not pass-and-play,
+    // not a 2-move accident.
+    if (live && !twoPlayer && profileId && g.history().length >= 6) recordLessonEvent(profileId, 'game');
   }
 
   function pushMove(move) {

@@ -1,10 +1,10 @@
 import React from 'react';
 import { IconLearn, IconPlay, IconNotebook } from './icons';
 
-// The landing screen / launcher — a welcoming brand hero, then two big choices
-// (Learn / Play) with a small "Continue" link to resume the current line. When
-// the coach has collected mistakes to fix, a Notebook card appears between them.
-export default function HomePage({ opening, activeLine, playerName, notebookCount = 0, onContinue, onLearn, onPlay, onFixMistakes }) {
+// The landing screen / launcher — a welcoming brand hero, Today's Lesson (a
+// teacher-style daily checklist), then the big choices (Learn / Play /
+// Coach's Notebook) with a small "Continue" link to resume the current line.
+export default function HomePage({ opening, activeLine, playerName, notebookCount = 0, lesson, onLessonStep, onContinue, onLearn, onPlay, onFixMistakes }) {
   const Card = ({ onClick, icon, title, subtitle, delay }) => (
     <button
       onClick={onClick}
@@ -40,6 +40,43 @@ export default function HomePage({ opening, activeLine, playerName, notebookCoun
         <div className="mt-1 text-3xl md:text-5xl font-extrabold text-frost font-round">What do you want to do?</div>
         <div className="text-sm md:text-base text-frost-dim mt-2">Pick a lesson, or play a game.</div>
       </div>
+
+      {/* Today's Lesson — the daily session a teacher would assign. Steps tick
+          off as she does them anywhere in the app; tapping jumps right in. */}
+      {lesson && lesson.steps.length > 0 && (
+        <div className="cc-glass p-4 mb-4 animate-float" style={{ animationDelay: '20ms' }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs uppercase tracking-wide text-gold/70 font-bold">📅 Today's Lesson</span>
+            {lesson.complete && <span className="text-xs font-bold text-grass">⭐ Complete — great work!</span>}
+          </div>
+          <div className="space-y-1.5">
+            {lesson.steps.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => !s.done && onLessonStep && onLessonStep(s)}
+                disabled={s.done}
+                className={`w-full flex items-center gap-2.5 rounded-cc-lg px-3 py-2 text-left ${
+                  s.done ? 'bg-grass/10' : 'bg-white/[0.04] cc-reveal'
+                }`}
+              >
+                <span
+                  className={`w-5 h-5 rounded-full grid place-items-center text-[11px] font-bold shrink-0 ${
+                    s.done ? 'bg-grass text-bg' : 'ring-1 ring-edge text-frost-dim'
+                  }`}
+                >
+                  {s.done ? '✓' : ''}
+                </span>
+                <span className="text-base leading-none">{s.icon}</span>
+                <span className={`flex-1 text-sm font-bold ${s.done ? 'text-grass/80 line-through' : 'text-frost'}`}>
+                  {s.label}
+                </span>
+                {s.progress && !s.done && <span className="text-xs text-frost-dim font-bold">{s.progress}</span>}
+                {!s.done && <span className="text-frost-dim">›</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3 md:space-y-4">
         <Card

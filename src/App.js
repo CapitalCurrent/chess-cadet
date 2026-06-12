@@ -5,6 +5,7 @@ import { getBoardTheme } from './pieces/boardThemes';
 import { useProgress } from './state/progress';
 import { useProfiles, playGameKey } from './state/profiles';
 import { notebookCount } from './state/notebook';
+import { getDailyLesson, recordLessonEvent } from './state/dailyLesson';
 import { useAppTheme } from './state/theme';
 import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
@@ -193,8 +194,31 @@ export default function App() {
     mode === 'fix' ||
     (mode === 'learn' && (learnSubject === 'openings' || learnSubject === 'notation'));
 
-  // Coach's Notebook badge for the Home card (cheap localStorage read).
+  // Coach's Notebook badge + Today's Lesson plan for Home (cheap reads).
   const nbCount = mode === 'home' ? notebookCount(activeId) : 0;
+  const lesson = mode === 'home' ? getDailyLesson(activeId, progress) : null;
+
+  // Tap a lesson step → jump straight into that activity.
+  const startLessonStep = (step) => {
+    if (step.id === 'puzzles') {
+      setMode('fix');
+    } else if (step.id === 'line') {
+      if (step.courseId) setOpeningId(step.courseId);
+      setLearnSubject('openings');
+      setMode('learn');
+    } else if (step.id === 'game') {
+      setPlaySeed(null);
+      setMode('play');
+    }
+    setRestart((r) => r + 1);
+  };
+
+  // Completing any Learn/Drill run marks the lesson's practice step. finishLine
+  // fires exactly once per completed run (both modes), so it's the one hook.
+  const finishLineWithLesson = (oid) => {
+    finishLine(oid);
+    recordLessonEvent(activeId, 'line');
+  };
 
   return (
     <div className={`min-h-screen text-frost pb-24 md:pb-10 log-${logPlacement}`}>
@@ -269,6 +293,8 @@ export default function App() {
             activeLine={activeLine}
             playerName={activeProfile.name}
             notebookCount={nbCount}
+            lesson={lesson}
+            onLessonStep={startLessonStep}
             onContinue={() => { setLearnSubject('openings'); setMode('learn'); setRestart((r) => r + 1); }}
             onLearn={() => pickMode('learn')}
             onPlay={() => pickMode('play')}
@@ -326,7 +352,7 @@ export default function App() {
             progress={progress}
             rewardMove={rewardMove}
             breakStreak={breakStreak}
-            finishLine={finishLine}
+            finishLine={finishLineWithLesson}
             recordDrillRun={recordDrillRun}
           />
         ) : (

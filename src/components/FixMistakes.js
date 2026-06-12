@@ -4,6 +4,7 @@ import PlayLayout from './PlayLayout';
 import { newGame } from '../engine/chessEngine';
 import { analyze } from '../engine/stockfishEngine';
 import { puzzleQueue, recordAttempt } from '../state/notebook';
+import { recordLessonEvent } from '../state/dailyLesson';
 import { IconNotebook, IconStar } from './icons';
 
 // Fix Mistakes — the Coach's Notebook practice mode. Each puzzle is a REAL
@@ -55,6 +56,7 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
   function finishSolved(exact, altSan) {
     const clean = !triedWrong && hint === 0;
     recordAttempt(profileId, cur.id, { solved: true, clean });
+    recordLessonEvent(profileId, 'puzzle');
     rewardMove && rewardMove(clean ? 2 : 1);
     setPhase('solved');
     setNote({
