@@ -4,7 +4,7 @@ import { IconLearn, IconPlay, IconNotebook } from './icons';
 // The landing screen / launcher — a welcoming brand hero, Today's Lesson (a
 // teacher-style daily checklist), then the big choices (Learn / Play /
 // Coach's Notebook) with a small "Continue" link to resume the current line.
-export default function HomePage({ opening, activeLine, playerName, notebookCount = 0, lesson, onLessonStep, onContinue, onLearn, onPlay, onFixMistakes }) {
+export default function HomePage({ opening, activeLine, playerName, notebookCount = 0, lesson, chessPower, onLessonStep, onContinue, onLearn, onPlay, onFixMistakes }) {
   const Card = ({ onClick, icon, title, subtitle, delay }) => (
     <button
       onClick={onClick}
@@ -36,6 +36,13 @@ export default function HomePage({ opening, activeLine, playerName, notebookCoun
       <div className="relative text-center mb-7 pt-2">
         {playerName && (
           <div className="text-base md:text-lg font-bold text-gold">Hi {playerName}!</div>
+        )}
+        {chessPower && chessPower.games > 0 && (
+          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 bg-white/[0.05] ring-1 ring-[var(--edge-soft)]">
+            <span className="text-xs uppercase tracking-wide text-frost-dim font-bold">Chess Power</span>
+            <span className="text-sm font-extrabold text-gold">{chessPower.rating}</span>
+            {chessPower.provisional && <span className="text-[10px] text-frost-dim font-bold">finding your level…</span>}
+          </div>
         )}
         <div className="mt-1 text-3xl md:text-5xl font-extrabold text-frost font-round">What do you want to do?</div>
         <div className="text-sm md:text-base text-frost-dim mt-2">Pick a lesson, or play a game.</div>

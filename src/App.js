@@ -6,6 +6,7 @@ import { useProgress } from './state/progress';
 import { useProfiles, playGameKey } from './state/profiles';
 import { notebookCount } from './state/notebook';
 import { getDailyLesson, recordLessonEvent } from './state/dailyLesson';
+import { getRating } from './state/rating';
 import { useAppTheme } from './state/theme';
 import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
@@ -198,6 +199,7 @@ export default function App() {
   // Coach's Notebook badge + Today's Lesson plan for Home (cheap reads).
   const nbCount = mode === 'home' ? notebookCount(activeId) : 0;
   const lesson = mode === 'home' ? getDailyLesson(activeId, progress) : null;
+  const chessPower = mode === 'home' ? getRating(activeId) : null;
 
   // Tap a lesson step → jump straight into that activity.
   const startLessonStep = (step) => {
@@ -295,6 +297,7 @@ export default function App() {
             playerName={activeProfile.name}
             notebookCount={nbCount}
             lesson={lesson}
+            chessPower={chessPower}
             onLessonStep={startLessonStep}
             onContinue={() => { setLearnSubject('openings'); setMode('learn'); setRestart((r) => r + 1); }}
             onLearn={() => pickMode('learn')}

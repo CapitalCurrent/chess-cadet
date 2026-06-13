@@ -10,10 +10,11 @@ import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
 import { detectMotifs, motifsOfMove } from '../engine/tactics';
 import { explainWarn, samePieceNudge, castleNudge } from '../engine/principles';
 import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
-import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, initEngine, analyze } from '../engine/stockfishEngine';
+import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, levelElo, initEngine, analyze } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, maiaBestMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
 import { addMistake } from '../state/notebook';
 import { recordLessonEvent } from '../state/dailyLesson';
+import { recordRatedGame } from '../state/rating';
 
 // Notation-only game. The board is DISPLAY ONLY — every move must be typed on
 // the keypad. A simple random-mover opponent replies (very beatable; a real
@@ -55,6 +56,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   const [tokens, setTokens] = useState([]);
   const [feedback, setFeedback] = useState(null);
   const [over, setOver] = useState(null); // { text }
+  const [ratingResult, setRatingResult] = useState(null); // { rating, delta, suggestLevel?, suggestRating? } after a rated game
   const [lastMove, setLastMove] = useState(() => {
     const h = gameRef.current.history({ verbose: true });
     const last = h[h.length - 1];
@@ -162,10 +164,62 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     }
     if (!result) return;
     setOver(result);
-    // A real engine game finishing counts toward Today's Lesson — not the
-    // mount-time re-check of an already-finished saved game, not pass-and-play,
-    // not a 2-move accident.
-    if (live && !twoPlayer && profileId && g.history().length >= 6) recordLessonEvent(profileId, 'game');
+    // A real engine game finishing counts toward Today's Lesson + Chess Power —
+    // not the mount-time re-check of an already-finished saved game, not
+    // pass-and-play, not a 2-move accident.
+    if (live && !twoPlayer && profileId && g.history().length >= 6) {
+      recordLessonEvent(profileId, 'game');
+      updateRating(result.winner);
+    }
+  }
+
+  // Opponent's effective Elo for the rating math (StockBot level midpoint, or
+  // MaiaBot's set rating).
+  function opponentElo() {
+    if (opponentType === 'maia') return humanRating;
+    const [lo, hi] = levelElo(level);
+    return Math.round((lo + hi) / 2);
+  }
+  // The StockBot level whose Elo midpoint best matches a target rating — used to
+  // suggest a "better match" so games stay ~even (she wins ~half).
+  function bestLevelFor(rating) {
+    let best = 1;
+    let bestDiff = Infinity;
+    for (let lvl = 1; lvl <= 20; lvl++) {
+      const [lo, hi] = levelElo(lvl);
+      const diff = Math.abs((lo + hi) / 2 - rating);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = lvl;
+      }
+    }
+    return best;
+  }
+
+  // Apply the Elo update and decide whether to suggest an easier/harder match.
+  function updateRating(winner) {
+    const myResult = winner ? (winner === (studentColor === 'w' ? 'White' : 'Black') ? 1 : 0) : 0.5;
+    const oppElo = opponentElo();
+    const { rating, delta } = recordRatedGame(profileId, oppElo, myResult);
+    const res = { rating, delta };
+    // Suggest a better match when she's clearly outgrown / overmatched by this
+    // opponent (≈150 Elo gap). StockBot retunes by level; MaiaBot by rating.
+    const gap = Math.abs(rating - oppElo);
+    if (opponentType === 'stockfish') {
+      const target = bestLevelFor(rating);
+      if (gap >= 150 && target !== level) res.suggestLevel = target;
+    } else if (opponentType === 'maia') {
+      const rounded = Math.max(600, Math.min(2600, Math.round(rating / 100) * 100));
+      if (gap >= 150 && rounded !== humanRating) res.suggestRating = rounded;
+    }
+    setRatingResult(res);
+  }
+
+  function applyMatchSuggestion() {
+    if (!ratingResult) return;
+    if (ratingResult.suggestLevel != null) setLevel(ratingResult.suggestLevel);
+    if (ratingResult.suggestRating != null) setHumanRating(ratingResult.suggestRating);
+    setRatingResult((r) => (r ? { ...r, suggestLevel: undefined, suggestRating: undefined, applied: true } : r));
   }
 
   function pushMove(move) {
@@ -307,6 +361,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     setCoachNote(null);
     setReview(null);
     setOver(null);
+    setRatingResult(null);
     castleNudgedRef.current = false;
     samePieceNudgesRef.current = 0;
     const h = gameRef.current.history({ verbose: true });
@@ -1065,9 +1120,36 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
           )}
         </>
       ) : (
-        <button onClick={() => startNewWithPref(sidePref)} className="cc-btn cc-btn-grass w-full py-3 text-lg">
-          ↺ Play again
-        </button>
+        <>
+          {ratingResult && (
+            <div className="cc-card p-3 text-center animate-pop">
+              <div className="text-[11px] uppercase tracking-wide text-gold/60 font-bold">Chess Power</div>
+              <div className="flex items-center justify-center gap-2 mt-0.5">
+                <span className="text-2xl font-extrabold text-gold">{ratingResult.rating}</span>
+                <span
+                  className={`text-sm font-bold ${
+                    ratingResult.delta > 0 ? 'text-grass' : ratingResult.delta < 0 ? 'text-coral' : 'text-frost-dim'
+                  }`}
+                >
+                  {ratingResult.delta > 0 ? `▲ +${ratingResult.delta}` : ratingResult.delta < 0 ? `▼ ${ratingResult.delta}` : '—'}
+                </span>
+              </div>
+              {(ratingResult.suggestLevel != null || ratingResult.suggestRating != null) && (
+                <button onClick={applyMatchSuggestion} className="cc-btn cc-btn-secondary w-full py-2 mt-2.5 text-sm">
+                  🎯 {(ratingResult.suggestLevel != null ? ratingResult.suggestLevel > level : ratingResult.suggestRating > humanRating)
+                    ? 'Try a tougher match'
+                    : 'Try an easier match'}
+                </button>
+              )}
+              {ratingResult.applied && (
+                <div className="text-xs text-grass font-bold mt-2">✓ Opponent set to match your level!</div>
+              )}
+            </div>
+          )}
+          <button onClick={() => startNewWithPref(sidePref)} className="cc-btn cc-btn-grass w-full py-3 text-lg">
+            ↺ Play again
+          </button>
+        </>
       )}
 
       {/* Move log below the fold on phone, collapsible (xl shows it in the rail). */}
