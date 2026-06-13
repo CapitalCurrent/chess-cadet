@@ -84,7 +84,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   const [opponentType, setOpponentType] = useState(() => {
     const v = localStorage.getItem('chess-cadet-opponent');
     if (v === 'human2') return 'human2'; // pass-and-play (two humans, one device)
-    return v === 'maia' || v === 'human' ? 'maia' : 'stockfish'; // 'human' = legacy Maia value
+    if (v === 'stockfish') return 'stockfish'; // respect an explicit practice-bot choice
+    // Default (new players, or legacy 'human'/'maia') → MaiaBot, the human-like
+    // opponent. Not downloaded yet? We auto-prompt below; StockBot fills in /
+    // takes over if they decline or the download fails.
+    return 'maia';
   });
   const [autoFlip, setAutoFlip] = useState(
     () => localStorage.getItem('chess-cadet-autoflip') !== 'off'
@@ -102,6 +106,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     return v >= 600 && v <= 2600 ? v : 1100;
   });
   const [maia, setMaia] = useState(getMaiaStatus); // { status, progress }
+  const [maiaPrompt, setMaiaPrompt] = useState(false); // first-run "download MaiaBot?" offer
 
   useEffect(() => {
     localStorage.setItem('chess-cadet-level', String(level));
@@ -142,6 +147,33 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   useEffect(() => {
     if (opponentType === 'maia') initMaia(); // warm up (loads from cache if present)
   }, [opponentType]);
+  // MaiaBot is the default opponent. If its model isn't cached yet (and we're
+  // online), offer the one-time download up front instead of making them hunt
+  // for the button. StockBot fills in for play while they decide / download.
+  useEffect(() => {
+    if (opponentType === 'maia' && maia.status === 'no-cache' && navigator.onLine) {
+      setMaiaPrompt(true);
+    } else {
+      setMaiaPrompt(false);
+    }
+  }, [opponentType, maia.status]);
+  // If the download fails, fall back to StockBot for real (not just for play) so
+  // we don't keep retrying a broken fetch — they can re-pick Maia in Setup later.
+  useEffect(() => {
+    if (opponentType === 'maia' && maia.status === 'error') {
+      setOpponentType('stockfish');
+      setFeedback({ kind: 'voice', text: '🤖 Couldn’t load MaiaBot — playing the practice bot instead.' });
+    }
+  }, [opponentType, maia.status]);
+
+  const acceptMaiaDownload = () => {
+    setMaiaPrompt(false);
+    ensureMaiaReady({ allowDownload: true }); // StockBot covers play until it’s ready
+  };
+  const declineMaiaDownload = () => {
+    setMaiaPrompt(false);
+    setOpponentType('stockfish'); // persisted → defaults to StockBot from now on
+  };
 
   const input = tokens.join('');
   const game = gameRef.current;
@@ -1194,6 +1226,27 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
               ))}
             </div>
             <div className="mt-2 text-center text-[11px] text-frost/40">Tap a piece (or tap outside to cancel)</div>
+          </div>
+        </div>
+      )}
+
+      {maiaPrompt && (
+        <div className="cc-scrim items-center p-3" onClick={declineMaiaDownload}>
+          <div className="cc-sheet p-5 text-center animate-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="text-4xl">🙂</div>
+            <div className="text-xl md:text-2xl font-extrabold text-gold mt-2">Meet MaiaBot!</div>
+            <p className="text-sm md:text-base text-frost-dim mt-2 leading-snug">
+              MaiaBot plays like a <b className="text-frost">real person</b>, not a computer — way more fun and
+              natural to play against. It’s a <b className="text-frost">one-time</b> download (~44&nbsp;MB), then it
+              works even offline.
+            </p>
+            <button onClick={acceptMaiaDownload} className="cc-btn cc-btn-grass w-full py-3 mt-4 text-base">
+              ⬇ Get MaiaBot (~44&nbsp;MB)
+            </button>
+            <button onClick={declineMaiaDownload} className="cc-btn cc-btn-secondary w-full py-2.5 mt-2 text-sm">
+              Maybe later — use the practice bot
+            </button>
+            <div className="text-[11px] text-frost/40 mt-3">You can switch anytime in Setup.</div>
           </div>
         </div>
       )}
