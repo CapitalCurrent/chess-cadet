@@ -975,9 +975,13 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
           {/* Hands-free mic lives HERE (not the move-entry row) so it stays
               mounted through game-over and review — "new game" works right
               after checkmate. Moves are gated to her live turn. */}
+          {/* Tap-to-talk (one move per tap) — reliable on every platform. True
+              hands-free fights the Web Speech API on Android (unsuppressable
+              system earcon on each restart + poor continuous support → dropped
+              commands); it returns properly in the native app via offline ASR.
+              listenContinuous is kept in speech.js earmarked for that. */}
           <VoiceButton
             fen={fen}
-            continuous
             small
             canMove={myTurn && !viewing && !review}
             onMove={(from, to, promotion) => applyBoardMove(from, to, promotion)}
