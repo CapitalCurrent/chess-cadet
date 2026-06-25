@@ -8,7 +8,7 @@ import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
 import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
 import { motifsOfMove } from '../engine/tactics';
-import { scoreNum, evaluateMove } from '../engine/coachEval';
+import { scoreNum, evaluateMove, pickSuggestionUci } from '../engine/coachEval';
 import { explainWarn, samePieceNudge, castleNudge } from '../engine/principles';
 import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, levelElo, initEngine, analyze } from '../engine/stockfishEngine';
@@ -442,24 +442,31 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     }
   }
 
-  // A human-level move suggestion: Maia at her rating (learnable) if loaded,
-  // otherwise Stockfish's best as a fallback. Returns SAN or null.
-  async function humanSuggestion(fen) {
-    if (maia.status === 'ready') {
+  // A SOUND, human-level suggestion (SAN, or null). Prefers Maia's move at her
+  // rating (learnable) ONLY when the full-strength engine confirms it's sound;
+  // otherwise the engine's best — so we never suggest a weak move just because
+  // it's "human" (coach-design §4c). Pass `cands` (full-strength multipv
+  // analysis already computed for this position) to validate with NO extra
+  // engine call; omit it and we analyze on demand (the 💡 Hint path).
+  async function humanSuggestion(fen, cands = null) {
+    let analysis = cands;
+    if (!analysis) {
       try {
-        const mv = await maiaBestMove(fen, humanRating, humanRating);
-        if (mv) return uciToSan(fen, mv);
+        analysis = (await analyze(fen, { multipv: 5, movetime: 400 })) || [];
       } catch {
-        /* fall through */
+        analysis = [];
       }
     }
-    try {
-      const cands = (await analyze(fen, { multipv: 1, movetime: 400 })) || [];
-      if (cands.length) return uciToSan(fen, cands[0].move);
-    } catch {
-      /* ignore */
+    let maiaUci = null;
+    if (maia.status === 'ready') {
+      try {
+        maiaUci = await maiaBestMove(fen, humanRating, humanRating);
+      } catch {
+        maiaUci = null;
+      }
     }
-    return null;
+    const uci = pickSuggestionUci(maiaUci, analysis);
+    return uci ? uciToSan(fen, uci) : null;
   }
 
   // Classify a move by EVAL DROP (a real-blunder check, not "did it match the
@@ -492,7 +499,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     // Human-level suggestion (Maia at her rating) only matters for the loose
     // inaccuracy/mistake verdict — fetch it only there. The pure evaluateMove
     // does all the classification + motif validation.
-    const humanSuggestSan = useHumanHint && bestCp - herCp > 150 ? await humanSuggestion(beforeFen) : null;
+    const humanSuggestSan = useHumanHint && bestCp - herCp > 150 ? await humanSuggestion(beforeFen, cands) : null;
     return evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSuggestSan });
   }
 

@@ -84,3 +84,19 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   if (loss <= 350) return { kind: 'warn', icon: '🤔', label: 'Inaccuracy', text: `🤔 A little loose — ${sug} keeps you better.`, best: bestRef, motif: null, loss };
   return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.`, best: bestRef, motif: null, loss };
 }
+
+// Pure: choose the UCI of a SOUND, human-natural suggestion. Prefer Maia's move
+// (maiaUci) ONLY when it's among the engine's candidates and within `threshold`
+// centipawns of the best — so we never recommend a move the engine rates as
+// weak just because it's "human" (Maia at a low rating mimics weak play).
+// Otherwise the engine's best move. Returns a UCI string or null. Suggestions
+// get the same two-gate treatment as praise — see coach-design.md §4c.
+export function pickSuggestionUci(maiaUci, cands, { threshold = 60 } = {}) {
+  const best = cands && cands.length ? cands[0] : null;
+  if (maiaUci && best) {
+    const found = cands.find((c) => c.move === maiaUci);
+    if (found && scoreNum(best) - scoreNum(found) <= threshold) return maiaUci;
+  }
+  if (best) return best.move;
+  return maiaUci || null; // no engine analysis available → fall back to Maia's move
+}

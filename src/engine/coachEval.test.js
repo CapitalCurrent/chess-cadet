@@ -2,7 +2,7 @@
 // synthetic analysis in. Pins the praise/critique ladder and, crucially, the
 // TWO-GATE rule: the engine eval governs whether a move is praised, so a
 // material grab the engine rates badly is a mistake, never "nice tactic."
-import { evaluateMove } from './coachEval';
+import { evaluateMove, pickSuggestionUci } from './coachEval';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // White Nh6 can play Nf7+ forking Kh8 and Rd8.
@@ -84,4 +84,42 @@ describe('critique tier', () => {
 
 test('no candidates → null verdict', () => {
   expect(evaluateMove(START, 'e2e4', START, { cands: [], herCp: 0 })).toBeNull();
+});
+
+describe('pickSuggestionUci — suggestions must be SOUND, not just human', () => {
+  // Engine candidates best-first; b1c3 is in the list but clearly weak.
+  const cands = [
+    { move: 'e2e4', cp: 40 },
+    { move: 'd2d4', cp: 30 },
+    { move: 'g1f3', cp: 10 },
+    { move: 'b1c3', cp: -120 },
+  ];
+
+  test('uses Maia move when it is the best', () => {
+    expect(pickSuggestionUci('e2e4', cands)).toBe('e2e4');
+  });
+
+  test('uses Maia move when sound (within threshold of best)', () => {
+    expect(pickSuggestionUci('d2d4', cands)).toBe('d2d4'); // 40−30 = 10 ≤ 60
+  });
+
+  test('REJECTS a weak Maia move (in the list but far below best) → engine best', () => {
+    expect(pickSuggestionUci('b1c3', cands)).toBe('e2e4'); // 40−(−120) = 160 > 60
+  });
+
+  test('REJECTS a Maia move not among the candidates → engine best', () => {
+    expect(pickSuggestionUci('a2a3', cands)).toBe('e2e4');
+  });
+
+  test('no Maia move → engine best', () => {
+    expect(pickSuggestionUci(null, cands)).toBe('e2e4');
+  });
+
+  test('no engine analysis → falls back to the Maia move', () => {
+    expect(pickSuggestionUci('e2e4', [])).toBe('e2e4');
+  });
+
+  test('nothing to suggest → null', () => {
+    expect(pickSuggestionUci(null, [])).toBeNull();
+  });
 });
