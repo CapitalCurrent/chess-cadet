@@ -93,12 +93,21 @@ export function detectMotifs(fenAfter, fromSquare, toSquare) {
     const [f, r] = fileRank(toSquare);
     const motifs = [];
 
-    // FORK: the moved piece attacks 2+ enemy targets worth taking (a real piece,
-    // the king, or anything more valuable than the forker).
-    const targets = attackedSquares(get, f, r, piece)
-      .map(([af, ar]) => get(sq(af, ar)))
-      .filter((p) => p && p.color === enemy && (p.type === 'k' || VAL[p.type] >= 3 || VAL[p.type] > VAL[piece.type]));
-    if (targets.length >= 2) motifs.push('fork');
+    // FORK: the moved piece attacks 2+ enemy targets it could actually WIN.
+    // A target only counts if it's the king (a forced response — then take the
+    // other), worth MORE than the forker (win the exchange even if defended),
+    // or UNDEFENDED (a free grab). A defended piece that isn't worth more than
+    // the forker can't be taken profitably — e.g. a queen "forking" two
+    // defended bishops wins nothing — so it does NOT count. Without this guard
+    // we'd call a harmless alignment a fork and feed a learner bad advice.
+    const winnable = attackedSquares(get, f, r, piece).filter(([af, ar]) => {
+      const p = get(sq(af, ar));
+      if (!p || p.color !== enemy) return false;
+      if (p.type === 'k') return true;
+      if (VAL[p.type] > VAL[piece.type]) return true;
+      return g.attackers(sq(af, ar), enemy).length === 0; // undefended → free
+    });
+    if (winnable.length >= 2) motifs.push('fork');
 
     // PIN: a slider lines up an enemy piece with a more valuable piece (or the
     // king) directly behind it.
