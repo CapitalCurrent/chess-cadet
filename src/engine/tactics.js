@@ -2,6 +2,7 @@
 // We only NAME the pattern — soundness is already confirmed by the engine
 // (we only call this for moves the engine rates as winning). v1: fork + pin.
 import { newGame } from './chessEngine';
+import { seeCaptureOn } from './see';
 
 const FILES = 'abcdefgh';
 const VAL = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
@@ -94,18 +95,18 @@ export function detectMotifs(fenAfter, fromSquare, toSquare) {
     const motifs = [];
 
     // FORK: the moved piece attacks 2+ enemy targets it could actually WIN.
-    // A target only counts if it's the king (a forced response — then take the
-    // other), worth MORE than the forker (win the exchange even if defended),
-    // or UNDEFENDED (a free grab). A defended piece that isn't worth more than
-    // the forker can't be taken profitably — e.g. a queen "forking" two
-    // defended bishops wins nothing — so it does NOT count. Without this guard
-    // we'd call a harmless alignment a fork and feed a learner bad advice.
+    // "Winnable" = the king (a forced response — then take the other), or a
+    // capture that comes out materially ahead by Static Exchange Evaluation
+    // (see ./see). SEE handles defenders, multiple attackers, x-rays, and the
+    // forker outvaluing its target precisely — so a queen "forking" two defended
+    // bishops (SEE negative on both) is correctly NOT a fork, while a knight
+    // forking two rooks (SEE positive) is. Without this we'd call a harmless
+    // alignment a fork and feed a learner bad advice.
     const winnable = attackedSquares(get, f, r, piece).filter(([af, ar]) => {
       const p = get(sq(af, ar));
       if (!p || p.color !== enemy) return false;
       if (p.type === 'k') return true;
-      if (VAL[p.type] > VAL[piece.type]) return true;
-      return g.attackers(sq(af, ar), enemy).length === 0; // undefended → free
+      return seeCaptureOn(fenAfter, sq(af, ar), piece.color) > 0;
     });
     if (winnable.length >= 2) motifs.push('fork');
 
