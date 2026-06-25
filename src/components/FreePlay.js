@@ -7,7 +7,8 @@ import Segmented from './nav/Segmented';
 import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
 import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
-import { detectMotifs, motifsOfMove } from '../engine/tactics';
+import { motifsOfMove } from '../engine/tactics';
+import { scoreNum, evaluateMove } from '../engine/coachEval';
 import { explainWarn, samePieceNudge, castleNudge } from '../engine/principles';
 import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, levelElo, initEngine, analyze } from '../engine/stockfishEngine';
@@ -441,30 +442,6 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     }
   }
 
-  // SAN + whether the move is forcing (a capture or a check) — used to spot a
-  // missed tactic ("always look at captures and checks first").
-  function moveInfo(fen, uci) {
-    try {
-      const g = newGame(fen);
-      const m = g.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined });
-      if (!m) return { san: uci, capture: false, check: false };
-      return {
-        san: m.san,
-        capture: /x/.test(m.san) || (m.flags && /[ce]/.test(m.flags)),
-        check: /[+#]/.test(m.san),
-      };
-    } catch {
-      return { san: uci, capture: false, check: false };
-    }
-  }
-
-  // Normalize an eval to a single number (centipawns); mate -> a big value.
-  function scoreNum(c) {
-    if (!c) return 0;
-    if (typeof c.mate === 'number') return (c.mate >= 0 ? 1 : -1) * (100000 - Math.abs(c.mate) * 100);
-    return typeof c.cp === 'number' ? c.cp : 0;
-  }
-
   // A human-level move suggestion: Maia at her rating (learnable) if loaded,
   // otherwise Stockfish's best as a fallback. Returns SAN or null.
   async function humanSuggestion(fen) {
@@ -512,45 +489,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       }
       herCp = after.length ? -scoreNum(after[0]) : bestCp - 400;
     }
-    const loss = bestCp - herCp; // centipawns given up vs the best move
-    const her = moveInfo(beforeFen, uci);
-    if (loss <= 50) {
-      const isBest = uci === cands[0].move;
-      const spike = cands.length >= 2 ? scoreNum(cands[0]) - scoreNum(cands[1]) : 999;
-      const winning = bestCp >= 150;
-      if (isBest && /#/.test(her.san)) return { kind: 'best', icon: '🏆', label: 'Checkmate', text: '🏆 Checkmate! Brilliant finish!' };
-      if (isBest && winning && spike >= 150) {
-        const motifs = detectMotifs(afterFen, uci.slice(0, 2), uci.slice(2, 4));
-        if (motifs.includes('fork')) return { kind: 'best', icon: '✦', label: 'Fork', text: `✦ Nice fork! ${her.san} attacks two pieces at once.` };
-        if (motifs.includes('discovered')) return { kind: 'best', icon: '✦', label: 'Discovery', text: `✦ Discovered attack! ${her.san} unleashes a piece from behind.` };
-        if (motifs.includes('pin')) return { kind: 'best', icon: '✦', label: 'Pin', text: `✦ Nice pin! ${her.san} freezes a piece against a bigger one.` };
-        if (her.capture) return { kind: 'best', icon: '💥', label: 'Tactic', text: `💥 Nice tactic! ${her.san} wins material — well spotted!` };
-        if (her.check) return { kind: 'best', icon: '💥', label: 'Tactic', text: `💥 Strong — ${her.san} is a winning check!` };
-        return { kind: 'best', icon: '💥', label: 'Tactic', text: `💥 Sharp! ${her.san} is the winning move here.` };
-      }
-      if (isBest && her.check) return { kind: 'best', icon: '👍', label: 'Strong', text: `👍 Strong check — ${her.san}!` };
-      if (isBest) return { kind: 'best', icon: '⭐', label: 'Best', text: '⭐ Best move! Right on the money.' };
-      return { kind: 'good', icon: '👍', label: 'Great', text: '👍 Great move — among the best here.' };
-    }
-    if (loss <= 150) return { kind: 'good', icon: '🙂', label: 'Good', text: '🙂 Good — a solid, safe move.' };
-    const best = moveInfo(beforeFen, cands[0].move);
-    const bestMotifs = motifsOfMove(beforeFen, cands[0].move);
-    const missedName = bestMotifs.includes('fork')
-      ? 'fork'
-      : bestMotifs.includes('discovered')
-      ? 'discovered attack'
-      : bestMotifs.includes('pin')
-      ? 'pin'
-      : null;
-    const missedTactic = bestCp >= 150 && loss >= 200 && (best.capture || best.check || bestMotifs.length);
-    // Carried on warn verdicts so the Coach's Notebook can save the position.
-    const bestRef = { san: best.san, uci: cands[0].move };
-    if (missedTactic && missedName) return { kind: 'warn', icon: '💥', label: `Missed ${missedName}`, text: `💥 You missed a ${missedName}! ${best.san} was winning.`, best: bestRef, motif: missedName, loss };
-    if (missedTactic && herCp > -50) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 You missed a tactic! ${best.san} wins material. Tip: check captures & checks first.`, best: bestRef, motif: null, loss };
-    if (missedTactic) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 Ouch — ${best.san} won material there. Look for captures & checks!`, best: bestRef, motif: null, loss };
-    const sug = useHumanHint ? (await humanSuggestion(beforeFen)) || best.san : best.san;
-    if (loss <= 350) return { kind: 'warn', icon: '🤔', label: 'Inaccuracy', text: `🤔 A little loose — ${sug} keeps you better.`, best: bestRef, motif: null, loss };
-    return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.`, best: bestRef, motif: null, loss };
+    // Human-level suggestion (Maia at her rating) only matters for the loose
+    // inaccuracy/mistake verdict — fetch it only there. The pure evaluateMove
+    // does all the classification + motif validation.
+    const humanSuggestSan = useHumanHint && bestCp - herCp > 150 ? await humanSuggestion(beforeFen) : null;
+    return evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSuggestSan });
   }
 
   // "Mind the reply": after her move, peek at the opponent's BEST reply (engine's
