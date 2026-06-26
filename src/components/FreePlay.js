@@ -8,7 +8,7 @@ import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
 import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
 import { motifsOfMove } from '../engine/tactics';
-import { scoreNum, evaluateMove, pickSuggestionUci } from '../engine/coachEval';
+import { scoreNum, evaluateMove, pickSuggestionUci, winningLine } from '../engine/coachEval';
 import { explainWarn, samePieceNudge, castleNudge } from '../engine/principles';
 import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, levelElo, initEngine, analyze } from '../engine/stockfishEngine';
@@ -500,7 +500,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     // inaccuracy/mistake verdict — fetch it only there. The pure evaluateMove
     // does all the classification + motif validation.
     const humanSuggestSan = useHumanHint && bestCp - herCp > 150 ? await humanSuggestion(beforeFen, cands) : null;
-    return evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSuggestSan });
+    const v = evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSuggestSan });
+    // For a missed tactic/mate (or a mate she's forcing), attach the SAN line to
+    // SHOW — turns "you had mate in 3" into a real lesson she can read/replay.
+    if (v && (v.best || v.mateIn) && cands[0] && cands[0].pv) v.line = winningLine(beforeFen, cands[0].pv);
+    return v;
   }
 
   // "Mind the reply": after her move, peek at the opponent's BEST reply (engine's
@@ -586,7 +590,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     }
 
     if (!note && !reply.threat && !habit) return setCoachNote(null);
-    setCoachNote({ kind: note ? note.kind : 'warn', text: note ? note.text : '', threat: reply.threat, habit });
+    setCoachNote({ kind: note ? note.kind : 'warn', text: note ? note.text : '', line: note ? note.line : null, threat: reply.threat, habit });
   }
 
   // Game Review: re-walk the game and classify each of HER moves, then summarize.
@@ -1049,6 +1053,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
                       }`}
                     >
                       {coachNote.text}
+                    </div>
+                  )}
+                  {coachNote.line && coachNote.line.length > 0 && (
+                    <div className="rounded-cc-lg px-3 py-1.5 text-sm md:text-base font-bold bg-surface text-frost ring-1 ring-edge animate-pop tracking-wide">
+                      📺 Winning line: {coachNote.line.join('   ')}
                     </div>
                   )}
                   {coachNote.threat && (

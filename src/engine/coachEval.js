@@ -9,6 +9,7 @@
 // Motif CLAIMS (fork/pin/discovered) are validated separately in
 // tactics.detectMotifs (SEE-based). This module never calls the engine.
 import { newGame } from './chessEngine';
+import { walkLine } from './pvLine';
 import { detectMotifs, motifsOfMove } from './tactics';
 import { pinnedDefenderWin, pinnedDefenderText, workingPinWin, workingPinText } from './pins';
 import { skewerWin, skewerText } from './skewers';
@@ -122,6 +123,14 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   const sug = humanSuggestSan || best.san;
   if (loss <= 350) return { kind: 'warn', icon: '🤔', label: 'Inaccuracy', text: `🤔 A little loose — ${sug} keeps you better.`, best: bestRef, motif: null, loss };
   return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.`, best: bestRef, motif: null, loss };
+}
+
+// Pure: read the engine's principal variation out as a short SAN sequence — the
+// line to SHOW the kid so a missed mate/tactic actually teaches ("Ra8+ Kf7
+// Rh8#"). Truncated to `max` plies (kid-sized). Empty when there's no line.
+export function winningLine(beforeFen, pv, max = 6) {
+  if (!Array.isArray(pv) || !pv.length) return [];
+  return walkLine(beforeFen, pv).sans.slice(0, max);
 }
 
 // Pure: choose the UCI of a SOUND, human-natural suggestion. Prefer Maia's move

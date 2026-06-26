@@ -2,7 +2,7 @@
 // synthetic analysis in. Pins the praise/critique ladder and, crucially, the
 // TWO-GATE rule: the engine eval governs whether a move is praised, so a
 // material grab the engine rates badly is a mistake, never "nice tactic."
-import { evaluateMove, pickSuggestionUci } from './coachEval';
+import { evaluateMove, pickSuggestionUci, winningLine } from './coachEval';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // White Nh6 can play Nf7+ forking Kh8 and Rd8.
@@ -216,6 +216,23 @@ describe('critique tier', () => {
 
 test('no candidates → null verdict', () => {
   expect(evaluateMove(START, 'e2e4', START, { cands: [], herCp: 0 })).toBeNull();
+});
+
+describe('winningLine — the SAN sequence to SHOW (teach the missed line)', () => {
+  const ROOK = '4k3/8/8/8/8/8/8/R3K3 w - - 0 1';
+
+  test('reads the engine PV out as SAN moves', () => {
+    expect(winningLine(ROOK, ['a1a8', 'e8d7', 'a8a7'])).toEqual(['Ra8+', 'Kd7', 'Ra7+']);
+  });
+
+  test('truncates to `max` plies (kid-sized)', () => {
+    expect(winningLine(ROOK, ['a1a8', 'e8d7', 'a8a7'], 2)).toEqual(['Ra8+', 'Kd7']);
+  });
+
+  test('no PV → empty (nothing to show, degrades cleanly)', () => {
+    expect(winningLine(ROOK, undefined)).toEqual([]);
+    expect(winningLine(ROOK, [])).toEqual([]);
+  });
 });
 
 describe('pickSuggestionUci — suggestions must be SOUND, not just human', () => {
