@@ -2,7 +2,7 @@
 // WINS material; an alignment where neither attacked piece can be profitably
 // taken is NOT a fork. These pin the rule so the coach can't tell a learner
 // they "missed a fork" when there's nothing to win.
-import { detectMotifs } from './tactics';
+import { detectMotifs, motifsOfMove } from './tactics';
 
 // detectMotifs reads the board AFTER the move; fromSquare only matters for the
 // discovered-attack check, so '' is fine for fork cases.
@@ -39,6 +39,20 @@ describe('fork detection requires a winnable target', () => {
 
   test('a single attacked piece is never a fork', () => {
     expect(forks('2b1k3/2Q5/8/8/8/8/8/4K3 b - - 0 1', 'c7')).toBe(false);
+  });
+
+  test('TRAP: a checking capture whose piece is recaptured is NOT a fork', () => {
+    // From a real game (Chess Lair phone test). Black ...Rxe1+ "forks" Kg1 + Qd1
+    // geometrically, but White just recaptures the rook (Qxe1/Nxe1/Bxe1), so it
+    // wins nothing. The forking rook is en prise — not a fork.
+    const beforeFen = 'r3r1k1/ppp2ppp/2np2q1/8/2BP2b1/2B2N1P/PP3PP1/R2QR1K1 b - - 0 14';
+    expect(motifsOfMove(beforeFen, 'e8e1')).not.toContain('fork');
+  });
+
+  test('a knight check-fork whose knight is SAFE is still a fork', () => {
+    // Nf7+ forks Kh8 + Rd8 and nothing can capture f7 → the fork stands (guards
+    // against the en-prise gate over-suppressing real check-forks).
+    expect(forks('3r3k/5N2/8/8/8/8/8/4K3 b - - 0 1', 'f7')).toBe(true);
   });
 });
 

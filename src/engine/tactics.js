@@ -112,7 +112,12 @@ export function detectMotifs(fenAfter, fromSquare, toSquare) {
       if (p.type === 'k') return true;
       return seeCaptureOn(fenAfter, sq(af, ar), piece.color) > 0;
     });
-    if (winnable.length >= 2) motifs.push('fork');
+    // The forking piece must also SURVIVE — if the opponent can just capture it
+    // (favorably), the "fork" wins nothing. This is what kills the checking-rook
+    // case: ...Rxe1+ geometrically hits K + Q, but White recaptures the rook, so
+    // it's a trade, not a fork. (A defended/uncapturable forker has SEE <= 0.)
+    const forkerSafe = seeCaptureOn(fenAfter, toSquare, enemy) <= 0;
+    if (winnable.length >= 2 && forkerSafe) motifs.push('fork');
 
     // PIN: a slider lines up an enemy piece with a more valuable piece (or the
     // king) directly behind it — AND the pinned piece is actually winnable.
