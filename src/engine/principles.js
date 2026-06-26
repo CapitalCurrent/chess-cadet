@@ -22,6 +22,7 @@
 // book moves in her own courses), "develop toward the center", "don't trade
 // developed pieces". Add only with the same exception analysis + tests.
 import { newGame } from './chessEngine';
+import { hangingBy } from './see';
 
 const VAL = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 99 };
 const NAME = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
@@ -42,10 +43,13 @@ function cheapestAttackerValue(g, square, byColor) {
   return min;
 }
 
-// Her minor/major pieces (no pawns, no king) that are STATICALLY in danger
-// after her move: attacked while undefended, or attacked by a cheaper piece.
-// Static counting can't see pins/overloads — callers must confirm against the
-// engine's actual reply before speaking (see confirmedHang).
+// Her minor/major pieces (no pawns, no king) that LOSE MATERIAL to a capture
+// after her move, by Static Exchange Evaluation (./see) — precise about
+// defenders, multiple attackers, and x-rays, so "defended once but attacked
+// twice" is caught (simple attacker/defender counting misses it). SEE still
+// can't see pins, so callers CONFIRM against the engine's actual reply before
+// speaking (see confirmedHang). The undefended / attackedByLesser flags are
+// kept only to colour the message ("by a smaller piece").
 export function hangingPieces(afterFen, herColor) {
   const g = newGame(afterFen);
   const enemy = herColor === 'w' ? 'b' : 'w';
@@ -53,15 +57,16 @@ export function hangingPieces(afterFen, herColor) {
   for (const sq of SQUARES) {
     const p = g.get(sq);
     if (!p || p.color !== herColor || p.type === 'k' || VAL[p.type] < 3) continue;
-    const attackers = g.attackers(sq, enemy);
-    if (!attackers.length) continue;
+    if (hangingBy(afterFen, sq) <= 0) continue; // SEE: not actually losing material here
     const defenders = g.attackers(sq, herColor);
     const cheapest = cheapestAttackerValue(g, sq, enemy);
-    const undefended = defenders.length === 0;
-    const attackedByLesser = cheapest < VAL[p.type];
-    if (undefended || attackedByLesser) {
-      out.push({ square: sq, type: p.type, value: VAL[p.type], undefended, attackedByLesser });
-    }
+    out.push({
+      square: sq,
+      type: p.type,
+      value: VAL[p.type],
+      undefended: defenders.length === 0,
+      attackedByLesser: cheapest < VAL[p.type],
+    });
   }
   return out.sort((a, b) => b.value - a.value);
 }

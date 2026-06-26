@@ -27,6 +27,11 @@ describe('seeCaptureOn — basic captures', () => {
   test('empty square / own piece → 0', () => {
     expect(seeCaptureOn('k7/8/8/8/8/8/8/4Q2K w - - 0 1', 'e5', 'w')).toBe(0);
   });
+
+  test('a piece with NO attackers is not capturable → 0', () => {
+    // White queen on d1 in the start position — nothing black attacks it.
+    expect(seeCaptureOn('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', 'd1', 'b')).toBe(0);
+  });
 });
 
 describe('seeCaptureOn — x-ray (battery) reveal', () => {

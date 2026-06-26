@@ -50,6 +50,7 @@ export function seeCaptureOn(fen, square, attacker) {
   // onto the square — so the next attackers() call reveals x-ray sliders behind
   // the piece that just left.
   let lva = leastValuableAttacker(board, square, side);
+  if (!lva) return 0; // nobody attacks the square → no capture → no material changes hands
   while (lva) {
     d++;
     gain[d] = SEE_VAL[lva.type] - gain[d - 1];

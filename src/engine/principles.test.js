@@ -47,6 +47,14 @@ describe('hanging-piece detection (static + engine-confirmed)', () => {
     expect(hangingPieces(DEFENDED, 'w')).toHaveLength(0);
   });
 
+  test('SEE catches "defended once, attacked twice" that simple counting missed', () => {
+    // White Ne5 is defended by the d4 pawn but attacked by BOTH Nc6 and Bb8 —
+    // Black wins material in the swap-off (+1). The old attacker/defender count
+    // (one defender, no cheaper attacker) called this safe; SEE flags it.
+    const TWO_ATTACKERS = '1b2k3/8/2n5/4N3/3P4/8/8/4K3 b - - 0 1';
+    expect(hangingPieces(TWO_ATTACKERS, 'w').map((h) => h.square)).toContain('e5');
+  });
+
   test('pawns and kings are never nagged about', () => {
     // White pawn e4 attacked by d5 pawn — normal chess, not a lecture.
     const PAWN = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
