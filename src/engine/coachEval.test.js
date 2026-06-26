@@ -35,6 +35,30 @@ describe('praise tier (engine-good moves)', () => {
   });
 });
 
+describe('pinned-defender win wiring', () => {
+  // White Rd1xd5 wins the bishop — its only defender (c6 pawn) is pinned to Ke8.
+  const PIN = '4k3/8/2p5/3b4/B7/8/8/3R3K w - - 0 1';
+
+  test('praised as a "Pin win" when she plays it', () => {
+    const v = evaluateMove(PIN, 'd1d5', PIN, {
+      cands: [{ move: 'd1d5', cp: 330 }, { move: 'h1g1', cp: 40 }],
+      herCp: 330,
+    });
+    expect(v.label).toBe('Pin win');
+    expect(v.text).toMatch(/pinned/i);
+  });
+
+  test('flagged as a "Missed pin win" when she plays something else', () => {
+    const v = evaluateMove(PIN, 'h1g1', PIN, {
+      cands: [{ move: 'd1d5', cp: 330 }, { move: 'h1g1', cp: 40 }],
+      herCp: 40,
+    });
+    expect(v.label).toBe('Missed pin win');
+    expect(v.motif).toBe('pin');
+    expect(v.text).toMatch(/pinned/i);
+  });
+});
+
 describe('TWO-GATE rule — material won locally but engine says bad', () => {
   test('a capture the engine rates losing is a Mistake, never praised', () => {
     // She "wins" something but the engine eval of her move is bad (herCp = -400)

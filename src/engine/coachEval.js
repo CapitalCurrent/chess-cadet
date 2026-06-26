@@ -10,6 +10,7 @@
 // tactics.detectMotifs (SEE-based). This module never calls the engine.
 import { newGame } from './chessEngine';
 import { detectMotifs, motifsOfMove } from './tactics';
+import { pinnedDefenderWin, pinnedDefenderText } from './pins';
 
 // Normalize an eval to a single number (centipawns); mate -> a big value.
 export function scoreNum(c) {
@@ -52,6 +53,8 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
     const winning = bestCp >= 150;
     if (isBest && /#/.test(her.san)) return { kind: 'best', icon: '🏆', label: 'Checkmate', text: '🏆 Checkmate! Brilliant finish!' };
     if (isBest && winning && spike >= 150) {
+      const pinWin = pinnedDefenderWin(beforeFen, uci);
+      if (pinWin) return { kind: 'best', icon: '📌', label: 'Pin win', text: pinnedDefenderText(pinWin) };
       const motifs = detectMotifs(afterFen, uci.slice(0, 2), uci.slice(2, 4));
       if (motifs.includes('fork')) return { kind: 'best', icon: '✦', label: 'Fork', text: `✦ Nice fork! ${her.san} attacks two pieces at once.` };
       if (motifs.includes('discovered')) return { kind: 'best', icon: '✦', label: 'Discovery', text: `✦ Discovered attack! ${her.san} unleashes a piece from behind.` };
@@ -77,6 +80,9 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   const missedTactic = bestCp >= 150 && loss >= 200 && (best.capture || best.check || bestMotifs.length);
   // Carried on warn verdicts so the Coach's Notebook can save the position.
   const bestRef = { san: best.san, uci: cands[0].move };
+  // A pinned-defender win is the most specific, most teachable miss — check it first.
+  const pinWin = missedTactic ? pinnedDefenderWin(beforeFen, cands[0].move) : null;
+  if (pinWin) return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: pinnedDefenderText(pinWin, { missed: true }), best: bestRef, motif: 'pin', loss };
   if (missedTactic && missedName) return { kind: 'warn', icon: '💥', label: `Missed ${missedName}`, text: `💥 You missed a ${missedName}! ${best.san} was winning.`, best: bestRef, motif: missedName, loss };
   if (missedTactic && herCp > -50) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 You missed a tactic! ${best.san} wins material. Tip: check captures & checks first.`, best: bestRef, motif: null, loss };
   if (missedTactic) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 Ouch — ${best.san} won material there. Look for captures & checks!`, best: bestRef, motif: null, loss };
