@@ -98,6 +98,51 @@ describe('working-the-pin (multi-move pile-on) via the engine forcing line', () 
   });
 });
 
+describe('mate awareness — deliver it, or learn you missed it', () => {
+  // White Qh5xf7 is Scholar's mate.
+  const SCHOLAR = 'r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 1';
+  // White Ra1–a8+ (just a check here) but the engine sees a forced mate behind it.
+  const ROOK = '4k3/8/8/8/8/8/8/R3K3 w - - 0 1';
+
+  test('delivering mate is "Checkmate" (Tier A — board truth)', () => {
+    const v = evaluateMove(SCHOLAR, 'h5f7', SCHOLAR, { cands: [{ move: 'h5f7', mate: 1 }], herCp: 99900 });
+    expect(v.label).toBe('Checkmate');
+    expect(v.text).toMatch(/checkmate/i);
+  });
+
+  test('a best move that FORCES mate-in-N is praised as "Mate in N"', () => {
+    const v = evaluateMove(ROOK, 'a1a8', ROOK, {
+      cands: [{ move: 'a1a8', mate: 2 }, { move: 'e1e2', cp: 30 }],
+      herCp: 99800,
+    });
+    expect(v.label).toBe('Mate in 2');
+    expect(v.text).toMatch(/mate in 2/i);
+    expect(v.mateIn).toBe(2);
+  });
+
+  test('missing a forced mate is flagged as "Missed mate in N"', () => {
+    const v = evaluateMove(ROOK, 'e1e2', ROOK, {
+      cands: [{ move: 'a1a8', mate: 3 }, { move: 'e1e2', cp: 30 }],
+      herCp: 30,
+    });
+    expect(v.kind).toBe('warn');
+    expect(v.label).toBe('Missed mate in 3');
+    expect(v.text).toMatch(/mate in 3/i);
+    expect(v.motif).toBe('mate');
+    expect(v.best.uci).toBe('a1a8');
+  });
+
+  test('getting mated (negative mate score) is NOT praised as mate', () => {
+    // She is to move; the engine best avoids loss but a mate score for the
+    // OPPONENT (negative) must never read as "you have mate".
+    const v = evaluateMove(ROOK, 'e1e2', ROOK, {
+      cands: [{ move: 'a1a8', cp: 20 }],
+      herCp: 15,
+    });
+    expect(v.label).not.toMatch(/mate/i);
+  });
+});
+
 describe('TWO-GATE rule — material won locally but engine says bad', () => {
   test('a capture the engine rates losing is a Mistake, never praised', () => {
     // She "wins" something but the engine eval of her move is bad (herCp = -400)

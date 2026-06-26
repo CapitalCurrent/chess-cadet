@@ -19,6 +19,13 @@ export function scoreNum(c) {
   return typeof c.cp === 'number' ? c.cp : 0;
 }
 
+// The number of moves to a mate the SIDE TO MOVE delivers (positive mate score),
+// or null. A negative mate (she's getting mated) returns null — never spoken as
+// "you have mate".
+export function mateIn(c) {
+  return c && typeof c.mate === 'number' && c.mate > 0 ? c.mate : null;
+}
+
 // SAN + whether the move is forcing (a capture or a check) — used to spot a
 // missed tactic ("always look at captures and checks first").
 export function moveInfo(fen, uci) {
@@ -47,11 +54,17 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   const bestCp = scoreNum(cands[0]);
   const loss = bestCp - herCp; // centipawns given up vs the best move
   const her = moveInfo(beforeFen, uci);
+  // Checkmate is Tier A — board truth, never wrong, said regardless of eval band
+  // (even a non-"engine-best" mate is still mate). Highest-priority verdict.
+  if (/#/.test(her.san)) return { kind: 'best', icon: '🏆', label: 'Checkmate', text: '🏆 Checkmate! Brilliant finish!' };
   if (loss <= 50) {
     const isBest = uci === cands[0].move;
     const spike = cands.length >= 2 ? scoreNum(cands[0]) - scoreNum(cands[1]) : 999;
     const winning = bestCp >= 150;
-    if (isBest && /#/.test(her.san)) return { kind: 'best', icon: '🏆', label: 'Checkmate', text: '🏆 Checkmate! Brilliant finish!' };
+    // She played the move that FORCES mate (not delivered this move, or it would
+    // be the Tier-A checkmate above). The single most exciting thing to spot.
+    const mateN = isBest ? mateIn(cands[0]) : null;
+    if (mateN) return { kind: 'best', icon: '♟️', label: `Mate in ${mateN}`, text: `♟️ Mate in ${mateN}! ${her.san} forces checkmate — finish it!`, mateIn: mateN };
     if (isBest && winning && spike >= 150) {
       const pinWin = pinnedDefenderWin(beforeFen, uci);
       if (pinWin) return { kind: 'best', icon: '📌', label: 'Pin win', text: pinnedDefenderText(pinWin) };
@@ -85,6 +98,9 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   const missedTactic = bestCp >= 150 && loss >= 200 && (best.capture || best.check || bestMotifs.length);
   // Carried on warn verdicts so the Coach's Notebook can save the position.
   const bestRef = { san: best.san, uci: cands[0].move };
+  // A missed FORCED MATE is the most important miss of all — flag it first.
+  const bestMateN = mateIn(cands[0]);
+  if (bestMateN) return { kind: 'warn', icon: '♟️', label: `Missed mate in ${bestMateN}`, text: `♟️ You had mate in ${bestMateN}! ${best.san} forces checkmate.`, best: bestRef, motif: 'mate', loss, mateIn: bestMateN };
   // A pin win is the most specific, most teachable miss — check both kinds first.
   // Gate on a clearly-winning miss (a quiet pile-on best move isn't a capture or
   // check, so it can't ride on `missedTactic`, which requires one).
