@@ -98,6 +98,30 @@ describe('working-the-pin (multi-move pile-on) via the engine forcing line', () 
   });
 });
 
+describe('skewer — win the piece behind (validated by the forcing line)', () => {
+  // Ra1–e1+ skewers Ke5 to Qe8; king steps aside, Rxe8 wins the queen.
+  const FEN = '4q3/8/8/4k3/8/8/8/R5K1 w - - 0 1';
+  const PV = ['a1e1', 'e5d5', 'e1e8'];
+
+  test('praised as a "Skewer" when she plays it', () => {
+    const v = evaluateMove(FEN, 'a1e1', FEN, {
+      cands: [{ move: 'a1e1', cp: 850, pv: PV }, { move: 'g1f1', cp: 20 }],
+      herCp: 850,
+    });
+    expect(v.label).toBe('Skewer');
+    expect(v.text).toMatch(/skewer/i);
+  });
+
+  test('flagged as a "Missed skewer" when she plays something else', () => {
+    const v = evaluateMove(FEN, 'g1f1', FEN, {
+      cands: [{ move: 'a1e1', cp: 850, pv: PV }, { move: 'g1f1', cp: 20 }],
+      herCp: 20,
+    });
+    expect(v.label).toBe('Missed skewer');
+    expect(v.motif).toBe('skewer');
+  });
+});
+
 describe('mate awareness — deliver it, or learn you missed it', () => {
   // White Qh5xf7 is Scholar's mate.
   const SCHOLAR = 'r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 1';

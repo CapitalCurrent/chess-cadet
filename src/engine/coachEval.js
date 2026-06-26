@@ -11,6 +11,7 @@
 import { newGame } from './chessEngine';
 import { detectMotifs, motifsOfMove } from './tactics';
 import { pinnedDefenderWin, pinnedDefenderText, workingPinWin, workingPinText } from './pins';
+import { skewerWin, skewerText } from './skewers';
 
 // Normalize an eval to a single number (centipawns); mate -> a big value.
 export function scoreNum(c) {
@@ -73,6 +74,10 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
       // one-ply SEE). cands[0].pv === her line here since she played the best move.
       const workPin = workingPinWin(beforeFen, cands[0].pv);
       if (workPin) return { kind: 'best', icon: '📌', label: 'Pin win', text: workingPinText(workPin) };
+      // Skewer: the valuable front piece must move and the piece behind falls in
+      // the engine's forcing line (the sound "win the piece behind"; needs the PV).
+      const skWin = skewerWin(beforeFen, cands[0].pv);
+      if (skWin) return { kind: 'best', icon: '🍢', label: 'Skewer', text: skewerText(skWin) };
       const motifs = detectMotifs(afterFen, uci.slice(0, 2), uci.slice(2, 4));
       if (motifs.includes('fork')) return { kind: 'best', icon: '✦', label: 'Fork', text: `✦ Nice fork! ${her.san} attacks two pieces at once.` };
       if (motifs.includes('discovered')) return { kind: 'best', icon: '✦', label: 'Discovery', text: `✦ Discovered attack! ${her.san} unleashes a piece from behind.` };
@@ -107,6 +112,8 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   const winningMiss = bestCp >= 150 && loss >= 200;
   const pinWin = winningMiss ? pinnedDefenderWin(beforeFen, cands[0].move) : null;
   if (pinWin) return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: pinnedDefenderText(pinWin, { missed: true }), best: bestRef, motif: 'pin', loss };
+  const skWin = winningMiss ? skewerWin(beforeFen, cands[0].pv) : null;
+  if (skWin) return { kind: 'warn', icon: '🍢', label: 'Missed skewer', text: skewerText(skWin, { missed: true }), best: bestRef, motif: 'skewer', loss };
   const workPin = winningMiss ? workingPinWin(beforeFen, cands[0].pv) : null;
   if (workPin) return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: workingPinText(workPin, { missed: true }), best: bestRef, motif: 'pin', loss };
   if (missedTactic && missedName) return { kind: 'warn', icon: '💥', label: `Missed ${missedName}`, text: `💥 You missed a ${missedName}! ${best.san} was winning.`, best: bestRef, motif: missedName, loss };
