@@ -10,6 +10,7 @@ let readyPromise = null;
 let active = null; // resolver for the in-flight request
 let infoMoves = null; // when set, collect MultiPV candidate moves by rank
 let infoScores = null; // when set (analyze), also collect each rank's eval score
+let infoPvs = null; // when set (analyze), also collect each rank's FULL pv line
 let queue = Promise.resolve();
 
 function dispatch(line) {
@@ -29,6 +30,12 @@ function dispatch(line) {
         const sc = line.match(/ score (cp|mate) (-?\d+)/);
         if (sc) infoScores[rank] = sc[1] === 'mate' ? { mate: parseInt(sc[2], 10) } : { cp: parseInt(sc[2], 10) };
       }
+      // Keep the WHOLE principal variation (every UCI move after " pv "), not
+      // just the first move — the depth primitive (pvLine.js) reasons over it.
+      if (infoPvs) {
+        const pv = line.match(/ pv (.+)$/);
+        if (pv) infoPvs[rank] = pv[1].trim().split(/\s+/);
+      }
     }
     return;
   }
@@ -39,11 +46,13 @@ function dispatch(line) {
     if (infoMoves) {
       const ranks = Object.keys(infoMoves).sort((a, b) => a - b);
       const hadScores = !!infoScores;
+      const pvs = infoPvs;
       const result = hadScores
-        ? ranks.map((k) => ({ move: infoMoves[k], ...(infoScores[k] || {}) }))
+        ? ranks.map((k) => ({ move: infoMoves[k], ...(infoScores[k] || {}), ...(pvs && pvs[k] ? { pv: pvs[k] } : {}) }))
         : ranks.map((k) => infoMoves[k]);
       infoMoves = null;
       infoScores = null;
+      infoPvs = null;
       resolve(result.length ? result : hadScores ? [] : mv && mv !== '(none)' ? [mv] : []);
     } else {
       resolve(mv && mv !== '(none)' ? mv : null);
@@ -89,6 +98,7 @@ function resetWorker() {
   active = null;
   infoMoves = null;
   infoScores = null;
+  infoPvs = null;
 }
 
 // Run one search with a watchdog: if `bestmove` never arrives (a crashed or
@@ -160,6 +170,7 @@ function doAnalyze(fen, multipv, movetime) {
   return runSearch(() => {
     infoMoves = {};
     infoScores = {};
+    infoPvs = {};
     worker.postMessage('setoption name MultiPV value ' + multipv);
     worker.postMessage('setoption name Skill Level value 20');
     worker.postMessage('position fen ' + fen);
@@ -167,10 +178,12 @@ function doAnalyze(fen, multipv, movetime) {
   }, movetime, []);
 }
 
-// Full-strength analysis: best-first candidates WITH eval scores, as
-// [{ move:'e2e4', cp: 35 }] or [{ move, mate: 3 }]. cp is from the side-to-move's
-// perspective (positive = good for them). Used by the Spar coach to detect real
-// blunders (big eval drops) rather than failure to find the engine's exact best.
+// Full-strength analysis: best-first candidates WITH eval scores AND the full
+// principal variation, as [{ move:'e2e4', cp: 35, pv:['e2e4','e7e5',...] }] or
+// [{ move, mate: 3, pv:[...] }]. cp is from the side-to-move's perspective
+// (positive = good for them). The Spar coach uses the scores to detect real
+// blunders (big eval drops); the pv feeds the depth primitive (pvLine.js) so
+// tactics can be validated against the engine's actual forcing line.
 export function analyze(fen, { multipv = 5, movetime = 600 } = {}) {
   const run = () =>
     ensureReady()
