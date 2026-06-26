@@ -33,6 +33,19 @@ describe('praise tier (engine-good moves)', () => {
     expect(v.label).toBe('Fork');
     expect(v.text).toMatch(/fork/i);
   });
+
+  test('a winning discovered check is praised as a Discovery', () => {
+    // Ne4–c5 unveils Re1 down the e-file, giving check to Ke8 (a discovered
+    // check — the validated, forcing case the winnability gate keeps).
+    const DISC_BEFORE = '4k3/8/8/8/4N3/8/8/4R1K1 w - - 0 1';
+    const DISC_AFTER = '4k3/8/8/2N5/8/8/8/4R1K1 b - - 0 1';
+    const v = evaluateMove(DISC_BEFORE, 'e4c5', DISC_AFTER, {
+      cands: [{ move: 'e4c5', cp: 500 }, { move: 'e1e2', cp: 30 }],
+      herCp: 500,
+    });
+    expect(v.label).toBe('Discovery');
+    expect(v.text).toMatch(/discovered/i);
+  });
 });
 
 describe('pinned-defender win wiring', () => {

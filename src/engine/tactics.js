@@ -46,13 +46,15 @@ function attackedSquares(get, f, r, piece) {
   return res;
 }
 
-// First piece encountered walking from (f,r) in direction (df,dr), or null.
+// First piece encountered walking from (f,r) in direction (df,dr) as
+// { piece, square }, or null.
 function firstAlong(get, f, r, df, dr) {
   let cf = f + df;
   let cr = r + dr;
   while (cf >= 0 && cf < 8 && cr >= 0 && cr < 8) {
-    const p = get(sq(cf, cr));
-    if (p) return p;
+    const square = sq(cf, cr);
+    const p = get(square);
+    if (p) return { piece: p, square };
     cf += df;
     cr += dr;
   }
@@ -60,8 +62,10 @@ function firstAlong(get, f, r, df, dr) {
 }
 
 // Discovered attack: the moved piece vacated `fromSquare`, revealing a friendly
-// slider that now hits an enemy king/valuable piece straight through it.
-function isDiscovered(get, fromSquare, mover) {
+// slider that now hits an enemy king/valuable piece straight through it. Returns
+// the unveiled enemy target { type, square } (so the caller can SEE-validate
+// that the discovery actually WINS material), or null when no line is revealed.
+function discoveredTarget(get, fromSquare, mover) {
   const enemy = mover === 'w' ? 'b' : 'w';
   const [f, r] = fileRank(fromSquare);
   const axes = [
@@ -76,10 +80,10 @@ function isDiscovered(get, fromSquare, mover) {
     const pa = firstAlong(get, f, r, a[0], a[1]);
     const pb = firstAlong(get, f, r, b[0], b[1]);
     if (!pa || !pb) continue;
-    if (pa.color === mover && slides(pa, type) && pb.color === enemy && isTarget(pb)) return true;
-    if (pb.color === mover && slides(pb, type) && pa.color === enemy && isTarget(pa)) return true;
+    if (pa.piece.color === mover && slides(pa.piece, type) && pb.piece.color === enemy && isTarget(pb.piece)) return { type: pb.piece.type, square: pb.square };
+    if (pb.piece.color === mover && slides(pb.piece, type) && pa.piece.color === enemy && isTarget(pa.piece)) return { type: pa.piece.type, square: pa.square };
   }
-  return false;
+  return null;
 }
 
 // Detect motifs created by playing from `fromSquare` to `toSquare` in `fenAfter`.
@@ -111,7 +115,11 @@ export function detectMotifs(fenAfter, fromSquare, toSquare) {
     if (winnable.length >= 2) motifs.push('fork');
 
     // PIN: a slider lines up an enemy piece with a more valuable piece (or the
-    // king) directly behind it.
+    // king) directly behind it — AND the pinned piece is actually winnable.
+    // Winnability is the same gate forks use: capturing the pinned (front) piece
+    // must be SEE-positive. A defended/immobilization-only pin (Ruy-Lopez Bb5)
+    // wins no material, so it stays unnamed and the coach degrades to generic
+    // praise rather than crowing about a "pin" that won nothing.
     if (piece.type === 'b' || piece.type === 'r' || piece.type === 'q') {
       const dirs = [];
       if (piece.type === 'b' || piece.type === 'q') dirs.push([1, 1], [1, -1], [-1, 1], [-1, -1]);
@@ -120,13 +128,15 @@ export function detectMotifs(fenAfter, fromSquare, toSquare) {
         let cf = f + df;
         let cr = r + dr;
         let first = null;
+        let firstSquare = null;
         while (cf >= 0 && cf < 8 && cr >= 0 && cr < 8) {
-          const p = get(sq(cf, cr));
+          const square = sq(cf, cr);
+          const p = get(square);
           if (p) {
             if (p.color !== enemy) break; // own piece blocks the ray
-            if (!first) first = p; // the (possibly) pinned piece
+            if (!first) { first = p; firstSquare = square; } // the (possibly) pinned piece
             else {
-              if (p.type === 'k' || VAL[p.type] > VAL[first.type]) motifs.push('pin');
+              if ((p.type === 'k' || VAL[p.type] > VAL[first.type]) && seeCaptureOn(fenAfter, firstSquare, piece.color) > 0) motifs.push('pin');
               break;
             }
           }
@@ -137,7 +147,13 @@ export function detectMotifs(fenAfter, fromSquare, toSquare) {
     }
 
     // DISCOVERED ATTACK: moving away from `fromSquare` unveiled a friendly slider.
-    if (fromSquare && isDiscovered(get, fromSquare, piece.color)) motifs.push('discovered');
+    // Validate that the unveiled line WINS material — a discovered check (king
+    // target, forcing) or a SEE-positive capture of the revealed target. A
+    // discovery onto a defended piece wins nothing and is not named.
+    if (fromSquare) {
+      const disc = discoveredTarget(get, fromSquare, piece.color);
+      if (disc && (disc.type === 'k' || seeCaptureOn(fenAfter, disc.square, piece.color) > 0)) motifs.push('discovered');
+    }
 
     return [...new Set(motifs)];
   } catch {
