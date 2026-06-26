@@ -9,6 +9,7 @@ import Collapsible from './Collapsible';
 import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
 import { motifsOfMove } from '../engine/tactics';
 import { scoreNum, evaluateMove, pickSuggestionUci, winningLine } from '../engine/coachEval';
+import { lineSteps } from '../engine/pvLine';
 import { explainWarn, samePieceNudge, castleNudge } from '../engine/principles';
 import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, levelElo, initEngine, analyze } from '../engine/stockfishEngine';
@@ -98,6 +99,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     () => localStorage.getItem('chess-cadet-coach') === 'on'
   ); // Spar: grade her moves + offer hints when playing the engine
   const [coachNote, setCoachNote] = useState(null); // { kind, text }
+  // Read-only "show me the line" preview: { steps:[{san,fen,from,to}], idx }.
+  // Strictly display — it overrides the board position but never touches gameRef.
+  const [linePreview, setLinePreview] = useState(null);
   const [review, setReview] = useState(null); // null | { running, done, total, rows, summary }
   // Maia's conditioning range is 600–2600 (matches upstream MAIA_RATINGS;
   // verified empirically by scripts/maia-elo-probe.mjs). The 600 floor matters
@@ -392,6 +396,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     setTokens([]);
     setFeedback(null);
     setCoachNote(null);
+    setLinePreview(null);
     setReview(null);
     setOver(null);
     setRatingResult(null);
@@ -502,8 +507,12 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     const humanSuggestSan = useHumanHint && bestCp - herCp > 150 ? await humanSuggestion(beforeFen, cands) : null;
     const v = evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSuggestSan });
     // For a missed tactic/mate (or a mate she's forcing), attach the SAN line to
-    // SHOW — turns "you had mate in 3" into a real lesson she can read/replay.
-    if (v && (v.best || v.mateIn) && cands[0] && cands[0].pv) v.line = winningLine(beforeFen, cands[0].pv);
+    // SHOW — turns "you had mate in 3" into a real lesson she can read/replay,
+    // plus the board positions so she can step through it.
+    if (v && (v.best || v.mateIn) && cands[0] && cands[0].pv) {
+      v.line = winningLine(beforeFen, cands[0].pv);
+      v.lineSteps = lineSteps(beforeFen, cands[0].pv);
+    }
     return v;
   }
 
@@ -559,6 +568,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     const uci = move.from + move.to + (move.promotion || '');
     const afterFen = gameRef.current.fen();
     setCoachNote({ kind: 'pending', text: '🎓 Coach is looking…' });
+    setLinePreview(null); // drop any open preview from the previous move
     const v = await classifyMove(beforeFen, uci, afterFen, { movetime: 1200, useHumanHint: true });
     captureMistake(beforeFen, move, v, 'coach');
     const reply = await opponentReply(afterFen);
@@ -590,7 +600,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     }
 
     if (!note && !reply.threat && !habit) return setCoachNote(null);
-    setCoachNote({ kind: note ? note.kind : 'warn', text: note ? note.text : '', line: note ? note.line : null, threat: reply.threat, habit });
+    setCoachNote({ kind: note ? note.kind : 'warn', text: note ? note.text : '', line: note ? note.line : null, lineSteps: note ? note.lineSteps : null, threat: reply.threat, habit });
   }
 
   // Game Review: re-walk the game and classify each of HER moves, then summarize.
@@ -676,9 +686,19 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   const atLive = !viewing; // viewPly null OR pointing at the final ply
   const selectedPly = viewPly == null ? history.length : viewPly; // highlight in the log
   const viewPos = viewing ? positions[viewPly] : null;
-  const displayFen = viewing ? viewPos.fen : fen;
-  const displayLastMove = viewing ? { from: viewPos.from, to: viewPos.to } : lastMove;
+  // "Show me the line" preview takes precedence over both live + history view —
+  // it's a read-only hypothetical (the missed winning line), separate from the game.
+  const previewing = !!linePreview;
+  const previewPos = previewing ? linePreview.steps[linePreview.idx] : null;
+  const displayFen = previewing ? previewPos.fen : viewing ? viewPos.fen : fen;
+  const displayLastMove = previewing
+    ? { from: previewPos.from, to: previewPos.to }
+    : viewing
+    ? { from: viewPos.from, to: viewPos.to }
+    : lastMove;
   const viewSan = viewPly > 0 ? history[viewPly - 1] : null;
+  const previewStep = (d) =>
+    setLinePreview((p) => (p ? { ...p, idx: Math.max(0, Math.min(p.steps.length - 1, p.idx + d)) } : p));
 
   function goLive() { setViewPly(null); }
   function stepBack() { setViewPly((v) => Math.max(0, (v == null ? history.length : v) - 1)); }
@@ -692,12 +712,12 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   // Arrow keys scrub the history (no text inputs on this screen to conflict with).
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'ArrowLeft') { e.preventDefault(); stepBack(); }
-      else if (e.key === 'ArrowRight') { e.preventDefault(); stepFwd(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); previewing ? previewStep(-1) : stepBack(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); previewing ? previewStep(1) : stepFwd(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [history.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [history.length, previewing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const baseOrientation = twoPlayer ? 'w' : studentColor;
   const viewOrientation =
@@ -714,13 +734,13 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       fen={displayFen}
       orientation={viewOrientation}
       lastMove={displayLastMove}
-      movableColor={viewing ? null : myTurn ? activeColor : null}
+      movableColor={viewing || previewing ? null : myTurn ? activeColor : null}
       moveStyle={moveStyle}
       onMove={handleBoardMove}
       pieceSet={pieceSet}
       boardTheme={boardTheme}
       big={focusBoard}
-      silent={viewing}
+      silent={viewing || previewing}
     />
   );
 
@@ -969,7 +989,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
           <VoiceButton
             fen={fen}
             small
-            canMove={myTurn && !viewing && !review}
+            canMove={myTurn && !viewing && !review && !previewing}
             onMove={(from, to, promotion) => applyBoardMove(from, to, promotion)}
             onCommand={(cmd) => {
               if (cmd === 'undo') takeback();
@@ -1058,6 +1078,26 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
                   {coachNote.line && coachNote.line.length > 0 && (
                     <div className="rounded-cc-lg px-3 py-1.5 text-sm md:text-base font-bold bg-surface text-frost ring-1 ring-edge animate-pop tracking-wide">
                       📺 Winning line: {coachNote.line.join('   ')}
+                    </div>
+                  )}
+                  {coachNote.lineSteps && coachNote.lineSteps.length > 1 && !previewing && (
+                    <button
+                      onClick={() => setLinePreview({ steps: coachNote.lineSteps, idx: 0 })}
+                      className="cc-btn cc-btn-secondary px-3 py-1.5 text-xs md:text-sm"
+                    >
+                      ▶ Show me on the board
+                    </button>
+                  )}
+                  {previewing && (
+                    <div className="flex items-center gap-2 rounded-cc-lg px-2 py-2 bg-frost/10 text-frost ring-1 ring-edge animate-pop">
+                      <button onClick={() => previewStep(-1)} disabled={linePreview.idx <= 0} className="cc-btn cc-btn-secondary px-2 py-1 text-xs disabled:opacity-40">◀</button>
+                      <span className="text-sm font-bold flex-1 text-center">
+                        {linePreview.idx === 0
+                          ? 'Start position'
+                          : `${Math.ceil(linePreview.idx / 2)}${linePreview.idx % 2 ? '.' : '…'} ${linePreview.steps[linePreview.idx].san}`}
+                      </span>
+                      <button onClick={() => previewStep(1)} disabled={linePreview.idx >= linePreview.steps.length - 1} className="cc-btn cc-btn-secondary px-2 py-1 text-xs disabled:opacity-40">▶</button>
+                      <button onClick={() => setLinePreview(null)} className="cc-btn cc-btn-primary px-2 py-1 text-xs shrink-0">✕ Back</button>
                     </div>
                   )}
                   {coachNote.threat && (

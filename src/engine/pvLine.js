@@ -47,7 +47,7 @@ export function walkLine(fen, ucis) {
         break;
       }
       if (!m) break;
-      out.plies.push({ san: m.san, from: m.from, to: m.to, captured: m.captured || null, color: m.color, check: /[+#]/.test(m.san) });
+      out.plies.push({ san: m.san, from: m.from, to: m.to, captured: m.captured || null, color: m.color, check: /[+#]/.test(m.san), fen: game.fen() });
       out.sans.push(m.san);
     }
   }
@@ -78,6 +78,20 @@ export function heroNetMaterial(fen, ucis) {
     return 0;
   }
   return materialBalance(end, hero) - before;
+}
+
+// Step-by-step positions for SHOWING a line on the board: the start position
+// (san null) followed by the position after each ply, each with the squares to
+// highlight. Truncated to `max` plies. PURE — a missing/illegal PV just yields
+// the start position alone.
+export function lineSteps(beforeFen, pv, max = 6) {
+  const steps = [{ san: null, fen: beforeFen, from: null, to: null }];
+  if (Array.isArray(pv) && pv.length) {
+    for (const p of walkLine(beforeFen, pv).plies.slice(0, max)) {
+      steps.push({ san: p.san, fen: p.fen, from: p.from, to: p.to });
+    }
+  }
+  return steps;
 }
 
 // Does the HERO capture an enemy piece standing on `square` somewhere in the

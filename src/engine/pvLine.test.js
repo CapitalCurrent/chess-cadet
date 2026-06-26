@@ -2,7 +2,7 @@
 // line-reasoning the coach will use to validate "this tactic actually pays off
 // over the next few moves" against the ENGINE'S best line (not one-ply geometry).
 // No engine here: we feed synthetic UCI lines and check the reasoning.
-import { walkLine, heroNetMaterial, lineCapturesSquare } from './pvLine';
+import { walkLine, heroNetMaterial, lineCapturesSquare, lineSteps } from './pvLine';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -53,6 +53,25 @@ describe('heroNetMaterial — material swing at the END of the forcing line', ()
     // rook-for-rook trade, so the line nets nothing.
     const FEN = '4k3/8/8/r3r3/8/4R3/8/4K3 w - - 0 1';
     expect(heroNetMaterial(FEN, ['e3e5', 'a5e5'])).toBe(0);
+  });
+});
+
+describe('lineSteps — board positions to SHOW the line', () => {
+  test('starts at the position before the line, then one step per ply', () => {
+    const steps = lineSteps(START, ['e2e4', 'e7e5']);
+    expect(steps).toHaveLength(3); // start + 2 plies
+    expect(steps[0]).toMatchObject({ san: null, fen: START, from: null, to: null });
+    expect(steps[1]).toMatchObject({ san: 'e4', from: 'e2', to: 'e4' });
+    expect(steps[2].san).toBe('e5');
+    expect(steps[1].fen).toContain(' b '); // black to move after 1.e4
+  });
+
+  test('no PV → just the start position', () => {
+    expect(lineSteps(START, undefined)).toEqual([{ san: null, fen: START, from: null, to: null }]);
+  });
+
+  test('truncates to `max` plies', () => {
+    expect(lineSteps(START, ['e2e4', 'e7e5', 'g1f3'], 2)).toHaveLength(3); // start + 2
   });
 });
 
