@@ -72,6 +72,32 @@ describe('pinned-defender win wiring', () => {
   });
 });
 
+describe('working-the-pin (multi-move pile-on) via the engine forcing line', () => {
+  // Re1 pins Ne7 to Ke8; the f8 bishop guards e7 so an immediate Rxe7 loses the
+  // rook. f5–f6 attacks the frozen knight again and the PV wins it: f6, Bh6, fxe7.
+  const FEN = '4kb2/4n3/8/5P2/8/8/8/4R1K1 w - - 0 1';
+  const AFTER = '4kb2/4n3/5P2/8/8/8/8/4R1K1 b - - 0 1';
+  const PV = ['f5f6', 'f8h6', 'f6e7'];
+
+  test('praised as a "Pin win" — the frozen knight falls in the line', () => {
+    const v = evaluateMove(FEN, 'f5f6', AFTER, {
+      cands: [{ move: 'f5f6', cp: 300, pv: PV }, { move: 'g1f1', cp: 40 }],
+      herCp: 300,
+    });
+    expect(v.label).toBe('Pin win');
+    expect(v.text).toMatch(/pin|stuck|frozen/i);
+  });
+
+  test('flagged as a "Missed pin win" when she plays a quiet move instead', () => {
+    const v = evaluateMove(FEN, 'g1f1', FEN, {
+      cands: [{ move: 'f5f6', cp: 300, pv: PV }, { move: 'g1f1', cp: 40 }],
+      herCp: 40,
+    });
+    expect(v.label).toBe('Missed pin win');
+    expect(v.motif).toBe('pin');
+  });
+});
+
 describe('TWO-GATE rule — material won locally but engine says bad', () => {
   test('a capture the engine rates losing is a Mistake, never praised', () => {
     // She "wins" something but the engine eval of her move is bad (herCp = -400)
