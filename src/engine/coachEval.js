@@ -125,6 +125,17 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.`, best: bestRef, motif: null, loss };
 }
 
+// Pure: frame a line for display. Candidates come from HER side to move, so a
+// mate score is signed: positive = SHE forces mate, negative = the OPPONENT does
+// (a forced mate against her — "they can force mate in N"). A mate score means
+// it's UNSTOPPABLE with best play; otherwise it's only a "winning line" if she's
+// actually ahead. Returns { kind:'you-mate'|'they-mate'|'win'|'better', mateN }.
+export function lineFraming(cand) {
+  if (!cand) return { kind: 'win', mateN: null };
+  if (typeof cand.mate === 'number') return { kind: cand.mate > 0 ? 'you-mate' : 'they-mate', mateN: Math.abs(cand.mate) };
+  return { kind: scoreNum(cand) >= 150 ? 'win' : 'better', mateN: null };
+}
+
 // Pure: read the engine's principal variation out as a short SAN sequence — the
 // line to SHOW the kid so a missed mate/tactic actually teaches ("Ra8+ Kf7
 // Rh8#"). Truncated to `max` plies (kid-sized). Empty when there's no line.

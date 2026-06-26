@@ -8,7 +8,7 @@ import MoveLog from './MoveLog';
 import Collapsible from './Collapsible';
 import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
 import { motifsOfMove } from '../engine/tactics';
-import { scoreNum, evaluateMove, pickSuggestionUci, winningLine } from '../engine/coachEval';
+import { scoreNum, evaluateMove, pickSuggestionUci, winningLine, lineFraming } from '../engine/coachEval';
 import { lineSteps } from '../engine/pvLine';
 import { explainWarn, samePieceNudge, castleNudge } from '../engine/principles';
 import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
@@ -512,6 +512,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     if (v && (v.best || v.mateIn) && cands[0] && cands[0].pv) {
       v.line = winningLine(beforeFen, cands[0].pv);
       v.lineSteps = lineSteps(beforeFen, cands[0].pv);
+      // Whose line is it (cands are from her POV) — a forced mate FOR her reads
+      // very differently from one AGAINST her. Drives the label + styling.
+      const framing = lineFraming(cands[0]);
+      v.lineKind = framing.kind;
+      v.lineMateN = framing.mateN;
     }
     return v;
   }
@@ -600,7 +605,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     }
 
     if (!note && !reply.threat && !habit) return setCoachNote(null);
-    setCoachNote({ kind: note ? note.kind : 'warn', text: note ? note.text : '', line: note ? note.line : null, lineSteps: note ? note.lineSteps : null, threat: reply.threat, habit });
+    setCoachNote({ kind: note ? note.kind : 'warn', text: note ? note.text : '', line: note ? note.line : null, lineSteps: note ? note.lineSteps : null, lineKind: note ? note.lineKind : null, lineMateN: note ? note.lineMateN : null, threat: reply.threat, habit });
   }
 
   // Game Review: re-walk the game and classify each of HER moves, then summarize.
@@ -1076,8 +1081,19 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
                     </div>
                   )}
                   {coachNote.line && coachNote.line.length > 0 && (
-                    <div className="rounded-cc-lg px-3 py-1.5 text-sm md:text-base font-bold bg-surface text-frost ring-1 ring-edge animate-pop tracking-wide">
-                      📺 Winning line: {coachNote.line.join('   ')}
+                    <div
+                      className={`rounded-cc-lg px-3 py-1.5 text-sm md:text-base font-bold animate-pop tracking-wide ring-1 ${
+                        coachNote.lineKind === 'they-mate' ? 'bg-coral/15 text-coral ring-coral/40' : 'bg-surface text-frost ring-edge'
+                      }`}
+                    >
+                      {coachNote.lineKind === 'they-mate'
+                        ? `⚠️ They can force mate in ${coachNote.lineMateN} (no defense): `
+                        : coachNote.lineKind === 'you-mate'
+                        ? `♟️ You can force mate in ${coachNote.lineMateN}: `
+                        : coachNote.lineKind === 'better'
+                        ? '↪ A better line: '
+                        : '📺 Winning line: '}
+                      {coachNote.line.join('   ')}
                     </div>
                   )}
                   {coachNote.lineSteps && coachNote.lineSteps.length > 1 && !previewing && (

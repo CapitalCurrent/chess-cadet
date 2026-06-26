@@ -2,7 +2,7 @@
 // synthetic analysis in. Pins the praise/critique ladder and, crucially, the
 // TWO-GATE rule: the engine eval governs whether a move is praised, so a
 // material grab the engine rates badly is a mistake, never "nice tactic."
-import { evaluateMove, pickSuggestionUci, winningLine } from './coachEval';
+import { evaluateMove, pickSuggestionUci, winningLine, lineFraming } from './coachEval';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // White Nh6 can play Nf7+ forking Kh8 and Rd8.
@@ -216,6 +216,21 @@ describe('critique tier', () => {
 
 test('no candidates → null verdict', () => {
   expect(evaluateMove(START, 'e2e4', START, { cands: [], herCp: 0 })).toBeNull();
+});
+
+describe('lineFraming — whose line is it, and is the mate forced?', () => {
+  test('a positive mate score = SHE can force mate', () => {
+    expect(lineFraming({ mate: 3 })).toEqual({ kind: 'you-mate', mateN: 3 });
+  });
+  test('a negative mate score = the OPPONENT can force mate (not "winning")', () => {
+    expect(lineFraming({ mate: -6 })).toEqual({ kind: 'they-mate', mateN: 6 });
+  });
+  test('a big cp advantage = a winning line for her', () => {
+    expect(lineFraming({ cp: 300 })).toEqual({ kind: 'win', mateN: null });
+  });
+  test('a small/neutral cp = only "a better line", never claimed as winning', () => {
+    expect(lineFraming({ cp: 20 })).toEqual({ kind: 'better', mateN: null });
+  });
 });
 
 describe('winningLine — the SAN sequence to SHOW (teach the missed line)', () => {
