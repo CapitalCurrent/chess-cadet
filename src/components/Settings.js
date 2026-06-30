@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { PIECE_SETS, getPieceSet } from '../pieces/pieceSets';
 import { BOARD_THEMES, getBoardTheme } from '../pieces/boardThemes';
 import { THEME_PRESETS, activePresetId } from '../pieces/themePresets';
@@ -11,6 +11,9 @@ export default function Settings({
   onClose,
   pieceSetId,
   setPieceSetId,
+  customSets = [],
+  onImportSet,
+  onRemoveSet,
   boardThemeId,
   setBoardThemeId,
   moveStyle,
@@ -23,6 +26,21 @@ export default function Settings({
   const [showCustom, setShowCustom] = useState(false);
   const [soundOn, setSoundOn] = useState(!isMuted());
   const [audioInfo, setAudioInfo] = useState('');
+  const [importMsg, setImportMsg] = useState('');
+  const fileRef = useRef(null);
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ''; // allow re-importing the same filename
+    if (!file || !onImportSet) return;
+    try {
+      const rec = await onImportSet(file);
+      setImportMsg(`✓ Imported “${rec.name}”`);
+    } catch (err) {
+      setImportMsg(`✕ ${err.message || 'Could not import that file.'}`);
+    }
+  };
+
   if (!open) return null;
 
   const activeId = activePresetId(pieceSetId, boardThemeId);
@@ -192,7 +210,7 @@ export default function Settings({
         {showCustom && (
           <div className="mt-3 animate-float">
             <div className="text-[11px] uppercase tracking-wide text-gold/40 font-bold mb-1.5">Pieces</div>
-            <div className="grid grid-cols-4 gap-2 mb-4">
+            <div className="grid grid-cols-4 gap-2 mb-2">
               {PIECE_SETS.map((s) => (
                 <button
                   key={s.id}
@@ -211,7 +229,41 @@ export default function Settings({
                   </span>
                 </button>
               ))}
+              {customSets.map((s) => (
+                <div
+                  key={s.id}
+                  className={`relative rounded-xl p-1.5 ring-1 flex flex-col items-center gap-1 transition ${
+                    s.id === pieceSetId ? 'bg-gold/15 ring-gold' : 'bg-bg ring-edge'
+                  }`}
+                >
+                  <button onClick={() => setPieceSetId(s.id)} className="flex flex-col items-center gap-1 w-full">
+                    <img src={s.previewSrc} alt="" draggable={false} className="w-8 h-8" />
+                    <span className={`text-[10px] font-bold truncate max-w-full ${s.id === pieceSetId ? 'text-gold' : 'text-frost/80'}`}>
+                      {s.name}
+                    </span>
+                  </button>
+                  {onRemoveSet && (
+                    <button
+                      onClick={() => onRemoveSet(s.id)}
+                      title="Remove this set"
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-bg ring-1 ring-edge text-frost/70 text-[11px] font-bold leading-none flex items-center justify-center hover:text-red-300 hover:ring-red-400/50"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
+            {/* Import a generated set (.chessset.json) */}
+            <input ref={fileRef} type="file" accept=".json,application/json" onChange={handleImportFile} className="hidden" />
+            <button
+              onClick={() => fileRef.current && fileRef.current.click()}
+              className="w-full mb-1 rounded-xl p-2 ring-1 ring-edge bg-bg text-xs font-bold text-frost/80 active:translate-y-px flex items-center justify-center gap-2"
+            >
+              ＋ Import a chess set (.chessset.json)
+            </button>
+            {importMsg && <div className="text-[10px] text-frost/60 mb-3">{importMsg}</div>}
+            {!importMsg && <div className="mb-3" />}
 
             <div className="text-[11px] uppercase tracking-wide text-gold/40 font-bold mb-1.5">Board</div>
             <div className="grid grid-cols-3 gap-2">

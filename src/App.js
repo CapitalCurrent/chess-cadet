@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { OPENINGS, getOpening, unlockedBy, getLines, linesWithStatus } from './data/openings';
 import { getPieceSet } from './pieces/pieceSets';
 import { getBoardTheme } from './pieces/boardThemes';
+import {
+  getAllSets, putSet, deleteSet, parseBundle,
+  registerSet, unregisterSet, customRenderables,
+} from './utils/customSets';
 import { useProgress } from './state/progress';
 import { useProfiles, playGameKey } from './state/profiles';
 import { notebookCount } from './state/notebook';
@@ -81,6 +85,29 @@ export default function App() {
   const [logPlacement, setLogPlacement] = useState(
     () => localStorage.getItem('chess-cadet-logplacement') || 'auto'
   ); // move log: auto | sidebar | panel
+  const [customSets, setCustomSets] = useState([]); // imported .chessset.json sets
+
+  // load imported piece sets from IndexedDB into the registry on mount
+  useEffect(() => {
+    getAllSets()
+      .then((recs) => { recs.forEach(registerSet); setCustomSets(customRenderables()); })
+      .catch(() => {});
+  }, []);
+
+  const importCustomSet = async (file) => {
+    const rec = parseBundle(await file.text());
+    await putSet(rec);
+    registerSet(rec);
+    setCustomSets(customRenderables());
+    setPieceSetId(rec.id); // auto-select the freshly imported set
+    return rec;
+  };
+  const removeCustomSet = async (id) => {
+    await deleteSet(id);
+    unregisterSet(id);
+    setCustomSets(customRenderables());
+    if (pieceSetId === id) setPieceSetId('cburnett');
+  };
 
   useEffect(() => {
     localStorage.setItem('chess-cadet-pieceset', pieceSetId);
@@ -383,6 +410,9 @@ export default function App() {
         onClose={() => setSettingsOpen(false)}
         pieceSetId={pieceSetId}
         setPieceSetId={setPieceSetId}
+        customSets={customSets}
+        onImportSet={importCustomSet}
+        onRemoveSet={removeCustomSet}
         boardThemeId={boardThemeId}
         setBoardThemeId={setBoardThemeId}
         moveStyle={moveStyle}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { renderSvgDragon } from './svgDragonSet';
+import { getCustomRenderable } from '../utils/customSets';
 
 // Piece sets. Each piece is an <img> from public/pieces/<dir>/<color><TYPE>.<ext>
 // (e.g. cburnett/wN.svg). Works with SVG *or* transparent PNG, so Grok-generated
@@ -66,5 +67,6 @@ export const PIECE_SETS = SETS.map((s) => ({
 }));
 
 export function getPieceSet(id) {
-  return PIECE_SETS.find((s) => s.id === id) || PIECE_SETS[0];
+  // custom (imported) sets live in the IndexedDB-backed registry; built-ins in PIECE_SETS
+  return getCustomRenderable(id) || PIECE_SETS.find((s) => s.id === id) || PIECE_SETS[0];
 }
