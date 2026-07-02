@@ -10,7 +10,6 @@ GPL keeping the assets under the same license — are honored.
 | Classic | `cburnett` | Colin M.L. Burnett | GPLv2+ |
 | Merida | `merida` | Armando Hernandez Marroquin | GPLv2+ |
 | Chessnut | `chessnut` | Alexis Luengas | Apache 2.0 |
-| Dragon Classic | `dragon-classic` | Colin M.L. Burnett (base), CapitalCurrent (dragon edits) | GPLv2+ (derivative of cburnett) |
 
 Sources:
 - cburnett / merida — https://github.com/lichess-org/lila/tree/master/public/piece
