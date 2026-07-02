@@ -47,7 +47,7 @@ export function walkLine(fen, ucis) {
         break;
       }
       if (!m) break;
-      out.plies.push({ san: m.san, from: m.from, to: m.to, captured: m.captured || null, color: m.color, check: /[+#]/.test(m.san), fen: game.fen() });
+      out.plies.push({ san: m.san, from: m.from, to: m.to, promotion: m.promotion || null, captured: m.captured || null, color: m.color, check: /[+#]/.test(m.san), fen: game.fen() });
       out.sans.push(m.san);
     }
   }

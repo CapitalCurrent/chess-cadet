@@ -519,6 +519,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     if (v && (v.best || v.mateIn) && cands[0] && cands[0].pv) {
       v.line = winningLine(beforeFen, cands[0].pv);
       v.lineSteps = lineSteps(beforeFen, cands[0].pv);
+      // Raw UCIs of the engine line (kid-sized) — saved with Notebook deposits
+      // so a missed COMBINATION replays as a multi-move puzzle, not a flashcard.
+      v.pv = cands[0].pv.slice(0, 6);
       // Whose line is it (cands are from her POV) — a forced mate FOR her reads
       // very differently from one AGAINST her. Drives the label + styling.
       const framing = lineFraming(cands[0]);
@@ -579,6 +582,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       motif: v.motif || null,
       lossCp: v.loss,
       text: v.text,
+      pv: v.pv || null, // full missed line → Fix Mistakes replays it as a combination
       source,
     });
   }

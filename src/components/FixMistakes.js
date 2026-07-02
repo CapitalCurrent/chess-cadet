@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import ChessBoard from './ChessBoard';
 import PlayLayout from './PlayLayout';
 import { newGame } from '../engine/chessEngine';
 import { analyze } from '../engine/stockfishEngine';
+import { comboSteps, comboLineText } from '../engine/comboSteps';
 import { puzzleQueue, recordAttempt } from '../state/notebook';
 import { recordLessonEvent } from '../state/dailyLesson';
 import { IconNotebook, IconStar } from './icons';
@@ -13,10 +14,17 @@ import { IconNotebook, IconStar } from './icons';
 // coach move always solves it; any move the engine rates within ~60cp of best
 // also counts (there's often more than one good move). Two clean solves
 // (no hints, no wrong tries) retire the position — same bar as line mastery.
+//
+// COMBINATIONS: when the deposit carries the engine's line (pv) with 2+ of her
+// moves in it, the puzzle becomes multi-move — she finds each of her moves and
+// the opponent's forced reply auto-plays between them. Finding a whole forcing
+// sequence is the skill; one-move flashcards can't teach it.
 
 const MOTIF_PROMPTS = {
   fork: 'There was a fork waiting here — find it!',
   pin: 'There was a pin waiting here — find it!',
+  skewer: 'There was a skewer waiting here — find it!',
+  mate: 'There was a forced CHECKMATE here — find it!',
   'discovered attack': 'A discovered attack was hiding here — find it!',
 };
 
@@ -35,12 +43,26 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
   const [hint, setHint] = useState(0); // 0 none · 1 highlight the piece · 2 arrow
   const [triedWrong, setTriedWrong] = useState(false);
   const [note, setNote] = useState(null); // { kind: good|warn|pending, text }
+  const [stepIdx, setStepIdx] = useState(0); // which hero move of a combination she's on
 
   const cur = queue[idx] || null;
   const done = !cur;
   const stm = cur ? cur.fen.split(' ')[1] : 'w';
   const sideName = stm === 'w' ? 'White' : 'Black';
   const solving = phase === 'solve';
+
+  // A deposit with the engine line (pv) holding 2+ of her moves is a
+  // COMBINATION; anything else is the classic single-move puzzle.
+  const steps = useMemo(() => {
+    if (!cur) return [];
+    if (cur.pv && cur.pv.length >= 3) {
+      const s = comboSteps(cur.fen, cur.pv);
+      if (s.length >= 2) return s;
+    }
+    return [{ fen: cur.fen, expectUci: cur.best.uci, expectSan: cur.best.san, mate: /#/.test(cur.best.san || ''), reply: null }];
+  }, [cur]);
+  const isCombo = steps.length > 1;
+  const curStep = steps[stepIdx] || steps[0] || null;
 
   function resetTo(i) {
     const m = queue[i];
@@ -51,6 +73,7 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
     setHint(0);
     setTriedWrong(false);
     setNote(null);
+    setStepIdx(0);
   }
 
   function finishSolved(exact, altSan) {
@@ -62,17 +85,33 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
     setNote({
       kind: 'good',
       text: exact
-        ? `⭐ That's it! ${cur.best.san} — the move you missed in your game.${clean ? ' Clean solve!' : ''}`
-        : `👍 ${altSan} works too! The coach's move was ${cur.best.san}.`,
+        ? isCombo
+          ? `⭐ The WHOLE combination — ${comboLineText(steps)}! That's the sequence you missed in your game.${clean ? ' Clean solve!' : ''}`
+          : `⭐ That's it! ${cur.best.san} — the move you missed in your game.${clean ? ' Clean solve!' : ''}`
+        : `👍 ${altSan} works too! The coach's line started with ${cur.best.san}.`,
     });
+  }
+
+  // She found this step of the combination — auto-play the opponent's forced
+  // reply, then hand the board back for the next move.
+  function advanceStep(heroSan) {
+    const st = steps[stepIdx];
+    setPhase('checking'); // board locked during the reply beat
+    setNote({ kind: 'good', text: `✓ ${heroSan}! They're forced to answer ${st.reply.san} — find the next move!` });
+    setTimeout(() => {
+      setShownFen(st.reply.fen);
+      setLastMove({ from: st.reply.from, to: st.reply.to });
+      setStepIdx(stepIdx + 1);
+      setPhase('solve');
+    }, 850);
   }
 
   function markWrong(san, uci) {
     setTriedWrong(true);
     // Replaying the original blunder is its own teaching moment — say so
     // instead of the generic miss. And never claim a try was "close to" the
-    // game when it wasn't.
-    const repeat = uci === cur.played.uci;
+    // game when it wasn't. (Only her FIRST move can be the original blunder.)
+    const repeat = stepIdx === 0 && uci === cur.played.uci;
     setNote({
       kind: 'warn',
       text: repeat
@@ -81,15 +120,15 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
     });
     // Let the try land for a beat, then snap back to the puzzle position.
     setTimeout(() => {
-      setShownFen(cur.fen);
+      setShownFen(curStep.fen);
       setLastMove(null);
       setPhase('solve');
     }, 900);
   }
 
   async function handleMove(from, to) {
-    if (!solving || !cur) return;
-    const g = newGame(cur.fen);
+    if (!solving || !cur || !curStep) return;
+    const g = newGame(curStep.fen);
     let m = null;
     try {
       m = g.move({ from, to, promotion: 'q' });
@@ -100,13 +139,18 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
     const uci = from + to + (m.promotion || '');
     setShownFen(g.fen());
     setLastMove({ from, to });
-    if (uci === cur.best.uci) return finishSolved(true);
+    if (uci === curStep.expectUci) {
+      if (curStep.reply && stepIdx + 1 < steps.length) return advanceStep(m.san);
+      return finishSolved(true);
+    }
     // Not the coach's move — ask the engine whether her idea is also good.
+    // (On a mid-combination step this ends the puzzle as solved-with-alternative:
+    // we can't follow the stored line after a sound deviation.)
     setPhase('checking');
     setNote({ kind: 'pending', text: '🎓 Checking your idea…' });
     let cands = [];
     try {
-      cands = (await analyze(cur.fen, { multipv: 5, movetime: 500 })) || [];
+      cands = (await analyze(curStep.fen, { multipv: 5, movetime: 500 })) || [];
     } catch {
       cands = [];
     }
@@ -131,23 +175,24 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
   }
 
   function showAnswer() {
-    if (!cur) return;
+    if (!cur || !curStep) return;
     recordAttempt(profileId, cur.id, { solved: false });
-    const g = newGame(cur.fen);
+    const g = newGame(curStep.fen);
     try {
-      g.move({ from: cur.best.uci.slice(0, 2), to: cur.best.uci.slice(2, 4), promotion: cur.best.uci[4] });
+      g.move({ from: curStep.expectUci.slice(0, 2), to: curStep.expectUci.slice(2, 4), promotion: curStep.expectUci[4] });
     } catch {
       /* ignore */
     }
     setShownFen(g.fen());
-    setLastMove({ from: cur.best.uci.slice(0, 2), to: cur.best.uci.slice(2, 4) });
+    setLastMove({ from: curStep.expectUci.slice(0, 2), to: curStep.expectUci.slice(2, 4) });
     setPhase('revealed');
-    setNote({ kind: 'warn', text: `The move was ${cur.best.san}. ${cur.text || ''} It'll come back later — you'll get it!` });
+    const line = isCombo ? ` The full line: ${comboLineText(steps, stepIdx)}.` : '';
+    setNote({ kind: 'warn', text: `The move was ${curStep.expectSan}.${line} ${(stepIdx === 0 && cur.text) || ''} It'll come back later — you'll get it!` });
   }
 
-  const boardHighlights = cur && hint >= 1 && solving ? [cur.best.uci.slice(0, 2)] : [];
+  const boardHighlights = curStep && hint >= 1 && solving ? [curStep.expectUci.slice(0, 2)] : [];
   const boardArrows =
-    cur && hint >= 2 && solving ? [{ from: cur.best.uci.slice(0, 2), to: cur.best.uci.slice(2, 4) }] : [];
+    curStep && hint >= 2 && solving ? [{ from: curStep.expectUci.slice(0, 2), to: curStep.expectUci.slice(2, 4) }] : [];
 
   const board = (
     <ChessBoard
@@ -227,6 +272,16 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
             <div className="mt-2 text-sm md:text-lg text-grass font-bold">
               👉 {(cur.motif && MOTIF_PROMPTS[cur.motif]) || `Find the stronger move for ${sideName}.`}
             </div>
+            {isCombo && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs md:text-sm font-bold text-gold bg-gold/15 ring-1 ring-gold/40 rounded-full px-2.5 py-1">
+                  ⚡ Combination — {steps.length} moves in a row
+                </span>
+                <span className="text-xs md:text-sm font-bold text-frost-dim">
+                  Move {Math.min(stepIdx + 1, steps.length)} of {steps.length}
+                </span>
+              </div>
+            )}
           </div>
 
           {note && (
