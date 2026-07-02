@@ -27,6 +27,27 @@ export default function Settings({
   const [showCustom, setShowCustom] = useState(false);
   const [soundOn, setSoundOn] = useState(!isMuted());
   const [coachVoice, setCoachVoiceState] = useState(getCoachVoice());
+  const [resetArmed, setResetArmed] = useState(false);
+
+  // Testing-only factory reset: every app key is prefixed `chess-cadet`, so a
+  // prefix wipe clears profiles + progress + notebook + settings while KEEPING
+  // the MaiaBot model (IndexedDB) and — critically — never touching other apps
+  // that share the github.io origin. Two-tap arm/confirm; disarms after 4s.
+  const handleReset = () => {
+    if (!resetArmed) {
+      setResetArmed(true);
+      setTimeout(() => setResetArmed(false), 4000);
+      return;
+    }
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('chess-cadet'))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch {
+      /* ignore */
+    }
+    window.location.reload();
+  };
   const [audioInfo, setAudioInfo] = useState('');
   const [importMsg, setImportMsg] = useState('');
   const fileRef = useRef(null);
@@ -314,6 +335,25 @@ export default function Settings({
             </div>
           </div>
         )}
+
+        {/* Testing-only danger zone */}
+        <div className="mt-5">
+          <div className="text-xs uppercase tracking-wide text-coral/60 font-bold mb-2">Testing</div>
+          <button
+            onClick={handleReset}
+            className={`w-full rounded-xl p-2.5 ring-1 text-sm font-bold transition active:translate-y-px ${
+              resetArmed
+                ? 'bg-coral/20 text-coral ring-coral/60'
+                : 'bg-bg text-frost/70 ring-edge hover:text-coral hover:ring-coral/40'
+            }`}
+          >
+            {resetArmed ? '⚠️ Tap again to erase EVERYTHING' : '🗑 Reset all data (start from scratch)'}
+          </button>
+          <div className="text-[10px] text-frost/40 mt-1 leading-snug">
+            Erases all profiles, progress, the Coach's Notebook and settings on this device. The MaiaBot
+            download is kept.
+          </div>
+        </div>
 
         <div className="mt-5 text-[10px] text-frost/40 leading-snug">
           Piece sets: cburnett &amp; merida (GPLv2+), chessnut (Apache 2.0) — from the lichess project.
