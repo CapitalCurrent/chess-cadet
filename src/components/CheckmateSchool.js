@@ -185,7 +185,13 @@ function MatePackPlayer({ pack, profileId, pieceSet, boardTheme, moveStyle, focu
       rewardMove && rewardMove(hint === 0 ? 2 : 1);
       setNote({ kind: 'good', text: `⭐ ${m.san} — CHECKMATE! That's the ${pos.name.toLowerCase()}.` });
     } else {
-      setNote({ kind: 'warn', text: `${m.san} is a move — but the king escapes! Find the CHECKMATE.` });
+      // Teach the difference: no check at all vs a check the king can answer.
+      setNote({
+        kind: 'warn',
+        text: g.inCheck()
+          ? `${m.san} is check — but the king can get out! Find the check with NO escape.`
+          : `${m.san} doesn't give check — and checkmate always starts with a check. Try every check!`,
+      });
       snapTimer.current = setTimeout(() => {
         setShownFen(pos.fen);
         setLastMove(null);

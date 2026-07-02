@@ -15,6 +15,7 @@ import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEng
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, levelElo, initEngine, analyze } from '../engine/stockfishEngine';
 import { initMaia, ensureMaiaReady, maiaMove, maiaBestMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
 import { addMistake } from '../state/notebook';
+import { getCoachVoice } from '../state/coachVoice';
 import { recordLessonEvent } from '../state/dailyLesson';
 import { recordRatedGame } from '../state/rating';
 
@@ -402,6 +403,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     setRatingResult(null);
     castleNudgedRef.current = false;
     samePieceNudgesRef.current = 0;
+    praiseCountsRef.current = {};
     const h = gameRef.current.history({ verbose: true });
     const last = h[h.length - 1];
     setLastMove(last ? { from: last.from, to: last.to } : null);
@@ -479,7 +481,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   // { kind, icon, label, text } or null. Shared by the live coach AND Game
   // Review. useHumanHint -> Maia-level suggestion for inaccuracies (live play);
   // off -> the engine's move (faster, used for batch review).
-  async function classifyMove(beforeFen, uci, afterFen, { movetime = 600, useHumanHint = false } = {}) {
+  async function classifyMove(beforeFen, uci, afterFen, { movetime = 600, useHumanHint = false, lastOppMove = null } = {}) {
     let cands = [];
     try {
       cands = (await analyze(beforeFen, { multipv: 5, movetime })) || [];
@@ -499,13 +501,17 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       } catch {
         after = [];
       }
-      herCp = after.length ? -scoreNum(after[0]) : bestCp - 400;
+      // No evidence about HER move → no verdict (Tier D: silence). Assuming a
+      // loss here would fabricate a "Mistake" for a possibly perfect move and
+      // even deposit it in the Notebook.
+      if (!after.length) return null;
+      herCp = -scoreNum(after[0]);
     }
     // Human-level suggestion (Maia at her rating) only matters for the loose
     // inaccuracy/mistake verdict — fetch it only there. The pure evaluateMove
     // does all the classification + motif validation.
     const humanSuggestSan = useHumanHint && bestCp - herCp > 150 ? await humanSuggestion(beforeFen, cands) : null;
-    const v = evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSuggestSan });
+    const v = evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSuggestSan, lastOppMove });
     // For a missed tactic/mate (or a mate she's forcing), attach the SAN line to
     // SHOW — turns "you had mate in 3" into a real lesson she can read/replay,
     // plus the board positions so she can step through it.
@@ -550,6 +556,10 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   // mention castling once and piece-wandering twice per game, max.
   const castleNudgedRef = useRef(false);
   const samePieceNudgesRef = useRef(0);
+  // Positive-habit praise caps (reset each new game). Sparse, specific praise
+  // shapes habits; praise on every developing move becomes wallpaper.
+  const PRAISE_CAPS = { castle: 1, promotion: 2, save: 2, recapture: 2, develop: 3 };
+  const praiseCountsRef = useRef({});
 
   // Deposit a coach-flagged blunder/missed tactic into the Coach's Notebook so
   // Fix Mistakes can replay it later. Inaccuracies are skipped (too noisy to
@@ -574,7 +584,12 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     const afterFen = gameRef.current.fen();
     setCoachNote({ kind: 'pending', text: '🎓 Coach is looking…' });
     setLinePreview(null); // drop any open preview from the previous move
-    const v = await classifyMove(beforeFen, uci, afterFen, { movetime: 1200, useHumanHint: true });
+    // The opponent's previous move (second-to-last; her move is last) lets the
+    // encouragement layer recognize a recapture.
+    const hist = gameRef.current.history({ verbose: true });
+    const prev = hist.length >= 2 ? hist[hist.length - 2] : null;
+    const lastOppMove = prev && prev.color !== studentColor ? { to: prev.to, captured: !!prev.captured } : null;
+    const v = await classifyMove(beforeFen, uci, afterFen, { movetime: 1200, useHumanHint: true, lastOppMove });
     captureMistake(beforeFen, move, v, 'coach');
     const reply = await opponentReply(afterFen);
 
@@ -582,8 +597,19 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     // (Named tactic messages — missed fork etc. — already explain themselves.)
     let note = v;
     if (v && v.kind === 'warn' && (v.label === 'Inaccuracy' || v.label === 'Mistake')) {
-      const why = explainWarn({ afterFen, move, herColor: studentColor, replyUci: reply.replyUci });
+      const why = explainWarn({ afterFen, move, herColor: studentColor, replyUci: reply.replyUci, voice: getCoachVoice() });
       if (why) note = { ...v, text: `${v.text} ${why}` };
+    }
+
+    // Phase 3 encouragement: swap the generic praise text for the specific
+    // habit praise (castled / developed / saved / recaptured), capped per game
+    // so it stays meaningful.
+    if (v && v.praise && v.kind !== 'warn') {
+      const seen = praiseCountsRef.current[v.praise.type] || 0;
+      if (seen < PRAISE_CAPS[v.praise.type]) {
+        praiseCountsRef.current[v.praise.type] = seen + 1;
+        note = { ...note, text: v.praise.text };
+      }
     }
 
     // Tier B — gentle habit nudges, only when the move itself wasn't flagged
@@ -592,14 +618,15 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     if (v && v.kind !== 'warn') {
       if (v.kind !== 'best' && samePieceNudgesRef.current < 2) {
         habit = samePieceNudge({
-          history: gameRef.current.history({ verbose: true }),
+          history: hist,
           beforeFen,
           herColor: studentColor,
+          voice: getCoachVoice(),
         });
         if (habit) samePieceNudgesRef.current += 1;
       }
       if (!habit && !castleNudgedRef.current) {
-        habit = castleNudge({ fen: afterFen, herColor: studentColor });
+        habit = castleNudge({ fen: afterFen, herColor: studentColor, voice: getCoachVoice() });
         if (habit) castleNudgedRef.current = true;
       }
     }

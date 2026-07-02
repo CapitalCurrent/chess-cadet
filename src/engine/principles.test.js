@@ -99,7 +99,14 @@ describe('early queen — the Scandinavian trap', () => {
 describe('same-piece-twice nudge', () => {
   test('fires on a real wander: 1.Nf3 d5 2.Ng5 with everyone else asleep', () => {
     const { history, beforeFen } = play(['Nf3', 'd5', 'Ng5']);
-    expect(samePieceNudge({ history, beforeFen, herColor: 'w' })).toMatch(/asleep/i);
+    expect(samePieceNudge({ history, beforeFen, herColor: 'w' })).toMatch(/hasn't moved/i);
+  });
+
+  test('voice is REGISTER only — kid phrasing teaches the same lesson', () => {
+    const { history, beforeFen } = play(['Nf3', 'd5', 'Ng5']);
+    const kid = samePieceNudge({ history, beforeFen, herColor: 'w', voice: 'kid' });
+    expect(kid).toMatch(/asleep/i);
+    expect(kid).toMatch(/every piece one job/i); // same lesson, different register
   });
 
   test('TRAP: a piece that was ATTACKED had to move — silent', () => {

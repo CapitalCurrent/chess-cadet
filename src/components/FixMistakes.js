@@ -67,11 +67,17 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
     });
   }
 
-  function markWrong(san) {
+  function markWrong(san, uci) {
     setTriedWrong(true);
+    // Replaying the original blunder is its own teaching moment — say so
+    // instead of the generic miss. And never claim a try was "close to" the
+    // game when it wasn't.
+    const repeat = uci === cur.played.uci;
     setNote({
       kind: 'warn',
-      text: `${san} isn't it — that's close to what happened in your game (you played ${cur.played.san}). Try again!`,
+      text: repeat
+        ? `${san} is the very move you played in the game — and it cost you there. There's something better!`
+        : `${san} isn't it — try again!`,
     });
     // Let the try land for a beat, then snap back to the puzzle position.
     setTimeout(() => {
@@ -106,10 +112,22 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
     }
     const found = cands.find((c) => c.move === uci);
     if (found && cands.length && scoreNum(cands[0]) - scoreNum(found) <= 60) {
-      finishSolved(false, m.san);
-    } else {
-      markWrong(m.san);
+      return finishSolved(false, m.san);
     }
+    if (!found && cands.length) {
+      // Her move isn't among the top candidates — judge it directly before
+      // calling it wrong (a sound move ranked 6th+ must not be failed).
+      let after = [];
+      try {
+        after = (await analyze(g.fen(), { multipv: 1, movetime: 400 })) || [];
+      } catch {
+        after = [];
+      }
+      if (after.length && scoreNum(cands[0]) - -scoreNum(after[0]) <= 60) {
+        return finishSolved(false, m.san);
+      }
+    }
+    markWrong(m.san, uci);
   }
 
   function showAnswer() {

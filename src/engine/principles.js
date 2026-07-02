@@ -27,6 +27,27 @@ import { hangingBy } from './see';
 const VAL = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 99 };
 const NAME = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
 
+// Voice = REGISTER only, never content: 'standard' reads naturally for any
+// learner; 'kid' is the warm, playful phrasing. Same advice in both — a text
+// pair here must teach the identical lesson (see state/coachVoice.js).
+const VOICE = {
+  standard: {
+    earlyQueen:
+      'Your queen came out early and can be chased by cheaper pieces — develop knights and bishops first; the queen joins in later.',
+    samePiece: (moved, sleeperType, asleep) =>
+      `That ${moved} has moved twice while your ${sleeperType} on ${asleep} hasn't moved at all — in the opening, try to give every piece one job first.`,
+    castle: 'Your king is still in the middle and you can still castle — get it to safety soon. 🏰',
+  },
+  kid: {
+    earlyQueen:
+      'Your queen came out early and the little pieces can chase her — knights and bishops first; the queen joins the battle later!',
+    samePiece: (moved, sleeperType, asleep) =>
+      `That ${moved} keeps moving while your ${sleeperType} is still asleep on ${asleep} — in the opening, try to give every piece one job first!`,
+    castle: 'Psst — your king is still in the middle! You can still castle: tuck him safe soon. 🏰',
+  },
+};
+const voiceOf = (v) => VOICE[v] || VOICE.standard;
+
 const SQUARES = [];
 for (const f of 'abcdefgh') for (let r = 1; r <= 8; r++) SQUARES.push(f + r);
 
@@ -83,26 +104,26 @@ export function confirmedHang(afterFen, herColor, replyUci) {
 // move, and only when the queen is genuinely chaseable (attacked by a cheaper
 // piece on its new square). Captures/recaptures never fire (Scandinavian
 // Qxd5 is the canonical false positive this guard exists for).
-export function earlyQueenIssue({ afterFen, move, herColor }) {
+export function earlyQueenIssue({ afterFen, move, herColor, voice = 'standard' }) {
   if (!move || move.piece !== 'q' || move.captured) return null;
   if (fullmoveOf(afterFen) > 7) return null;
   const g = newGame(afterFen);
   const enemy = herColor === 'w' ? 'b' : 'w';
   const cheapest = cheapestAttackerValue(g, move.to, enemy);
   if (cheapest >= 9) return null; // not actually chaseable
-  return 'Your queen came out early and the little pieces can chase her — knights and bishops first; the queen joins the battle later!';
+  return voiceOf(voice).earlyQueen;
 }
 
 // Compose the Tier-A explanation for an engine-flagged generic warn.
 // Priority: confirmed hang (specific, verified) > early queen (conceptual).
-export function explainWarn({ afterFen, move, herColor, replyUci }) {
+export function explainWarn({ afterFen, move, herColor, replyUci, voice = 'standard' }) {
   const hang = confirmedHang(afterFen, herColor, replyUci);
   if (hang) {
     return `Your ${NAME[hang.type]} on ${hang.square} can be taken${
       hang.attackedByLesser && !hang.undefended ? ' by a smaller piece' : ''
     } — count the attackers and defenders before you leave a piece somewhere!`;
   }
-  return earlyQueenIssue({ afterFen, move, herColor });
+  return earlyQueenIssue({ afterFen, move, herColor, voice });
 }
 
 const HOME_MINORS = {
@@ -116,7 +137,7 @@ const HOME_MINORS = {
 // problem), past move 8, or when nothing is left undeveloped. The caller must
 // also skip it when the engine rated the move 'best' and rate-limit per game.
 // `history` = verbose history INCLUDING the move just played (last element).
-export function samePieceNudge({ history, beforeFen, herColor }) {
+export function samePieceNudge({ history, beforeFen, herColor, voice = 'standard' }) {
   if (!history || !history.length) return null;
   const move = history[history.length - 1];
   if (move.color !== herColor) return null;
@@ -150,14 +171,14 @@ export function samePieceNudge({ history, beforeFen, herColor }) {
   if (!asleep) return null;
 
   const sleeper = before.get(asleep);
-  return `That ${NAME[move.piece]} keeps moving while your ${NAME[sleeper.type]} is still asleep on ${asleep} — in the opening, try to give every piece one job first!`;
+  return voiceOf(voice).samePiece(NAME[move.piece], NAME[sleeper.type], asleep);
 }
 
 // Tier-B nudge: king still in the middle at move 10+ with castling rights
 // intact and the enemy queen still on the board. Queens-off positions are
 // SUPPRESSED — with queens traded, an active central king is often correct,
 // and "castle soon!" would be bad advice. Caller fires this once per game.
-export function castleNudge({ fen, herColor }) {
+export function castleNudge({ fen, herColor, voice = 'standard' }) {
   if (fullmoveOf(fen) < 10) return null;
   const rights = fen.split(' ')[2] || '-';
   const mine = herColor === 'w' ? /[KQ]/ : /[kq]/;
@@ -169,5 +190,5 @@ export function castleNudge({ fen, herColor }) {
     return p && p.color === enemy && p.type === 'q';
   });
   if (!enemyQueen) return null;
-  return 'Psst — your king is still in the middle! You can still castle: tuck him safe soon. 🏰';
+  return voiceOf(voice).castle;
 }

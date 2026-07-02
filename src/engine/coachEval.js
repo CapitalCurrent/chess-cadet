@@ -11,6 +11,7 @@
 import { newGame } from './chessEngine';
 import { walkLine } from './pvLine';
 import { detectMotifs, motifsOfMove } from './tactics';
+import { detectPraise } from './encouragement';
 import { pinnedDefenderWin, pinnedDefenderText, workingPinWin, workingPinText } from './pins';
 import { skewerWin, skewerText } from './skewers';
 
@@ -50,8 +51,12 @@ export function moveInfo(fen, uci) {
 //   herCp           = eval of HER move (side-to-move POV)
 //   humanSuggestSan = a human-level (Maia) suggestion for the inaccuracy/mistake
 //                     branch; falls back to the engine's best move when null.
-// Returns { kind, icon, label, text, best?, motif?, loss? } or null.
-export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSuggestSan = null } = {}) {
+//   lastOppMove     = { to, captured } of the opponent's previous move — lets
+//                     the encouragement layer recognize recaptures.
+// Returns { kind, icon, label, text, best?, motif?, loss?, praise? } or null.
+// `praise` = { type, text } positive-habit claim (Phase 3 encouragement); it
+// rides ALONGSIDE the generic text so the caller can rate-limit it per game.
+export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSuggestSan = null, lastOppMove = null } = {}) {
   if (!cands || !cands.length) return null;
   const bestCp = scoreNum(cands[0]);
   const loss = bestCp - herCp; // centipawns given up vs the best move
@@ -88,10 +93,25 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
       return { kind: 'best', icon: '💥', label: 'Tactic', text: `💥 Sharp! ${her.san} is the winning move here.` };
     }
     if (isBest && her.check) return { kind: 'best', icon: '👍', label: 'Strong', text: `👍 Strong check — ${her.san}!` };
-    if (isBest) return { kind: 'best', icon: '⭐', label: 'Best', text: '⭐ Best move! Right on the money.' };
-    return { kind: 'good', icon: '👍', label: 'Great', text: '👍 Great move — among the best here.' };
+    // She's not on the engine's #1 but still forcing mate her own way — that's
+    // a win, not a nitpick.
+    const herMateN = mateIn(cands.find((c) => c.move === uci));
+    if (!isBest && herMateN) return { kind: 'good', icon: '♟️', label: 'Great', text: `♟️ Still forcing mate in ${herMateN} — your way works too!`, mateIn: herMateN };
+    // Positive-habit praise (castled / developed / saved a piece / recapture):
+    // attached alongside the generic text; the caller decides when to show it.
+    const praise = detectPraise(beforeFen, uci, { lastOppMove });
+    if (isBest) return { kind: 'best', icon: '⭐', label: 'Best', text: '⭐ Best move! Right on the money.', praise };
+    return { kind: 'good', icon: '👍', label: 'Great', text: '👍 Great move — among the best here.', praise };
   }
-  if (loss <= 150) return { kind: 'good', icon: '🙂', label: 'Good', text: '🙂 Good — a solid, safe move.' };
+  if (loss <= 150) {
+    // Choosing a slower forced mate lands here (each extra mate move ≈ 100cp of
+    // "loss") — she's still winning by force; say that, not "loose".
+    const herMateN = mateIn(cands.find((c) => c.move === uci));
+    if (herMateN) return { kind: 'good', icon: '♟️', label: 'Good', text: `♟️ Still winning — you're forcing mate in ${herMateN}. ${moveInfo(beforeFen, cands[0].move).san} was a little faster.`, mateIn: herMateN };
+    // "Good move." without asserting safety — a move in this band may have
+    // given up real ground; we stay lenient but don't claim it was "safe".
+    return { kind: 'good', icon: '🙂', label: 'Good', text: '🙂 Good move.', praise: detectPraise(beforeFen, uci, { lastOppMove }) };
+  }
   const best = moveInfo(beforeFen, cands[0].move);
   const bestMotifs = motifsOfMove(beforeFen, cands[0].move);
   const missedName = bestMotifs.includes('fork')

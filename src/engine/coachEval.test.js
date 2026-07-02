@@ -167,6 +167,58 @@ describe('mate awareness — deliver it, or learn you missed it', () => {
   });
 });
 
+describe('encouragement riding on the verdict (Phase 3)', () => {
+  test('a best developing move carries develop praise alongside the verdict', () => {
+    const v = evaluateMove(START, 'g1f3', START, { cands: [{ move: 'g1f3', cp: 25 }], herCp: 25 });
+    expect(v.label).toBe('Best'); // verdict unchanged — praise rides alongside
+    expect(v.praise).toBeTruthy();
+    expect(v.praise.type).toBe('develop');
+  });
+
+  test('castling in the Good band carries castle praise', () => {
+    const READY = 'rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4';
+    const v = evaluateMove(READY, 'e1g1', READY, {
+      cands: [{ move: 'd2d4', cp: 90 }, { move: 'e1g1', cp: 20 }],
+      herCp: 20, // loss 70 → Good band
+    });
+    expect(v.label).toBe('Good');
+    expect(v.praise.type).toBe('castle');
+  });
+
+  test('warn verdicts never carry praise', () => {
+    const v = evaluateMove(START, 'g1f3', START, {
+      cands: [{ move: 'e2e4', cp: 40 }],
+      herCp: -400,
+    });
+    expect(v.kind).toBe('warn');
+    expect(v.praise).toBeUndefined();
+  });
+});
+
+describe('choosing your OWN mate is still winning, never scolded', () => {
+  const ROOK = '4k3/8/8/8/8/8/8/R3K3 w - - 0 1';
+
+  test('a different move that also forces mate in N is celebrated', () => {
+    const v = evaluateMove(ROOK, 'a1a8', ROOK, {
+      cands: [{ move: 'a1b1', mate: 2 }, { move: 'a1a8', mate: 2 }],
+      herCp: 99800,
+    });
+    expect(v.kind).toBe('good');
+    expect(v.text).toMatch(/still forcing mate in 2/i);
+    expect(v.mateIn).toBe(2);
+  });
+
+  test('a SLOWER forced mate reads "still winning", not "loose"', () => {
+    const v = evaluateMove(ROOK, 'a1a8', ROOK, {
+      cands: [{ move: 'a1b1', mate: 2 }, { move: 'a1a8', mate: 3 }],
+      herCp: 99700, // loss 100 → Good band
+    });
+    expect(v.kind).toBe('good');
+    expect(v.text).toMatch(/still winning/i);
+    expect(v.text).not.toMatch(/loose|careful/i);
+  });
+});
+
 describe('TWO-GATE rule — material won locally but engine says bad', () => {
   test('a capture the engine rates losing is a Mistake, never praised', () => {
     // She "wins" something but the engine eval of her move is bad (herCp = -400)

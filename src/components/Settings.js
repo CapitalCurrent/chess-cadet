@@ -4,6 +4,7 @@ import { BOARD_THEMES, getBoardTheme } from '../pieces/boardThemes';
 import { THEME_PRESETS, activePresetId } from '../pieces/themePresets';
 import { APP_THEMES } from '../state/theme';
 import { isMuted, setMuted, playTest, audioState } from '../utils/sounds';
+import { getCoachVoice, setCoachVoice } from '../state/coachVoice';
 import { IconSettings, IconClose, IconSoundOn, IconSoundOff } from './icons';
 
 export default function Settings({
@@ -25,6 +26,7 @@ export default function Settings({
 }) {
   const [showCustom, setShowCustom] = useState(false);
   const [soundOn, setSoundOn] = useState(!isMuted());
+  const [coachVoice, setCoachVoiceState] = useState(getCoachVoice());
   const [audioInfo, setAudioInfo] = useState('');
   const [importMsg, setImportMsg] = useState('');
   const fileRef = useRef(null);
@@ -114,6 +116,29 @@ export default function Settings({
         >
           <IconSoundOn size={16} /> Play a test sound{audioInfo ? ` — audio: ${audioInfo}` : ''}
         </button>
+
+        {/* Coach voice — register only; the chess advice is identical */}
+        <div className="text-xs uppercase tracking-wide text-gold/50 font-bold mb-2">Coach voice</div>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {[
+            { id: 'standard', name: 'Standard', hint: 'for any learner' },
+            { id: 'kid', name: 'Kid', hint: 'playful & warm' },
+          ].map((v) => {
+            const active = v.id === coachVoice;
+            return (
+              <button
+                key={v.id}
+                onClick={() => { setCoachVoice(v.id); setCoachVoiceState(v.id); }}
+                className={`rounded-xl p-2 ring-1 flex flex-col items-center gap-0.5 transition ${
+                  active ? 'bg-gold/15 ring-gold' : 'bg-bg ring-edge'
+                }`}
+              >
+                <span className={`text-sm font-bold ${active ? 'text-gold' : 'text-frost/80'}`}>{v.name}</span>
+                <span className="text-[10px] text-frost/50">{v.hint}</span>
+              </button>
+            );
+          })}
+        </div>
 
         {/* Move input style */}
         <div className="text-xs uppercase tracking-wide text-gold/50 font-bold mb-2">Move pieces by</div>
