@@ -5,7 +5,8 @@ import { IconGuide, IconPlay, IconDrill, IconPawn, IconTrophy } from './icons';
 // app is a catalog of subjects (Notation, Openings, …) rather than dropping
 // straight into one lesson. New subjects slot in as more cards.
 const SUBJECTS = [
-  { id: 'checkmates', Icon: IconTrophy, title: 'Checkmates', blurb: 'Finish the game — mate in 1 & endgames' },
+  { id: 'checkmates', Icon: IconTrophy, title: 'Checkmates', blurb: 'Finish the game — mate in 1 & basic mates' },
+  { id: 'endgames', Icon: IconPawn, title: 'Endgames', blurb: 'Technique ladder — square rule to Lucena' },
   { id: 'notation', Icon: IconGuide, title: 'Notation', blurb: 'Read & write chess moves' },
   { id: 'openings', Icon: IconPlay, title: 'Openings', blurb: 'Learn opening lines & traps' },
   { id: 'tactics', Icon: IconDrill, title: 'Tactics', blurb: 'Forks, pins, skewers & back-rank mates' },
