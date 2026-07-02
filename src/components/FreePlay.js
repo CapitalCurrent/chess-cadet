@@ -9,6 +9,7 @@ import Collapsible from './Collapsible';
 import { IconUndo, IconFlip, IconRestart, IconClose } from './icons';
 import { motifsOfMove } from '../engine/tactics';
 import { scoreNum, evaluateMove, pickSuggestionUci, winningLine, lineFraming } from '../engine/coachEval';
+import { mateLineBackRank } from '../engine/backRank';
 import { lineSteps } from '../engine/pvLine';
 import { explainWarn, samePieceNudge, castleNudge } from '../engine/principles';
 import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
@@ -523,6 +524,9 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       const framing = lineFraming(cands[0]);
       v.lineKind = framing.kind;
       v.lineMateN = framing.mateN;
+      // Name the PATTERN on forced mates (hers or theirs) — the back-rank
+      // lesson ("give your king an escape square") is the durable takeaway.
+      if (framing.mateN) v.lineBackRank = mateLineBackRank(beforeFen, cands[0].pv);
     }
     return v;
   }
@@ -632,7 +636,22 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     }
 
     if (!note && !reply.threat && !habit) return setCoachNote(null);
-    setCoachNote({ kind: note ? note.kind : 'warn', text: note ? note.text : '', line: note ? note.line : null, lineSteps: note ? note.lineSteps : null, lineKind: note ? note.lineKind : null, lineMateN: note ? note.lineMateN : null, threat: reply.threat, habit });
+    setCoachNote({
+      kind: note ? note.kind : 'warn',
+      text: note ? note.text : '',
+      // Retrieval practice: a missed tactic first shows the CLAIM without the
+      // answer (tease); "Show me" reveals the move + line. Generation beats
+      // being told — she gets a beat to hunt for it herself.
+      tease: note ? note.tease : null,
+      revealed: false,
+      line: note ? note.line : null,
+      lineSteps: note ? note.lineSteps : null,
+      lineKind: note ? note.lineKind : null,
+      lineMateN: note ? note.lineMateN : null,
+      lineBackRank: note ? note.lineBackRank : null,
+      threat: reply.threat,
+      habit,
+    });
   }
 
   // Game Review: re-walk the game and classify each of HER moves, then summarize.
@@ -661,11 +680,28 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     setReview({ running: false, total, rows, summary });
   }
 
+  // Graded hint ladder (mirrors the opening trainer): first tap names the
+  // PIECE — she still finds the move herself; second tap on the same position
+  // gives the move. Generation before revelation.
+  const hintStageRef = useRef({ fen: null, sug: null });
+  function hintPieceText(san) {
+    if (/^O-O/.test(san)) return '💡 Think about castling — your king would love it.';
+    const names = { K: 'king', Q: 'queen', R: 'rook', B: 'bishop', N: 'knight' };
+    const piece = names[san[0]] || 'pawn';
+    return `💡 Look at your ${piece} moves — one of them is strong.`;
+  }
   async function showHint() {
     const f = gameRef.current.fen();
+    const prev = hintStageRef.current;
+    if (prev.fen === f && prev.sug) {
+      setCoachNote({ kind: 'hint', text: `💡 A move like ${prev.sug} looks good.` });
+      return;
+    }
     setCoachNote({ kind: 'pending', text: '🎓 Thinking of a hint…' });
     const sug = await humanSuggestion(f);
-    setCoachNote(sug ? { kind: 'hint', text: `💡 A move like ${sug} looks good.` } : null);
+    if (!sug) return setCoachNote(null);
+    hintStageRef.current = { fen: f, sug };
+    setCoachNote({ kind: 'hint', text: `${hintPieceText(sug)} (Tap 💡 again for the move.)` });
   }
 
   function selectOpponent(type) {
@@ -1094,7 +1130,7 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
             <div className="flex items-start gap-2">
               {coachNote ? (
                 <div className="flex-1 space-y-1">
-                  {coachNote.text && (
+                  {(coachNote.tease && !coachNote.revealed ? coachNote.tease : coachNote.text) && (
                     <div
                       className={`rounded-cc-lg px-3 py-2 text-sm md:text-base font-bold animate-pop ${
                         coachNote.kind === 'best' || coachNote.kind === 'good'
@@ -1104,26 +1140,34 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
                           : 'bg-surface text-frost-dim ring-1 ring-edge'
                       }`}
                     >
-                      {coachNote.text}
+                      {coachNote.tease && !coachNote.revealed ? coachNote.tease : coachNote.text}
                     </div>
                   )}
-                  {coachNote.line && coachNote.line.length > 0 && (
+                  {coachNote.tease && !coachNote.revealed && (
+                    <button
+                      onClick={() => setCoachNote((n) => (n ? { ...n, revealed: true } : n))}
+                      className="cc-btn cc-btn-secondary px-3 py-1.5 text-xs md:text-sm"
+                    >
+                      👁 Show me the move
+                    </button>
+                  )}
+                  {(!coachNote.tease || coachNote.revealed) && coachNote.line && coachNote.line.length > 0 && (
                     <div
                       className={`rounded-cc-lg px-3 py-1.5 text-sm md:text-base font-bold animate-pop tracking-wide ring-1 ${
                         coachNote.lineKind === 'they-mate' ? 'bg-coral/15 text-coral ring-coral/40' : 'bg-surface text-frost ring-edge'
                       }`}
                     >
                       {coachNote.lineKind === 'they-mate'
-                        ? `⚠️ They can force mate in ${coachNote.lineMateN} (no defense): `
+                        ? `⚠️ They can force mate in ${coachNote.lineMateN} (no defense)${coachNote.lineBackRank ? ' — the back-rank trick; a king needs an escape square!' : ''}: `
                         : coachNote.lineKind === 'you-mate'
-                        ? `♟️ You can force mate in ${coachNote.lineMateN}: `
+                        ? `♟️ You can force mate in ${coachNote.lineMateN}${coachNote.lineBackRank ? ' — on the back rank!' : ''}: `
                         : coachNote.lineKind === 'better'
                         ? '↪ A better line: '
                         : '📺 Winning line: '}
                       {coachNote.line.join('   ')}
                     </div>
                   )}
-                  {coachNote.lineSteps && coachNote.lineSteps.length > 1 && !previewing && (
+                  {(!coachNote.tease || coachNote.revealed) && coachNote.lineSteps && coachNote.lineSteps.length > 1 && !previewing && (
                     <button
                       onClick={() => setLinePreview({ steps: coachNote.lineSteps, idx: 0 })}
                       className="cc-btn cc-btn-secondary px-3 py-1.5 text-xs md:text-sm"

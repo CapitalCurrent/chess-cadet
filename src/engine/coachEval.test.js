@@ -167,6 +167,61 @@ describe('mate awareness — deliver it, or learn you missed it', () => {
   });
 });
 
+describe('back-rank mate naming (the pattern is the lesson)', () => {
+  // White Ra8# against a king walled in by f7/g7/h7.
+  const BR_BEFORE = '6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1';
+  const BR_AFTER = 'R5k1/5ppp/8/8/8/8/8/4K3 b - - 0 1';
+
+  test('delivering a back-rank mate names the pattern', () => {
+    const v = evaluateMove(BR_BEFORE, 'a1a8', BR_AFTER, { cands: [{ move: 'a1a8', mate: 1 }], herCp: 99900 });
+    expect(v.label).toBe('Checkmate');
+    expect(v.text).toMatch(/back-rank/i);
+  });
+
+  test('an ordinary mate stays "Brilliant finish", no false pattern claim', () => {
+    // Two-rook ladder mate (Rb8#) — the king is cut off by ROOKS, not walled
+    // in by its own pawns, so the back-rank name must not fire.
+    const LADDER_BEFORE = '7k/R7/1R6/8/8/8/8/4K3 w - - 0 1';
+    const LADDER_AFTER = '1R5k/R7/8/8/8/8/8/4K3 b - - 0 1';
+    const v = evaluateMove(LADDER_BEFORE, 'b6b8', LADDER_AFTER, { cands: [{ move: 'b6b8', mate: 1 }], herCp: 99900 });
+    expect(v.label).toBe('Checkmate');
+    expect(v.text).not.toMatch(/back-rank/i);
+  });
+
+  test('a missed back-rank mate teaches the pattern in both text and tease', () => {
+    const v = evaluateMove(BR_BEFORE, 'e1e2', BR_BEFORE, {
+      cands: [{ move: 'a1a8', mate: 1, pv: ['a1a8'] }, { move: 'e1e2', cp: 30 }],
+      herCp: 30,
+    });
+    expect(v.label).toBe('Missed mate in 1');
+    expect(v.text).toMatch(/back rank/i);
+    expect(v.tease).toMatch(/back rank/i);
+    expect(v.tease).not.toMatch(/Ra8/); // the tease never gives the move away
+  });
+});
+
+describe('teases — the claim without the answer (retrieval practice)', () => {
+  test('a missed fork tease names the motif but never the move', () => {
+    const v = evaluateMove(FORK_BEFORE, 'h1g1', FORK_BEFORE, {
+      cands: [{ move: 'h6f7', cp: 400 }, { move: 'h1g1', cp: 60 }],
+      herCp: 60,
+    });
+    expect(v.label).toBe('Missed fork');
+    expect(v.tease).toMatch(/fork/i);
+    expect(v.tease).not.toMatch(/Nf7/);
+    expect(v.text).toMatch(/Nf7/); // the full text (behind the reveal) does
+  });
+
+  test('inaccuracies are NOT teased — the suggestion shows straight away', () => {
+    const v = evaluateMove(START, 'a2a3', START, {
+      cands: [{ move: 'e2e4', cp: 40 }],
+      herCp: -120,
+    });
+    expect(v.label).toBe('Inaccuracy');
+    expect(v.tease).toBeUndefined();
+  });
+});
+
 describe('encouragement riding on the verdict (Phase 3)', () => {
   test('a best developing move carries develop praise alongside the verdict', () => {
     const v = evaluateMove(START, 'g1f3', START, { cands: [{ move: 'g1f3', cp: 25 }], herCp: 25 });

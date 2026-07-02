@@ -12,6 +12,7 @@ import { newGame } from './chessEngine';
 import { walkLine } from './pvLine';
 import { detectMotifs, motifsOfMove } from './tactics';
 import { detectPraise } from './encouragement';
+import { backRankMate, mateLineBackRank } from './backRank';
 import { pinnedDefenderWin, pinnedDefenderText, workingPinWin, workingPinText } from './pins';
 import { skewerWin, skewerText } from './skewers';
 
@@ -63,7 +64,11 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   const her = moveInfo(beforeFen, uci);
   // Checkmate is Tier A — board truth, never wrong, said regardless of eval band
   // (even a non-"engine-best" mate is still mate). Highest-priority verdict.
-  if (/#/.test(her.san)) return { kind: 'best', icon: '🏆', label: 'Checkmate', text: '🏆 Checkmate! Brilliant finish!' };
+  // Naming the PATTERN (back-rank) turns the win into a reusable lesson.
+  if (/#/.test(her.san)) {
+    if (backRankMate(afterFen)) return { kind: 'best', icon: '🏆', label: 'Checkmate', text: '🏆 Checkmate — the BACK-RANK mate! Their king was trapped behind its own pawns. Remember this pattern!' };
+    return { kind: 'best', icon: '🏆', label: 'Checkmate', text: '🏆 Checkmate! Brilliant finish!' };
+  }
   if (loss <= 50) {
     const isBest = uci === cands[0].move;
     const spike = cands.length >= 2 ? scoreNum(cands[0]) - scoreNum(cands[1]) : 999;
@@ -71,7 +76,10 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
     // She played the move that FORCES mate (not delivered this move, or it would
     // be the Tier-A checkmate above). The single most exciting thing to spot.
     const mateN = isBest ? mateIn(cands[0]) : null;
-    if (mateN) return { kind: 'best', icon: '♟️', label: `Mate in ${mateN}`, text: `♟️ Mate in ${mateN}! ${her.san} forces checkmate — finish it!`, mateIn: mateN };
+    if (mateN) {
+      if (mateLineBackRank(beforeFen, cands[0].pv)) return { kind: 'best', icon: '♟️', label: `Mate in ${mateN}`, text: `♟️ Mate in ${mateN}! ${her.san} — their back rank is falling; the king can't get past its own pawns. Finish it!`, mateIn: mateN };
+      return { kind: 'best', icon: '♟️', label: `Mate in ${mateN}`, text: `♟️ Mate in ${mateN}! ${her.san} forces checkmate — finish it!`, mateIn: mateN };
+    }
     if (isBest && winning && spike >= 150) {
       const pinWin = pinnedDefenderWin(beforeFen, uci);
       if (pinWin) return { kind: 'best', icon: '📌', label: 'Pin win', text: pinnedDefenderText(pinWin) };
@@ -125,21 +133,43 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   // Carried on warn verdicts so the Coach's Notebook can save the position.
   const bestRef = { san: best.san, uci: cands[0].move };
   // A missed FORCED MATE is the most important miss of all — flag it first.
+  // `tease` is the retrieval-practice variant: the CLAIM without the answer,
+  // so she can hunt for the move before revealing it (the caller gates the
+  // full text + line behind a "show me" tap).
   const bestMateN = mateIn(cands[0]);
-  if (bestMateN) return { kind: 'warn', icon: '♟️', label: `Missed mate in ${bestMateN}`, text: `♟️ You had mate in ${bestMateN}! ${best.san} forces checkmate.`, best: bestRef, motif: 'mate', loss, mateIn: bestMateN };
+  if (bestMateN) {
+    const br = mateLineBackRank(beforeFen, cands[0].pv);
+    return {
+      kind: 'warn',
+      icon: '♟️',
+      label: `Missed mate in ${bestMateN}`,
+      text: br
+        ? `♟️ You had mate in ${bestMateN}! ${best.san} — their king is stuck behind its own pawns on the back rank.`
+        : `♟️ You had mate in ${bestMateN}! ${best.san} forces checkmate.`,
+      tease: br
+        ? `♟️ You had a forced mate in ${bestMateN} here! Hint: look at their back rank. Try to spot it, then peek.`
+        : `♟️ You had a forced mate in ${bestMateN} here! Look for forcing checks, then peek.`,
+      best: bestRef,
+      motif: 'mate',
+      loss,
+      mateIn: bestMateN,
+    };
+  }
   // A pin win is the most specific, most teachable miss — check both kinds first.
   // Gate on a clearly-winning miss (a quiet pile-on best move isn't a capture or
   // check, so it can't ride on `missedTactic`, which requires one).
   const winningMiss = bestCp >= 150 && loss >= 200;
   const pinWin = winningMiss ? pinnedDefenderWin(beforeFen, cands[0].move) : null;
-  if (pinWin) return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: pinnedDefenderText(pinWin, { missed: true }), best: bestRef, motif: 'pin', loss };
+  // The pin/skewer texts already teach WITHOUT naming the move — they double as
+  // their own tease (only the move + line stay behind the reveal).
+  if (pinWin) { const t = pinnedDefenderText(pinWin, { missed: true }); return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: t, tease: t, best: bestRef, motif: 'pin', loss }; }
   const skWin = winningMiss ? skewerWin(beforeFen, cands[0].pv) : null;
-  if (skWin) return { kind: 'warn', icon: '🍢', label: 'Missed skewer', text: skewerText(skWin, { missed: true }), best: bestRef, motif: 'skewer', loss };
+  if (skWin) { const t = skewerText(skWin, { missed: true }); return { kind: 'warn', icon: '🍢', label: 'Missed skewer', text: t, tease: t, best: bestRef, motif: 'skewer', loss }; }
   const workPin = winningMiss ? workingPinWin(beforeFen, cands[0].pv) : null;
-  if (workPin) return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: workingPinText(workPin, { missed: true }), best: bestRef, motif: 'pin', loss };
-  if (missedTactic && missedName) return { kind: 'warn', icon: '💥', label: `Missed ${missedName}`, text: `💥 You missed a ${missedName}! ${best.san} was winning.`, best: bestRef, motif: missedName, loss };
-  if (missedTactic && herCp > -50) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 You missed a tactic! ${best.san} wins material. Tip: check captures & checks first.`, best: bestRef, motif: null, loss };
-  if (missedTactic) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 Ouch — ${best.san} won material there. Look for captures & checks!`, best: bestRef, motif: null, loss };
+  if (workPin) { const t = workingPinText(workPin, { missed: true }); return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: t, tease: t, best: bestRef, motif: 'pin', loss }; }
+  if (missedTactic && missedName) return { kind: 'warn', icon: '💥', label: `Missed ${missedName}`, text: `💥 You missed a ${missedName}! ${best.san} was winning.`, tease: `💥 You missed a ${missedName} here! Try to find it — check captures and checks first — then peek.`, best: bestRef, motif: missedName, loss };
+  if (missedTactic && herCp > -50) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 You missed a tactic! ${best.san} wins material. Tip: check captures & checks first.`, tease: '💥 There was a tactic here that wins material! Check every capture and check, then peek.', best: bestRef, motif: null, loss };
+  if (missedTactic) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 Ouch — ${best.san} won material there. Look for captures & checks!`, tease: '💥 A capture or check won material there. Can you find it? Then peek.', best: bestRef, motif: null, loss };
   const sug = humanSuggestSan || best.san;
   if (loss <= 350) return { kind: 'warn', icon: '🤔', label: 'Inaccuracy', text: `🤔 A little loose — ${sug} keeps you better.`, best: bestRef, motif: null, loss };
   return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.`, best: bestRef, motif: null, loss };
