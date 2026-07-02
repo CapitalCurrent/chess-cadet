@@ -38,12 +38,6 @@ const SETS = [
   { id: 'merida', name: 'Merida', dir: 'merida', ext: 'svg' },
   { id: 'chessnut', name: 'Chessnut', dir: 'chessnut', ext: 'svg' },
 
-  // Classic Variation: the cburnett set with hand-edited dragon deltas (flame-trident
-  // king, claw-spike queen crown, scale-etched rook, flame bishop finial, horned +
-  // spined knight, crested pawn). Authored as SVG in the image studio (svg_sets/
-  // dragon-classic) — derivative of cburnett, so GPLv2+ (see CREDITS.md).
-  { id: 'dragon-classic', name: 'Dragon Classic', dir: 'dragon-classic', ext: 'svg' },
-
   // --- Custom / novelty sets ---------------------------------------------
   // Full Grok-generated dragon set (all 6 pieces), sliced from the white row
   // and matched-black derived by inversion. public/pieces/dragons/*.png
