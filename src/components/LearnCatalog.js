@@ -8,7 +8,7 @@ const SUBJECTS = [
   { id: 'checkmates', Icon: IconTrophy, title: 'Checkmates', blurb: 'Finish the game — mate in 1 & endgames' },
   { id: 'notation', Icon: IconGuide, title: 'Notation', blurb: 'Read & write chess moves' },
   { id: 'openings', Icon: IconPlay, title: 'Openings', blurb: 'Learn opening lines & traps' },
-  { id: 'tactics', Icon: IconDrill, title: 'Tactics', blurb: 'Forks, pins & skewers', soon: true },
+  { id: 'tactics', Icon: IconDrill, title: 'Tactics', blurb: 'Forks, pins, skewers & back-rank mates' },
   { id: 'basics', Icon: IconPawn, title: 'How to Play', blurb: 'How the pieces move', soon: true },
 ];
 

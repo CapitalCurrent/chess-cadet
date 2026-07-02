@@ -16,6 +16,7 @@ import OpeningTrainer from './components/OpeningTrainer';
 import FreePlay from './components/FreePlay';
 import FixMistakes from './components/FixMistakes';
 import CheckmateSchool from './components/CheckmateSchool';
+import TacticsSchool from './components/TacticsSchool';
 import HomePage from './components/HomePage';
 import LearnCatalog from './components/LearnCatalog';
 import NotationCourse from './components/NotationCourse';
@@ -221,7 +222,7 @@ export default function App() {
     mode === 'play' ||
     mode === 'drill' ||
     mode === 'fix' ||
-    (mode === 'learn' && (learnSubject === 'openings' || learnSubject === 'notation' || learnSubject === 'checkmates'));
+    (mode === 'learn' && (learnSubject === 'openings' || learnSubject === 'notation' || learnSubject === 'checkmates' || learnSubject === 'tactics'));
 
   // Coach's Notebook badge + Today's Lesson plan for Home (cheap reads).
   const nbCount = mode === 'home' ? notebookCount(activeId) : 0;
@@ -366,6 +367,17 @@ export default function App() {
         ) : learnSubject === 'checkmates' ? (
           <CheckmateSchool
             key={`checkmates-${activeId}-${restart}`}
+            profileId={activeId}
+            pieceSet={pieceSet}
+            boardTheme={boardTheme}
+            moveStyle={moveStyle}
+            focusBoard={focusBoard}
+            rewardMove={rewardMove}
+            onBack={() => setLearnSubject(null)}
+          />
+        ) : learnSubject === 'tactics' ? (
+          <TacticsSchool
+            key={`tactics-${activeId}-${restart}`}
             profileId={activeId}
             pieceSet={pieceSet}
             boardTheme={boardTheme}

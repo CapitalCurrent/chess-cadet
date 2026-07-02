@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { notebookKey } from './notebook';
 import { lessonKey } from './dailyLesson';
 import { checkmatesKey } from './checkmateProgress';
+import { tacticsKey } from './tacticsProgress';
 import { ratingKey } from './rating';
 
 // Local multi-profile: each person on the device gets their OWN saved progress
@@ -138,6 +139,7 @@ function clearProfileData(profileId) {
     localStorage.removeItem(notebookKey(profileId));
     localStorage.removeItem(lessonKey(profileId));
     localStorage.removeItem(checkmatesKey(profileId));
+    localStorage.removeItem(tacticsKey(profileId));
     localStorage.removeItem(ratingKey(profileId));
   } catch {
     /* ignore */
