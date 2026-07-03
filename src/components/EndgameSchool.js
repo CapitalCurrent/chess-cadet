@@ -118,8 +118,14 @@ function EndgameStageDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, 
   const [outcome, setOutcome] = useState(null); // { kind: 'win'|'fail', text }
   const recordedRef = useRef(false);
   const herMovesRef = useRef(0);
+  // The click-through IDEA walkthrough (arrows + circles + captions) plays
+  // BEFORE the drill — see the technique, then try it. -1 = drilling.
+  const walkthrough = stage.walkthrough || [];
+  const [wtIdx, setWtIdx] = useState(walkthrough.length ? 0 : -1);
+  const showingIdea = wtIdx >= 0;
+  const wtStep = showingIdea ? walkthrough[wtIdx] : null;
   const game = gameRef.current;
-  const myTurn = !outcome && game.turn() === 'w';
+  const myTurn = !outcome && !showingIdea && game.turn() === 'w';
 
   function refresh(move) {
     setFen(gameRef.current.fen());
@@ -167,7 +173,7 @@ function EndgameStageDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, 
 
   // Engine plays Black at full strength — best defense (or attack) there is.
   useEffect(() => {
-    if (outcome || game.turn() !== 'b') return;
+    if (outcome || showingIdea || game.turn() !== 'b') return;
     let cancelled = false;
     const t = setTimeout(() => {
       bestMove(game.fen(), { skill: 20, movetime: 300 }).then((uci) => {
@@ -194,7 +200,7 @@ function EndgameStageDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, 
       cancelled = true;
       clearTimeout(t);
     };
-  }, [fen, outcome]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fen, outcome, showingIdea]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleMove(from, to) {
     if (!myTurn) return;
@@ -221,9 +227,11 @@ function EndgameStageDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, 
 
   const board = (
     <ChessBoard
-      fen={fen}
+      fen={showingIdea ? wtStep.fen : fen}
       orientation="w"
-      lastMove={lastMove}
+      lastMove={showingIdea ? null : lastMove}
+      arrows={showingIdea ? wtStep.arrows || [] : []}
+      highlights={showingIdea ? wtStep.circles || [] : []}
       movableColor={myTurn ? 'w' : null}
       moveStyle={moveStyle}
       onMove={handleMove}
@@ -242,16 +250,59 @@ function EndgameStageDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, 
         <span className="text-[10px] uppercase tracking-wide font-bold text-frost-dim whitespace-nowrap">{stage.level}</span>
       </div>
 
-      {/* The lesson — concept first, then the concrete plan. */}
-      <div className="cc-card p-3 md:p-4">
-        <p className="text-sm md:text-base leading-snug text-frost/90">{stage.concept}</p>
-        <p className="mt-2 text-sm md:text-base leading-snug text-frost-dim">
-          <b className="text-gold">📋 The plan:</b> {stage.plan}
-        </p>
-        <div className="mt-2 text-sm md:text-base text-grass font-bold">{GOAL_LABEL[stage.goal]}</div>
-      </div>
+      {showingIdea ? (
+        /* The IDEA walkthrough — click through the annotated steps, then drill. */
+        <>
+          <div className="cc-card p-3 md:p-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              {walkthrough.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${i === wtIdx ? 'w-6 bg-gold' : 'w-1.5 bg-frost/25'}`}
+                />
+              ))}
+              <span className="ml-auto text-[11px] font-bold text-frost-dim">
+                {wtIdx + 1} / {walkthrough.length}
+              </span>
+            </div>
+            <p className="text-sm md:text-lg leading-snug text-frost/95 animate-pop" key={wtIdx}>
+              {wtStep.caption}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setWtIdx((i) => Math.max(0, i - 1))}
+              disabled={wtIdx === 0}
+              className="cc-btn cc-btn-secondary px-4 py-2.5 text-sm disabled:opacity-40"
+            >
+              ◀
+            </button>
+            {wtIdx < walkthrough.length - 1 ? (
+              <button onClick={() => setWtIdx((i) => i + 1)} className="cc-btn cc-btn-primary flex-1 py-2.5 text-sm md:text-base">
+                Next ▶
+              </button>
+            ) : (
+              <button onClick={() => setWtIdx(-1)} className="cc-btn cc-btn-grass flex-1 py-2.5 text-sm md:text-base">
+                Got it — let me try! ▶
+              </button>
+            )}
+            <button onClick={() => setWtIdx(-1)} className="cc-btn cc-btn-secondary px-3 py-2.5 text-sm">
+              Skip
+            </button>
+          </div>
+        </>
+      ) : (
+        /* The lesson summary — concept, plan, goal — always visible while drilling. */
+        <div className="cc-card p-3 md:p-4">
+          <p className="text-sm md:text-base leading-snug text-frost/90">{stage.concept}</p>
+          <p className="mt-2 text-sm md:text-base leading-snug text-frost-dim">
+            <b className="text-gold">📋 The plan:</b> {stage.plan}
+          </p>
+          <div className="mt-2 text-sm md:text-base text-grass font-bold">{GOAL_LABEL[stage.goal]}</div>
+        </div>
+      )}
 
-      {outcome ? (
+      {showingIdea ? null : outcome ? (
         <div className="cc-card p-4 text-center animate-pop">
           {outcome.kind === 'win' && <IconStar size={32} className="mx-auto text-gold" />}
           <div className={`mt-1 text-base md:text-xl font-extrabold ${outcome.kind === 'win' ? 'text-grass' : 'text-gold'}`}>
@@ -271,6 +322,11 @@ function EndgameStageDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, 
           <div className="flex-1 text-sm font-bold text-frost-dim">
             {myTurn ? 'Your move — follow the plan.' : '🤖 Thinking…'}
           </div>
+          {walkthrough.length > 0 && (
+            <button onClick={() => setWtIdx(0)} className="cc-btn cc-btn-secondary px-3 py-2 text-sm" title="Replay the idea">
+              📖 Idea
+            </button>
+          )}
           <button onClick={restart} className="cc-btn cc-btn-secondary px-3 py-2 text-sm">
             ↺ Restart
           </button>

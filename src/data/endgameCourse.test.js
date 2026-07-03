@@ -106,3 +106,55 @@ test('philidor: defending king in front on rank 1-2 near the pawn file; pawn not
   expect(Math.abs(FILES.indexOf(wk.file) - FILES.indexOf(pawn.file))).toBeLessThanOrEqual(1);
   expect(pawn.rank).toBeGreaterThanOrEqual(4); // the wall (rank 3) is still available
 });
+
+test('opposition: white king at least TWO ranks ahead of its own non-rook pawn, same file (always winning)', () => {
+  const g = newGame(getEndgameStage('opposition').fen);
+  const pawn = find(pieces(g, 'w'), 'p')[0];
+  const wk = find(pieces(g, 'w'), 'k')[0];
+  expect(wk.file).toBe(pawn.file);
+  expect(wk.rank - pawn.rank).toBeGreaterThanOrEqual(2); // spare pawn steps = tempo weapon
+  expect(['a', 'h']).not.toContain(pawn.file);
+});
+
+test('two bishops: exactly two white bishops on OPPOSITE colors vs a lone king', () => {
+  const g = newGame(getEndgameStage('two-bishops').fen);
+  const bishops = find(pieces(g, 'w'), 'b');
+  expect(bishops).toHaveLength(2);
+  const colorOf = (p) => (FILES.indexOf(p.file) + p.rank) % 2; // square color parity
+  expect(colorOf(bishops[0])).not.toBe(colorOf(bishops[1])); // one dark, one light — mate is possible
+  expect(pieces(g, 'b')).toHaveLength(1); // lone king
+});
+
+test('queen vs 7th pawn: enemy pawn one step from promoting on a WINNABLE file, white king far away', () => {
+  const g = newGame(getEndgameStage('q-vs-pawn').fen);
+  const pawn = find(pieces(g, 'b'), 'p')[0];
+  const wk = find(pieces(g, 'w'), 'k')[0];
+  expect(find(pieces(g, 'w'), 'q')).toHaveLength(1);
+  expect(pawn.rank).toBe(2); // black pawn one step from promotion
+  // Rook- and bishop-pawns are DRAWS (stalemate tricks) — the winning drill
+  // must use a center or knight pawn.
+  expect(['a', 'c', 'f', 'h']).not.toContain(pawn.file);
+  const cheb = Math.max(Math.abs(FILES.indexOf(wk.file) - FILES.indexOf(pawn.file)), Math.abs(wk.rank - pawn.rank));
+  expect(cheb).toBeGreaterThanOrEqual(4); // the king really is too far — the queen dance is required
+});
+
+describe('walkthroughs — every stage teaches with a click-through, and every step is renderable', () => {
+  const SQ = /^[a-h][1-8]$/;
+  for (const st of ENDGAME_COURSE) {
+    test(`${st.id} walkthrough is present and valid`, () => {
+      expect(Array.isArray(st.walkthrough)).toBe(true);
+      expect(st.walkthrough.length).toBeGreaterThanOrEqual(3);
+      for (const step of st.walkthrough) {
+        // Steps are ILLUSTRATIONS — terminal positions (stalemate, mate) are
+        // allowed — but every FEN must parse and every marker must be on-board.
+        expect(() => newGame(step.fen)).not.toThrow();
+        expect(step.caption.length).toBeGreaterThan(30);
+        for (const a of step.arrows || []) {
+          expect(a.from).toMatch(SQ);
+          expect(a.to).toMatch(SQ);
+        }
+        for (const c of step.circles || []) expect(c).toMatch(SQ);
+      }
+    });
+  }
+});

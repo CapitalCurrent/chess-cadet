@@ -48,43 +48,6 @@ export default function HomePage({ opening, activeLine, playerName, notebookCoun
         <div className="text-sm md:text-base text-frost-dim mt-2">Pick a lesson, or play a game.</div>
       </div>
 
-      {/* Today's Lesson — the daily session a teacher would assign. Steps tick
-          off as she does them anywhere in the app; tapping jumps right in. */}
-      {lesson && lesson.steps.length > 0 && (
-        <div className="cc-glass p-4 mb-4 animate-float" style={{ animationDelay: '20ms' }}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs uppercase tracking-wide text-gold/70 font-bold">📅 Today's Lesson</span>
-            {lesson.complete && <span className="text-xs font-bold text-grass">⭐ Complete — great work!</span>}
-          </div>
-          <div className="space-y-1.5">
-            {lesson.steps.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => !s.done && onLessonStep && onLessonStep(s)}
-                disabled={s.done}
-                className={`w-full flex items-center gap-2.5 rounded-cc-lg px-3 py-2 text-left ${
-                  s.done ? 'bg-grass/10' : 'bg-white/[0.04] cc-reveal'
-                }`}
-              >
-                <span
-                  className={`w-5 h-5 rounded-full grid place-items-center text-[11px] font-bold shrink-0 ${
-                    s.done ? 'bg-grass text-bg' : 'ring-1 ring-edge text-frost-dim'
-                  }`}
-                >
-                  {s.done ? '✓' : ''}
-                </span>
-                <span className="text-base leading-none">{s.icon}</span>
-                <span className={`flex-1 text-sm font-bold ${s.done ? 'text-grass/80 line-through' : 'text-frost'}`}>
-                  {s.label}
-                </span>
-                {s.progress && !s.done && <span className="text-xs text-frost-dim font-bold">{s.progress}</span>}
-                {!s.done && <span className="text-frost-dim">›</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="space-y-3 md:space-y-4">
         <Card
           onClick={onLearn}
@@ -115,8 +78,54 @@ export default function HomePage({ opening, activeLine, playerName, notebookCoun
         )}
       </div>
 
+      {/* Today's plan — the teacher's suggested session. Lives BELOW the main
+          choices (it's guidance, not a gate); collapses to one line once done.
+          Steps tick off wherever she does them; tapping one jumps right in. */}
+      {lesson && lesson.steps.length > 0 && (
+        <div className="cc-glass p-3.5 mt-4 animate-float" style={{ animationDelay: '280ms' }}>
+          {lesson.complete ? (
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-base">⭐</span>
+              <span className="text-sm font-bold text-grass">Today's plan complete — great work!</span>
+            </div>
+          ) : (
+            <>
+              <div className="text-xs uppercase tracking-wide text-gold/70 font-bold mb-2 px-1">
+                📅 Today's plan <span className="normal-case text-frost-dim font-bold">— the coach suggests:</span>
+              </div>
+              <div className="space-y-1.5">
+                {lesson.steps.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => !s.done && onLessonStep && onLessonStep(s)}
+                    disabled={s.done}
+                    className={`w-full flex items-center gap-2.5 rounded-cc-lg px-3 py-2 text-left ${
+                      s.done ? 'bg-grass/10' : 'bg-white/[0.04] cc-reveal'
+                    }`}
+                  >
+                    <span
+                      className={`w-5 h-5 rounded-full grid place-items-center text-[11px] font-bold shrink-0 ${
+                        s.done ? 'bg-grass text-bg' : 'ring-1 ring-edge text-frost-dim'
+                      }`}
+                    >
+                      {s.done ? '✓' : ''}
+                    </span>
+                    <span className="text-base leading-none">{s.icon}</span>
+                    <span className={`flex-1 text-sm font-bold ${s.done ? 'text-grass/80 line-through' : 'text-frost'}`}>
+                      {s.label}
+                    </span>
+                    {s.progress && !s.done && <span className="text-xs text-frost-dim font-bold">{s.progress}</span>}
+                    {!s.done && <span className="text-frost-dim">›</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {opening && (
-        <div className="mt-5 flex justify-center animate-float" style={{ animationDelay: '220ms' }}>
+        <div className="mt-4 flex justify-center animate-float" style={{ animationDelay: '340ms' }}>
           <button
             onClick={onContinue}
             className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-frost-dim hover:text-frost hover:bg-white/5 transition-colors"
