@@ -5,6 +5,7 @@ import { newGame } from '../engine/chessEngine';
 import { bestMove, initEngine } from '../engine/stockfishEngine';
 import { MATE_PACKS, ENDGAME_STAGES, getPack, getEndgame } from '../data/checkmates';
 import { getCheckmateProgress, recordMateSolve, recordEndgameRun } from '../state/checkmateProgress';
+import IdeaWalkthrough from './IdeaWalkthrough';
 import { IconTrophy, IconStar } from './icons';
 
 // ♛ Checkmate School — a kid's REAL first chess lessons: finishing the game.
@@ -299,9 +300,14 @@ function EndgameDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, focus
   const [lastMove, setLastMove] = useState(null);
   const [outcome, setOutcome] = useState(null); // {kind:'mate'|'stalemate'|'material'|'draw', text}
   const recordedRef = useRef(false);
+  // The click-through IDEA walkthrough plays before the drill; 📖 replays it.
+  const walkthrough = stage.walkthrough || [];
+  const [wtIdx, setWtIdx] = useState(walkthrough.length ? 0 : -1);
+  const showingIdea = wtIdx >= 0;
+  const wtStep = showingIdea ? walkthrough[wtIdx] : null;
 
   const game = gameRef.current;
-  const myTurn = !outcome && game.turn() === 'w';
+  const myTurn = !outcome && !showingIdea && game.turn() === 'w';
   const moveNo = Math.ceil(game.history().length / 2);
 
   function refresh(move) {
@@ -337,7 +343,7 @@ function EndgameDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, focus
 
   // Engine defends with the lone king (full strength = best defense).
   useEffect(() => {
-    if (outcome || game.turn() !== 'b') return;
+    if (outcome || showingIdea || game.turn() !== 'b') return;
     let cancelled = false;
     const t = setTimeout(() => {
       bestMove(game.fen(), { skill: 20, movetime: 250 }).then((uci) => {
@@ -364,7 +370,7 @@ function EndgameDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, focus
       cancelled = true;
       clearTimeout(t);
     };
-  }, [fen, outcome]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fen, outcome, showingIdea]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleMove(from, to) {
     if (!myTurn) return;
@@ -397,9 +403,11 @@ function EndgameDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, focus
 
   const board = (
     <ChessBoard
-      fen={fen}
+      fen={showingIdea ? wtStep.fen : fen}
       orientation="w"
-      lastMove={lastMove}
+      lastMove={showingIdea ? null : lastMove}
+      arrows={showingIdea ? wtStep.arrows || [] : []}
+      highlights={showingIdea ? wtStep.circles || [] : []}
       movableColor={myTurn ? 'w' : null}
       moveStyle={moveStyle}
       onMove={handleMove}
@@ -415,15 +423,21 @@ function EndgameDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, focus
         <h2 className="text-base md:text-lg font-extrabold text-gold">
           {stage.icon} {stage.name}
         </h2>
-        <span className="text-xs font-bold text-frost-dim whitespace-nowrap">Move {Math.max(1, moveNo)}</span>
+        {!showingIdea && (
+          <span className="text-xs font-bold text-frost-dim whitespace-nowrap">Move {Math.max(1, moveNo)}</span>
+        )}
       </div>
 
-      <div className="cc-card p-3">
-        <div className="text-xs uppercase tracking-wide text-gold/50 mb-1">Your plan</div>
-        <p className="text-sm leading-snug text-frost/90">{stage.plan}</p>
-      </div>
+      {showingIdea ? (
+        <IdeaWalkthrough steps={walkthrough} idx={wtIdx} onIdx={setWtIdx} onDone={() => setWtIdx(-1)} />
+      ) : (
+        <div className="cc-card p-3">
+          <div className="text-xs uppercase tracking-wide text-gold/50 mb-1">Your plan</div>
+          <p className="text-sm leading-snug text-frost/90">{stage.plan}</p>
+        </div>
+      )}
 
-      {outcome ? (
+      {showingIdea ? null : outcome ? (
         <div className="cc-card p-4 text-center animate-pop">
           <div
             className={`text-base md:text-xl font-extrabold ${outcome.kind === 'mate' ? 'text-grass' : 'text-gold'}`}
@@ -450,6 +464,11 @@ function EndgameDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, focus
             <button onClick={takeback} className="cc-btn cc-btn-secondary flex-1 py-2 text-xs">
               ↩ Undo
             </button>
+            {walkthrough.length > 0 && (
+              <button onClick={() => setWtIdx(0)} className="cc-btn cc-btn-secondary flex-1 py-2 text-xs" title="Replay the idea">
+                📖 Idea
+              </button>
+            )}
             <button onClick={restart} className="cc-btn cc-btn-secondary flex-1 py-2 text-xs">
               ↺ Restart
             </button>

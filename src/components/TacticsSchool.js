@@ -4,6 +4,7 @@ import PlayLayout from './PlayLayout';
 import { newGame } from '../engine/chessEngine';
 import { TACTICS_PACKS, getTacticsPack, achievesMotif } from '../data/tacticsPacks';
 import { getTacticsProgress, recordTacticSolve } from '../state/tacticsProgress';
+import IdeaWalkthrough from './IdeaWalkthrough';
 import { IconDrill, IconStar } from './icons';
 
 // 🎯 Tactics School — the motifs the coach names in her games, taught
@@ -97,6 +98,12 @@ function TacticPackPlayer({ pack, profileId, pieceSet, boardTheme, moveStyle, fo
   const [hint, setHint] = useState(0); // 0 none · 1 highlight the piece · 2 arrow
   const [note, setNote] = useState(null);
   const snapTimer = useRef(null);
+  // The pack's IDEA walkthrough shows once on open (see the motif in action,
+  // then hunt for it yourself); 📖 Idea replays it. -1 = solving.
+  const walkthrough = pack.walkthrough || [];
+  const [wtIdx, setWtIdx] = useState(walkthrough.length ? 0 : -1);
+  const showingIdea = wtIdx >= 0 && !finished;
+  const wtStep = showingIdea ? walkthrough[wtIdx] : null;
 
   function goTo(i) {
     clearTimeout(snapTimer.current);
@@ -110,7 +117,7 @@ function TacticPackPlayer({ pack, profileId, pieceSet, boardTheme, moveStyle, fo
   }
 
   function handleMove(from, to) {
-    if (solved || !pos) return;
+    if (solved || !pos || showingIdea) return;
     const g = newGame(pos.fen);
     let m = null;
     try {
@@ -146,12 +153,12 @@ function TacticPackPlayer({ pack, profileId, pieceSet, boardTheme, moveStyle, fo
 
   const board = (
     <ChessBoard
-      fen={shownFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
+      fen={showingIdea ? wtStep.fen : shownFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
       orientation="w"
-      lastMove={lastMove}
-      highlights={highlights}
-      arrows={arrows}
-      movableColor={!solved && pos ? 'w' : null}
+      lastMove={showingIdea ? null : lastMove}
+      highlights={showingIdea ? wtStep.circles || [] : highlights}
+      arrows={showingIdea ? wtStep.arrows || [] : arrows}
+      movableColor={!solved && pos && !showingIdea ? 'w' : null}
       moveStyle={moveStyle}
       onMove={handleMove}
       pieceSet={pieceSet}
@@ -173,7 +180,9 @@ function TacticPackPlayer({ pack, profileId, pieceSet, boardTheme, moveStyle, fo
         )}
       </div>
 
-      {finished ? (
+      {showingIdea ? (
+        <IdeaWalkthrough steps={walkthrough} idx={wtIdx} onIdx={setWtIdx} onDone={() => setWtIdx(-1)} doneLabel="Got it — let me hunt! ▶" />
+      ) : finished ? (
         <div className="cc-card p-4 md:p-5 text-center animate-pop">
           <IconStar size={36} className="mx-auto text-gold" />
           <div className="text-lg md:text-2xl font-extrabold text-gold mt-2">Pack complete!</div>
@@ -217,6 +226,11 @@ function TacticPackPlayer({ pack, profileId, pieceSet, boardTheme, moveStyle, fo
                 </button>
               ) : (
                 <div className="flex-1 text-center text-xs text-frost-dim">Follow the arrow!</div>
+              )}
+              {walkthrough.length > 0 && (
+                <button onClick={() => setWtIdx(0)} className="cc-btn cc-btn-secondary px-3 py-2.5 text-sm" title="Replay the idea">
+                  📖 Idea
+                </button>
               )}
               <button onClick={onBack} className="cc-btn cc-btn-secondary flex-1 py-2.5 text-sm">
                 ← Packs

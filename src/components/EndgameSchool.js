@@ -5,6 +5,7 @@ import { newGame } from '../engine/chessEngine';
 import { bestMove, initEngine } from '../engine/stockfishEngine';
 import { ENDGAME_COURSE, getEndgameStage } from '../data/endgameCourse';
 import { getEndgameCourseProgress, recordEndgameStageRun } from '../state/endgameProgress';
+import IdeaWalkthrough from './IdeaWalkthrough';
 import { IconStar } from './icons';
 
 // 🏁 Endgame School — the technique ladder, basic → advanced. Each stage is a
@@ -252,45 +253,7 @@ function EndgameStageDrill({ stage, profileId, pieceSet, boardTheme, moveStyle, 
 
       {showingIdea ? (
         /* The IDEA walkthrough — click through the annotated steps, then drill. */
-        <>
-          <div className="cc-card p-3 md:p-4">
-            <div className="flex items-center gap-1.5 mb-2">
-              {walkthrough.map((_, i) => (
-                <span
-                  key={i}
-                  className={`h-1.5 rounded-full transition-all ${i === wtIdx ? 'w-6 bg-gold' : 'w-1.5 bg-frost/25'}`}
-                />
-              ))}
-              <span className="ml-auto text-[11px] font-bold text-frost-dim">
-                {wtIdx + 1} / {walkthrough.length}
-              </span>
-            </div>
-            <p className="text-sm md:text-lg leading-snug text-frost/95 animate-pop" key={wtIdx}>
-              {wtStep.caption}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setWtIdx((i) => Math.max(0, i - 1))}
-              disabled={wtIdx === 0}
-              className="cc-btn cc-btn-secondary px-4 py-2.5 text-sm disabled:opacity-40"
-            >
-              ◀
-            </button>
-            {wtIdx < walkthrough.length - 1 ? (
-              <button onClick={() => setWtIdx((i) => i + 1)} className="cc-btn cc-btn-primary flex-1 py-2.5 text-sm md:text-base">
-                Next ▶
-              </button>
-            ) : (
-              <button onClick={() => setWtIdx(-1)} className="cc-btn cc-btn-grass flex-1 py-2.5 text-sm md:text-base">
-                Got it — let me try! ▶
-              </button>
-            )}
-            <button onClick={() => setWtIdx(-1)} className="cc-btn cc-btn-secondary px-3 py-2.5 text-sm">
-              Skip
-            </button>
-          </div>
-        </>
+        <IdeaWalkthrough steps={walkthrough} idx={wtIdx} onIdx={setWtIdx} onDone={() => setWtIdx(-1)} />
       ) : (
         /* The lesson summary — concept, plan, goal — always visible while drilling. */
         <div className="cc-card p-3 md:p-4">

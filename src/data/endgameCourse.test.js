@@ -4,6 +4,7 @@
 // actually win, a "Lucena" that isn't one) can never ship.
 import { newGame } from '../engine/chessEngine';
 import { ENDGAME_COURSE, getEndgameStage } from './endgameCourse';
+import { walkthroughProblems } from './walkthroughCheck';
 
 const FILES = 'abcdefgh';
 
@@ -138,23 +139,15 @@ test('queen vs 7th pawn: enemy pawn one step from promoting on a WINNABLE file, 
   expect(cheb).toBeGreaterThanOrEqual(4); // the king really is too far — the queen dance is required
 });
 
-describe('walkthroughs — every stage teaches with a click-through, and every step is renderable', () => {
-  const SQ = /^[a-h][1-8]$/;
+describe('walkthroughs — real move sequences, never teleports', () => {
   for (const st of ENDGAME_COURSE) {
-    test(`${st.id} walkthrough is present and valid`, () => {
+    test(`${st.id} walkthrough is valid and CONTINUOUS`, () => {
       expect(Array.isArray(st.walkthrough)).toBe(true);
       expect(st.walkthrough.length).toBeGreaterThanOrEqual(3);
-      for (const step of st.walkthrough) {
-        // Steps are ILLUSTRATIONS — terminal positions (stalemate, mate) are
-        // allowed — but every FEN must parse and every marker must be on-board.
-        expect(() => newGame(step.fen)).not.toThrow();
-        expect(step.caption.length).toBeGreaterThan(30);
-        for (const a of step.arrows || []) {
-          expect(a.from).toMatch(SQ);
-          expect(a.to).toMatch(SQ);
-        }
-        for (const c of step.circles || []) expect(c).toMatch(SQ);
-      }
+      // Every step: legal fen, on-board markers, substantial caption — and
+      // consecutive steps must be the same position or reachable within two
+      // legal half-moves unless explicitly marked newScene (a labelled cut).
+      expect(walkthroughProblems(st.walkthrough)).toEqual([]);
     });
   }
 });

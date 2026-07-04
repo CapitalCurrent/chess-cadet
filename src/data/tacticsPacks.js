@@ -21,6 +21,11 @@ export const TACTICS_PACKS = [
     concept: 'A fork attacks TWO things at once. They can only save one — you win the other!',
     findPrompt: 'Find the FORK — one move that attacks two targets.',
     wrongHint: 'Does that attack two things at once? Look for a move that hits TWO targets.',
+    walkthrough: [
+      { fen: 'r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1', circles: ['e8', 'a8'], caption: 'TWO targets — the king and the rook. No single move of theirs can save both… if one move of YOURS attacks both.' },
+      { fen: 'r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1', arrows: [{ from: 'b5', to: 'c7' }], caption: 'The knight hop: Nc7+ touches BOTH at once. Check to the king, attack on the rook. That is a fork.' },
+      { fen: 'r7/2N2k2/8/8/8/8/8/4K3 w - - 0 1', arrows: [{ from: 'c7', to: 'a8' }], caption: 'A check MUST be answered — the king steps away, and the rook is yours. One move, two targets: they only save one.' },
+    ],
     positions: [
       { id: 'fork-knight-royal', fen: 'r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1', uci: 'b5c7', name: 'Knight fork: king & rook', why: 'Check! The king must move — then you take the rook.' },
       { id: 'fork-pawn-knights', fen: '4k3/8/2n1n3/8/3P4/8/8/4K3 w - - 0 1', uci: 'd4d5', name: 'Pawn fork: two knights', why: 'The little pawn attacks BOTH knights — one of them is yours.' },
@@ -38,6 +43,12 @@ export const TACTICS_PACKS = [
     concept: "A pinned piece can't move (or can't do its job). Take what it was guarding, or pile on!",
     findPrompt: 'Use (or make) a PIN to win material.',
     wrongHint: 'Is one of their pieces frozen in front of the king? What was it guarding?',
+    walkthrough: [
+      { fen: '4k3/8/2p5/3b4/B7/8/8/3R3K w - - 0 1', arrows: [{ from: 'a4', to: 'e8' }], caption: "Follow the bishop's ray: through the c6 pawn, straight to the king. That pawn is PINNED — if it ever moves, its king is exposed. Frozen solid." },
+      { fen: '4k3/8/2p5/3b4/B7/8/8/3R3K w - - 0 1', circles: ['d5', 'c6'], caption: 'The frozen pawn "guards" the bishop on d5 — but a pinned guard is NO guard at all. The bishop is actually free for the taking.' },
+      { fen: '4k3/8/2p5/3b4/B7/8/8/3R3K w - - 0 1', arrows: [{ from: 'd1', to: 'd5' }], caption: 'Rxd5! The pawn cannot take back — moving it would expose the king to the bishop, and that is against the rules.' },
+      { fen: '4k3/8/2p5/3R4/B7/8/8/7K b - - 0 1', arrows: [{ from: 'c6', to: 'd5' }], circles: ['e8'], caption: 'See it from their side: c6xd5 is simply not allowed. A whole bishop, won because the defender was pinned.' },
+    ],
     positions: [
       { id: 'pin-pawn-cant-take', fen: '4k3/8/2p5/3b4/B7/8/8/3R3K w - - 0 1', uci: 'd1d5', name: "The defender can't take back", why: 'The c6 pawn is pinned to the king — so the bishop it "guards" is free!' },
       { id: 'pin-make-win', fen: '4k3/8/8/4n3/8/2B5/8/R4K2 w - - 0 1', uci: 'a1e1', name: 'Pin it to the king', why: 'Re1 freezes the knight — it cannot run, and you attack it twice.' },
@@ -53,6 +64,11 @@ export const TACTICS_PACKS = [
     concept: 'A skewer is a pin turned around: the BIG piece is in front and must move — then you take the piece behind it.',
     findPrompt: 'Find the SKEWER — attack through the big piece.',
     wrongHint: 'Give a check in a straight LINE — what is hiding behind the king?',
+    walkthrough: [
+      { fen: '4q3/8/8/4k3/8/8/8/R5K1 w - - 0 1', circles: ['e5', 'e8'], caption: 'King in FRONT, queen hiding BEHIND on the same line. A pin turned around — this is the skewer.' },
+      { fen: '4q3/8/8/4k3/8/8/8/R5K1 w - - 0 1', arrows: [{ from: 'a1', to: 'e1' }], caption: 'Re1+ — check straight THROUGH the king. He cannot stay to shield her; a king must always answer check.' },
+      { fen: '4q3/8/8/3k4/8/8/8/4R1K1 w - - 0 1', arrows: [{ from: 'e1', to: 'e8' }], caption: 'He steps aside — and Rxe8 wins the queen that was hiding behind him. Big piece in front, prize in the back.' },
+    ],
     positions: [
       { id: 'skewer-rook-queen', fen: '4q3/8/8/4k3/8/8/8/R5K1 w - - 0 1', uci: 'a1e1', name: 'Skewer the queen', why: 'Re1+ — the king must step aside, and the queen behind him falls.' },
       { id: 'skewer-bishop-queen', fen: 'q7/8/8/3k4/8/8/8/3BK3 w - - 0 1', uci: 'd1f3', name: 'Diagonal skewer', why: 'Bf3+ — check along the long diagonal, straight through to the queen.' },
@@ -68,6 +84,11 @@ export const TACTICS_PACKS = [
     concept: "A king stuck behind its own pawn wall can be mated on the back rank. (And remember — YOUR king needs an escape square too!)",
     findPrompt: 'Deliver the BACK-RANK MATE.',
     wrongHint: 'Checkmate always starts with a check — try every check on their back rank!',
+    walkthrough: [
+      { fen: '6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1', circles: ['f7', 'g7', 'h7'], caption: 'Those three pawns protect the king — and imprison him. Behind that wall he has NO escape squares at all.' },
+      { fen: '6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1', arrows: [{ from: 'a1', to: 'a8' }], caption: 'So a single check along the back rank is CHECKMATE. Ra8# — nowhere to run.' },
+      { fen: 'R5k1/5ppp/8/8/8/8/8/4K3 b - - 0 1', circles: ['g8'], caption: 'Remember BOTH sides of this pattern: hunt their weak back rank — and give YOUR OWN king a window (a little pawn step like h3) before it happens to you.' },
+    ],
     positions: [
       { id: 'br-classic', fen: '6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1', uci: 'a1a8', name: 'The classic', why: 'The pawns that protect the king become his prison.' },
       { id: 'br-queen', fen: '6k1/5ppp/8/8/8/8/8/3Q2K1 w - - 0 1', uci: 'd1d8', name: 'Queen to the eighth', why: 'The queen does everything a rook does — and more.' },

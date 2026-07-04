@@ -7,6 +7,7 @@
 import { newGame } from '../engine/chessEngine';
 import { TACTICS_PACKS, achievesMotif } from './tacticsPacks';
 import { allSkewers } from '../engine/skewers';
+import { walkthroughProblems } from './walkthroughCheck';
 
 describe('every tactics position is legal, White to move, with a working solution', () => {
   for (const pack of TACTICS_PACKS) {
@@ -45,6 +46,14 @@ describe('back-rank positions really are mate-in-1', () => {
       const g = newGame(pos.fen);
       g.move({ from: pos.uci.slice(0, 2), to: pos.uci.slice(2, 4) });
       expect(g.isCheckmate()).toBe(true);
+    });
+  }
+});
+
+describe('pack walkthroughs — real move sequences, never teleports', () => {
+  for (const pack of TACTICS_PACKS) {
+    test(`${pack.id} walkthrough is valid and continuous`, () => {
+      expect(walkthroughProblems(pack.walkthrough)).toEqual([]);
     });
   }
 });

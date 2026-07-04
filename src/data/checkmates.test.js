@@ -1,6 +1,7 @@
 // Content validation for Checkmate School — a bad FEN can't ship.
 import { Chess } from 'chess.js';
 import { MATE_PACKS, ENDGAME_STAGES } from './checkmates';
+import { walkthroughProblems } from './walkthroughCheck';
 
 function matingMoves(fen) {
   const g = new Chess(fen);
@@ -41,6 +42,10 @@ describe('endgame stages', () => {
       expect(g.isGameOver()).toBe(false);
       // and NOT already a mate-in-1 — it should take real technique
       expect(matingMoves(stage.fen).length).toBe(0);
+    });
+
+    test(`${stage.id} walkthrough is valid and continuous (no teleports)`, () => {
+      expect(walkthroughProblems(stage.walkthrough)).toEqual([]);
     });
   }
 });

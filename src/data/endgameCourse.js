@@ -7,9 +7,13 @@
 // promote) AND defensive technique (hold the DRAW) are both real skills.
 // endgameCourse.test.js ship-gates every position: legal, White to move, and
 // the technique's PRECONDITIONS hold — so a theoretically-wrong drill can't
-// ship. Walkthrough steps are ILLUSTRATIONS (click-through board pictures with
-// arrows/circles + a caption); they may show terminal positions (a stalemate,
-// the final mate) — the test only requires them to be legal FENs.
+// ship.
+//
+// WALKTHROUGH RULES (enforced by walkthroughCheck.js in the tests): steps are
+// a REAL game — consecutive steps must be the same position (annotation-only)
+// or reachable by at most two legal half-moves (the arrowed move + the reply).
+// A deliberate cut must carry `newScene: true` and gets a "📷 New position"
+// chip in the UI. No teleporting pieces between steps, ever.
 //
 // Coverage note: these are the K+piece endings with a technique that works
 // EVERY time. K+B+N vs K is deliberately excluded (master-level, almost never
@@ -25,17 +29,21 @@ export const ENDGAME_COURSE = [
     name: 'Two-Rook Ladder',
     blurb: 'Walk the king down, rank by rank.',
     goal: 'mate',
-    fen: '4k3/8/8/8/8/8/R7/R3K3 w - - 0 1',
+    // Rooks on DIFFERENT files (a1+b2) so the ladder never blocks itself, and
+    // a central king so the drill actually climbs. The walkthrough below is
+    // literally the first moves of this drill.
+    fen: '8/8/8/4k3/8/8/1R6/R3K3 w - - 0 1',
     concept:
       'Two rooks mate WITHOUT the king: one rook cuts a rank, the other checks — then they swap jobs, walking the enemy king to the edge like climbing a ladder.',
     plan: 'Check on one rank, cut off the next with the other rook. If the king attacks a rook, slide it far away along the rank — it still does its job from any distance.',
     winText: '🏆 The ladder works every time — rank by rank, no king needed!',
     walkthrough: [
-      { fen: '4k3/8/8/8/8/8/R7/R3K3 w - - 0 1', circles: ['e8'], caption: 'A lone king. Your two rooks will walk him to the edge like a ladder — your own king can stay home.' },
-      { fen: '8/8/8/4k3/8/8/R7/R3K3 w - - 0 1', arrows: [{ from: 'a2', to: 'a4' }], caption: 'One rook builds a FENCE. Rank 4 is now a wall — the king can never cross it.' },
-      { fen: '8/8/8/4k3/R7/8/8/R3K3 w - - 0 1', arrows: [{ from: 'a1', to: 'a5' }], caption: 'The other rook CHECKS. The king must step back — and the checking rook becomes the new fence.' },
-      { fen: '8/4k3/R7/1R6/8/8/8/4K3 w - - 0 1', arrows: [{ from: 'b5', to: 'b7' }], caption: 'Swap jobs, again and again — check, fence, check, fence. Rank by rank up the ladder.' },
-      { fen: '4k3/1R6/R7/8/8/8/8/4K3 w - - 0 1', arrows: [{ from: 'b7', to: 'b8' }], caption: 'The last rank — MATE. If the king ever attacks a rook, slide it far away along its rank; it fences from any distance.' },
+      { fen: '8/8/8/4k3/8/8/1R6/R3K3 w - - 0 1', circles: ['e5'], caption: 'A lone king in the open. Your two rooks will walk him to the edge, rank by rank — like climbing a ladder. Your own king can rest.' },
+      { fen: '8/8/8/4k3/8/8/1R6/R3K3 w - - 0 1', arrows: [{ from: 'b2', to: 'b4' }], caption: 'Rb4 builds the FENCE — rank 4 is now a wall the king can never cross.' },
+      { fen: '8/8/8/3k4/1R6/8/8/R3K3 w - - 0 1', arrows: [{ from: 'a1', to: 'a5' }], caption: 'The other rook CHECKS on rank 5 — the king must retreat behind the fence, up to rank 6.' },
+      { fen: '8/8/3k4/R7/1R6/8/8/4K3 w - - 0 1', arrows: [{ from: 'b4', to: 'b6' }], caption: 'Now they swap jobs: the fence rook becomes the checker. Rb6+ — up another rank he goes.' },
+      { fen: '8/3k4/1R6/R7/8/8/8/4K3 w - - 0 1', arrows: [{ from: 'a5', to: 'a7' }], caption: 'Ra7+ drives him to the very last rank. (If he ever attacks a rook, slide it far away along its rank — it fences from any distance.)' },
+      { fen: '3k4/R7/1R6/8/8/8/8/4K3 w - - 0 1', arrows: [{ from: 'b6', to: 'b8' }], caption: 'Rb8 — CHECKMATE. Fence, check, swap jobs. That is the whole ladder.' },
     ],
   },
   {
@@ -53,9 +61,10 @@ export const ENDGAME_COURSE = [
     winText: '🛡️ Caught it! The square rule: if the king is in the square, the pawn never escapes.',
     walkthrough: [
       { fen: '1k6/8/8/7p/8/4K3/8/8 w - - 0 1', circles: ['h5', 'h1'], caption: 'The pawn wants to RUN — h4, h3, h2, h1 and it becomes a queen. Can your king catch it in time?' },
-      { fen: '1k6/8/8/7p/8/4K3/8/8 w - - 0 1', circles: ['h5', 'd5', 'd1', 'h1'], caption: "Draw the pawn's SQUARE: from the pawn to its promotion square, then the same distance sideways. Those are the corners." },
+      { fen: '1k6/8/8/7p/8/4K3/8/8 w - - 0 1', circles: ['h5', 'd5', 'd1', 'h1'], caption: "Draw the pawn's SQUARE: from the pawn to its promotion square, then the same distance sideways. Those are the four corners." },
       { fen: '1k6/8/8/7p/8/4K3/8/8 w - - 0 1', circles: ['e3'], caption: 'Your king stands INSIDE the square — so he catches the pawn. Every single time. No counting needed.' },
-      { fen: '1k6/8/8/7p/8/4K3/8/8 w - - 0 1', arrows: [{ from: 'e3', to: 'f4' }, { from: 'f4', to: 'g5' }], caption: 'Chase DIAGONALLY — a diagonal step gains ground forward and sideways at once. Corner the runner and take it.' },
+      { fen: '1k6/8/8/7p/8/4K3/8/8 w - - 0 1', arrows: [{ from: 'e3', to: 'f4' }], caption: 'Chase DIAGONALLY — a diagonal step gains ground forward AND sideways at once. Kf4!' },
+      { fen: '1k6/8/8/8/5K1p/8/8/8 w - - 0 1', arrows: [{ from: 'f4', to: 'g4' }], caption: 'They ran — you cut the corner. Kg4 touches the pawn; next move it falls, and with it every dream of a queen. Draw!' },
     ],
   },
   {
@@ -72,10 +81,10 @@ export const ENDGAME_COURSE = [
     plan: "Use a pawn step (e3!) to hand them the move — they must step aside. Then slip your king forward on the OTHER side and take the stare again. Reach the 6th rank in front of the pawn and you've already won (King Leads the Pawn!).",
     winText: '👑 You won the staring contest — and the game. Opposition + spare pawn steps beat the defense every time.',
     walkthrough: [
-      { fen: '8/8/4k3/8/4K3/8/4P3/8 w - - 0 1', circles: ['e4', 'e6'], caption: 'The staring contest: kings face to face, one square apart. Whoever has to MOVE loses ground. Right now it is YOUR move…' },
-      { fen: '8/8/4k3/8/4K3/8/4P3/8 w - - 0 1', arrows: [{ from: 'e2', to: 'e3' }], caption: '…so use the secret weapon: the pawn\'s little step. e3 changes nothing on the board — except now THEY must move. You stole the stare!' },
-      { fen: '8/8/3k4/8/4K3/4P3/8/8 w - - 0 1', arrows: [{ from: 'e4', to: 'f5' }], caption: 'They stepped aside — slip forward on the OTHER side. Gain a rank, then face them again for a new staring contest.' },
-      { fen: '3k4/8/4K3/8/4P3/8/8/8 w - - 0 1', circles: ['e6'], caption: 'Win the stare enough times and your king reaches the 6th rank in front of the pawn — from there you already know the win: King Leads the Pawn.' },
+      { fen: '8/8/4k3/8/4K3/8/4P3/8 w - - 0 1', circles: ['e4', 'e6'], caption: 'The staring contest: kings face to face, one square between. Whoever must MOVE has to give way. Right now it is YOUR move…' },
+      { fen: '8/8/4k3/8/4K3/8/4P3/8 w - - 0 1', arrows: [{ from: 'e2', to: 'e3' }], caption: "…so use the secret weapon: the pawn's spare step. e3 changes nothing on the board — except now THEY must move. You stole the stare!" },
+      { fen: '8/8/3k4/8/4K3/4P3/8/8 w - - 0 1', arrows: [{ from: 'e4', to: 'f5' }], caption: 'They stepped aside — slip forward on the OTHER side. Kf5 gains a whole rank.' },
+      { fen: '8/4k3/8/5K2/8/4P3/8/8 w - - 0 1', arrows: [{ from: 'f5', to: 'e5' }], caption: 'Face them again and win the next stare too. Repeat until your king rules the 6th rank in front of the pawn — and that is the win you already know: King Leads the Pawn.' },
     ],
   },
   {
@@ -89,13 +98,14 @@ export const ENDGAME_COURSE = [
     fen: '4k3/8/4K3/8/4P3/8/8/8 w - - 0 1',
     concept:
       'One pawn can win the whole game — if the KING leads the way. With your king on the 6th rank IN FRONT of the pawn, promotion cannot be stopped. King first, pawn second.',
-    plan: "Use your king to shoulder their king away from the pawn's path. Only push the pawn when their king can't get in front of it. Careful — don't stalemate!",
+    plan: "Use your king to shoulder their king away from the pawn's path. Only push the pawn when their king can't get in front of it — and after every pawn step, put your king back in front. Careful — don't stalemate!",
     winText: '👑 Promoted! King leads, pawn follows — from here it becomes the Queen Mate you already know.',
     walkthrough: [
-      { fen: '4k3/8/4K3/8/4P3/8/8/8 w - - 0 1', circles: ['e6'], caption: 'Look where the king stands — the 6th rank, IN FRONT of his own pawn. From this picture the win can never be stopped.' },
-      { fen: '4k3/8/4K3/8/4P3/8/8/8 w - - 0 1', arrows: [{ from: 'e6', to: 'd6' }, { from: 'e6', to: 'f6' }], caption: 'The king is the bodyguard: he shoulders the enemy king away from the road — left or right, whichever side they run to.' },
-      { fen: '3k4/8/3K4/4P3/8/8/8/8 w - - 0 1', arrows: [{ from: 'e5', to: 'e6' }], caption: 'Only push the pawn when their king cannot stand in front of it. King first, pawn second — always in that order.' },
-      { fen: '6k1/4P3/4K3/8/8/8/8/8 w - - 0 1', circles: ['e8'], caption: 'One square from glory. One warning: if their king ever has NO moves and NO check — stalemate, draw. Give him room, then promote.' },
+      { fen: '4k3/8/4K3/8/4P3/8/8/8 w - - 0 1', circles: ['e6'], caption: 'The king on the 6th, IN FRONT of his own pawn. From this picture the win can never be stopped — the king clears the road, the pawn walks it.' },
+      { fen: '4k3/8/4K3/8/4P3/8/8/8 w - - 0 1', arrows: [{ from: 'e6', to: 'd6' }, { from: 'e6', to: 'f6' }], caption: 'The king is the bodyguard: he shoulders the enemy king off the road — left or right, whichever way they lean. Here: Kd6.' },
+      { fen: '3k4/8/3K4/8/4P3/8/8/8 w - - 0 1', arrows: [{ from: 'e4', to: 'e5' }], caption: 'Their king pushed aside — NOW the pawn takes one step. King first, pawn second. Always in that order.' },
+      { fen: '4k3/8/3K4/4P3/8/8/8/8 w - - 0 1', arrows: [{ from: 'd6', to: 'e6' }], caption: 'The golden habit: the king steps BACK IN FRONT of his pawn. Never let the pawn lead the parade — that is how stalemates happen.' },
+      { fen: '3k4/8/4K3/4P3/8/8/8/8 w - - 0 1', arrows: [{ from: 'e6', to: 'f7' }], caption: 'The outflank: Kf7 grabs the promotion square itself. Now e6, e7, e8 — nothing on the board can stop the pawn.' },
     ],
   },
   {
@@ -112,9 +122,10 @@ export const ENDGAME_COURSE = [
     plan: 'Stay glued to g1, g2, h1, h2 and never leave. If they push the pawn to h2 while your king sits on h1 — stalemate, draw. Do nothing, brilliantly.',
     winText: '🏰 Fortress held! Down a pawn, but the corner cannot be broken. Every player must know this draw.',
     walkthrough: [
-      { fen: '8/8/8/8/6kp/8/8/6K1 w - - 0 1', circles: ['g1', 'h1', 'g2', 'h2'], caption: 'Your fortress: these four squares. Reach the corner in front of a ROOK-pawn and no force in chess can dig you out.' },
-      { fen: '8/8/8/8/6k1/7p/8/7K w - - 0 1', circles: ['h1'], caption: 'They push… you stay. Kh1, Kg1, Kh1 — the corner shuffle. There is no way to chase you off these squares.' },
-      { fen: '8/8/8/8/8/6k1/7p/7K w - - 0 1', circles: ['h1'], caption: "The trap they can't avoid: pawn to h2 with your king on h1 — you have NO moves and NO check. STALEMATE. Draw. Their own pawn ruined it!" },
+      { fen: '8/8/8/8/6kp/8/8/6K1 w - - 0 1', circles: ['g1', 'h1', 'g2', 'h2'], caption: 'Your fortress: these four squares. Reach the corner in front of a ROOK-pawn and no force in chess can dig you out. Start with Kh1.' },
+      { fen: '8/8/8/8/6k1/7p/8/7K w - - 0 1', arrows: [{ from: 'h1', to: 'g1' }], caption: 'They push… you shuffle. Kg1, Kh1, Kg1 — you are not running away, you are standing guard. There is no way in.' },
+      { fen: '8/8/8/8/8/6kp/8/6K1 w - - 0 1', arrows: [{ from: 'g1', to: 'h1' }], caption: 'Their king arrives, angry and useless. Back to the corner — and now watch what happens if they dare push…' },
+      { fen: '8/8/8/8/8/6k1/7p/7K w - - 0 1', circles: ['h1'], caption: 'Pawn to h2 — and YOU have no moves and no check. STALEMATE. Their own pawn ruined everything. Draw held!' },
     ],
   },
   {
@@ -132,9 +143,9 @@ export const ENDGAME_COURSE = [
     winText: '⛪ Corner, sealed, mate! The two bishops — a wall the king can never step through.',
     walkthrough: [
       { fen: '8/8/8/4k3/8/8/8/2B1KB2 w - - 0 1', circles: ['c1', 'f1'], caption: 'Two bishops TOGETHER can mate: one owns the dark squares, one the light. Alone, neither can — as a pair they cover everything.' },
-      { fen: '8/8/4k3/8/8/8/1B6/1B2K3 w - - 0 1', arrows: [{ from: 'b2', to: 'f6' }, { from: 'b1', to: 'g6' }], caption: 'Side by side they sweep two PARALLEL diagonals — a fence with no gaps. The king cannot step through it, only retreat.' },
-      { fen: '6k1/8/2B5/2B5/8/8/8/4K3 w - - 0 1', arrows: [{ from: 'e1', to: 'd2' }], caption: "The bishops alone can't finish — walk YOUR king up to guard the corner door while the fence shrinks square by square." },
-      { fen: '7k/8/4B1K1/4B3/8/8/8/8 b - - 0 1', circles: ['h8'], caption: 'The finish: one bishop fires down the long diagonal, the other seals the escape square, your king guards the rest. Corner = mate.' },
+      { fen: '8/8/4k3/8/8/8/1B6/1B2K3 w - - 0 1', newScene: true, arrows: [{ from: 'b2', to: 'f6' }, { from: 'b1', to: 'g6' }], caption: 'Side by side they sweep two PARALLEL diagonals — a fence with no gaps. The king can never step through it, only backwards.' },
+      { fen: '6k1/8/2B5/2B5/8/8/8/4K3 w - - 0 1', newScene: true, arrows: [{ from: 'e1', to: 'd2' }], caption: "The bishops alone can't finish — your king must march up to guard the corner door while the fence shrinks, square by square." },
+      { fen: '7k/8/4B1K1/4B3/8/8/8/8 b - - 0 1', newScene: true, circles: ['h8'], caption: 'The finish: one bishop fires down the long diagonal, the other seals the escape square, your king guards the rest. Corner = mate.' },
     ],
   },
   {
@@ -152,9 +163,9 @@ export const ENDGAME_COURSE = [
     winText: '💃 The zigzag dance! Freeze the king in front of its pawn, sneak your king in, and the pawn falls.',
     walkthrough: [
       { fen: '7Q/8/K7/8/8/8/3pk3/8 w - - 0 1', circles: ['d2', 'd1'], caption: 'Their pawn is one step from a new queen and your king is miles away. The queen must win this alone — with a dance.' },
-      { fen: '7Q/8/K7/8/8/8/3pk3/8 w - - 0 1', arrows: [{ from: 'h8', to: 'e5' }], caption: 'Zigzag closer with checks and threats — every move either checks the king or covers d1. They never get a free moment to promote.' },
-      { fen: '7Q/8/K7/8/8/8/3p4/3k4 w - - 0 1', circles: ['d1'], caption: 'The KEY moment: their king is forced IN FRONT of its own pawn. Frozen — the pawn cannot move, and they have nothing to do…' },
-      { fen: '7Q/8/8/1K6/8/8/3p4/3k4 w - - 0 1', arrows: [{ from: 'b5', to: 'c4' }], caption: '…so your king sneaks one step closer, free of charge. Check, freeze, step — repeat until the king arrives and the pawn falls.' },
+      { fen: '7Q/8/K7/8/8/8/3pk3/8 w - - 0 1', arrows: [{ from: 'h8', to: 'e5' }], caption: 'Qe5+ — the zigzag begins. Every queen move gives check or covers d1. They never get one free moment to promote.' },
+      { fen: '7Q/8/K7/8/8/8/3p4/3k4 w - - 0 1', newScene: true, circles: ['d1'], arrows: [{ from: 'a6', to: 'b5' }], caption: 'Fast-forward a few checks: their king has been herded IN FRONT of its own pawn — frozen! Nothing can move… so YOUR king steps closer. Free of charge.' },
+      { fen: '7Q/8/8/1K6/8/8/3pk3/8 w - - 0 1', arrows: [{ from: 'h8', to: 'e5' }], caption: 'They wriggle out — no problem: check again, herd them back to d1, take another king-step. Check, freeze, step — until your king arrives and the pawn falls.' },
     ],
   },
   {
@@ -167,15 +178,16 @@ export const ENDGAME_COURSE = [
     goal: 'promote',
     fen: '1K6/1P1k4/8/8/8/8/r7/2R5 w - - 0 1',
     concept:
-      "Your pawn is one step from queening, but your own king is stuck in front of it and their rook waits to check forever. The trick: build a BRIDGE — put your rook on the 4th rank, walk the king out, and when the checks come, block them with the rook.",
-    plan: 'Rook to c4 first (the bridge!). Then bring the king out toward the rook checks — when the checks run out, the rook steps in the way and the pawn queens.',
+      "Your pawn is one step from queening, but your own king is stuck in front of it and their rook waits to check forever. The trick: check their king away, build a BRIDGE on the 4th rank, walk your king out — and block the final check with the rook.",
+    plan: 'Rd1+ pushes their king away. Then Rd4 — the bridge. King steps out, walks down through the checks toward the bridge, and the rook blocks the last one. The pawn queens.',
     winText: '🌉 The bridge! Lucena wins every rook endgame like this — pawn on the 7th, king in front, bridge on the 4th.',
     walkthrough: [
-      { fen: '1K6/1P1k4/8/8/8/8/r7/2R5 w - - 0 1', circles: ['b8', 'b7'], caption: 'So close! The pawn is one step from queening — but your own king blocks the door, and their rook waits to check him forever.' },
-      { fen: '1K6/1P1k4/8/8/8/8/r7/2R5 w - - 0 1', arrows: [{ from: 'c1', to: 'c4' }], caption: 'The famous move: rook to the FOURTH rank. It looks strange — it is the bridge you will hide behind in four moves.' },
-      { fen: '1K6/1P2k3/8/8/2R5/8/r7/8 w - - 0 1', arrows: [{ from: 'b8', to: 'c7' }], caption: 'Now the king steps out of the doorway. Their rook starts checking from behind — let it come.' },
-      { fen: '8/1P2k3/1K6/8/2R5/8/1r6/8 w - - 0 1', arrows: [{ from: 'b6', to: 'c6' }], caption: 'Checks rain down — walk your king TOWARD the bridge rook, one rank at a time. He is almost home…' },
-      { fen: '8/1P2k3/2K5/8/1R6/8/2r5/8 w - - 0 1', arrows: [{ from: 'b4', to: 'c4' }], caption: 'THE BRIDGE: the rook steps in front of the final check. No more checks — the pawn queens. That is Lucena.' },
+      { fen: '1K6/1P1k4/8/8/8/8/r7/2R5 w - - 0 1', circles: ['b8', 'b7'], caption: 'One step from queening — but your own king blocks the promotion square, and their rook waits to check him forever. Time for the most famous trick in rook endgames.' },
+      { fen: '1K6/1P1k4/8/8/8/8/r7/2R5 w - - 0 1', arrows: [{ from: 'c1', to: 'd1' }], caption: 'First: Rd1+ pushes their king one more file away from the pawn. Distance now means peace later.' },
+      { fen: '1K6/1P2k3/8/8/8/8/r7/3R4 w - - 0 1', arrows: [{ from: 'd1', to: 'd4' }], caption: 'Now the famous move: rook to the FOURTH rank. It looks strange — it is the bridge you will hide behind in four moves.' },
+      { fen: '1K6/1P2k3/8/8/3R4/8/8/r7 w - - 0 1', arrows: [{ from: 'b8', to: 'c7' }], caption: 'The king steps out of the doorway. Here come the checks from behind…' },
+      { fen: '8/1P2k3/8/1K6/3R4/8/8/1r6 w - - 0 1', newScene: true, arrows: [{ from: 'd4', to: 'b4' }], caption: 'Check — step down. Check — step down. Each check walks your king CLOSER to the bridge. One final check on b1… and now: Rb4!' },
+      { fen: '8/1P2k3/8/1K6/1R6/8/8/1r6 b - - 0 1', circles: ['b4'], caption: 'THE BRIDGE: the rook blocks the last check, protected by the king. No more checks — the pawn queens. (If they trade rooks instead? Even easier — you know King Leads the Pawn.)' },
     ],
   },
   {
@@ -193,9 +205,9 @@ export const ENDGAME_COURSE = [
     winText: '🧱 The wall held! Philidor\'s draw — rook on the 3rd until the pawn advances, then endless checks from behind.',
     walkthrough: [
       { fen: '8/8/8/8/3kp3/8/8/R3K3 w - - 0 1', circles: ['a3', 'c3', 'e3', 'g3'], caption: 'Down a pawn — but there is a WALL that saves you. Rank 3 is the line their king must never be allowed to cross.' },
-      { fen: '8/8/8/8/3kp3/8/8/R3K3 w - - 0 1', arrows: [{ from: 'a1', to: 'a3' }], caption: 'Rook to the third! While it patrols this rank, their king cannot lead the pawn forward. Now you simply wait.' },
-      { fen: '8/8/8/8/3k4/R3p3/8/4K3 w - - 0 1', arrows: [{ from: 'a3', to: 'a8' }], caption: "The moment the pawn steps onto YOUR rank, the wall has done its job — the rook runs far away, behind their king…" },
-      { fen: 'R7/8/8/8/3k4/4p3/8/4K3 w - - 0 1', arrows: [{ from: 'a8', to: 'd8' }], caption: '…and checks forever. Step in front of the pawn? Check. Hide beside it? Check. There is no shelter anywhere. DRAW.' },
+      { fen: '8/8/8/8/3kp3/8/8/R3K3 w - - 0 1', arrows: [{ from: 'a1', to: 'a3' }], caption: 'Rook to the third! While it patrols this rank, their king cannot lead the pawn forward. Now you wait — calmly.' },
+      { fen: '8/8/8/8/3k4/R3p3/8/4K3 w - - 0 1', arrows: [{ from: 'a3', to: 'a8' }], caption: 'The moment the pawn steps onto YOUR rank, the wall has done its job — the rook sprints far away, behind their king…' },
+      { fen: 'R7/8/8/8/8/3kp3/8/4K3 w - - 0 1', arrows: [{ from: 'a8', to: 'd8' }], caption: '…and checks forever. Rd8+ — step in front of the pawn? Check again. Hide beside it? Still check. Their king has no shelter anywhere. DRAW.' },
     ],
   },
 ];
