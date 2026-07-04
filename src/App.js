@@ -355,6 +355,7 @@ export default function App() {
             rewardMove={rewardMove}
             saveKey={playGameKey(activeId)}
             profileId={activeId}
+            progress={progress}
           />
         ) : learnSubject === 'notation' ? (
           <NotationCourse

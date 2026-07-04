@@ -17,6 +17,7 @@ import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEl
 import { initMaia, ensureMaiaReady, maiaMove, maiaBestMove, onMaiaStatus, getMaiaStatus } from '../engine/maiaEngine';
 import { addMistake } from '../state/notebook';
 import { getCoachVoice } from '../state/coachVoice';
+import { bookStatus, departurePlan } from '../engine/bookTransfer';
 import { recordLessonEvent } from '../state/dailyLesson';
 import { recordRatedGame } from '../state/rating';
 
@@ -51,7 +52,7 @@ function loadSavedGame(key) {
   }
 }
 
-export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, seed, rewardMove, saveKey, profileId }) {
+export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, seed, rewardMove, saveKey, profileId, progress }) {
   const savedRef = useRef(seed ? null : loadSavedGame(saveKey));
   const gameRef = useRef();
   if (!gameRef.current) gameRef.current = seed ? seededGame(seed) : savedRef.current ? seededGame(savedRef.current) : newGame();
@@ -405,6 +406,8 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
     castleNudgedRef.current = false;
     samePieceNudgesRef.current = 0;
     praiseCountsRef.current = {};
+    bookRecognizedRef.current = false;
+    bookDepartedRef.current = false;
     const h = gameRef.current.history({ verbose: true });
     const last = h[h.length - 1];
     setLastMove(last ? { from: last.from, to: last.to } : null);
@@ -567,6 +570,34 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   // shapes habits; praise on every developing move becomes wallpaper.
   const PRAISE_CAPS = { castle: 1, promotion: 2, save: 2, recapture: 2, develop: 3 };
   const praiseCountsRef = useRef({});
+  // Opening-transfer coach (once each per game, then silent): recognition when
+  // she's several book moves into a STUDIED opening, one plan reminder when the
+  // OPPONENT leaves her book. Her own deviations are never scolded here.
+  const bookRecognizedRef = useRef(false);
+  const bookDepartedRef = useRef(false);
+
+  function bookMessage(hist) {
+    if (!progress) return null;
+    const s = bookStatus(hist.map((m) => m.san), studentColor, progress);
+    if (!s) return null;
+    if (s.inBook) {
+      if (!bookRecognizedRef.current && s.depth >= 5) {
+        bookRecognizedRef.current = true;
+        return `📖 You're in your ${s.opening.name} — ${s.depth} book moves!`;
+      }
+      return null;
+    }
+    if (!bookDepartedRef.current) {
+      bookDepartedRef.current = true; // one departure moment per game, spoken or not
+      if (s.departedBy === 'them') {
+        const plan = departurePlan(s.opening);
+        return s.depth >= 4
+          ? `📖 They left your ${s.opening.name}. No panic — the plan stays the same: ${plan}.`
+          : `📖 That's outside your book — no panic, the plan is always the same: ${plan}.`;
+      }
+    }
+    return null;
+  }
 
   // Deposit a coach-flagged blunder/missed tactic into the Coach's Notebook so
   // Fix Mistakes can replay it later. Inaccuracies are skipped (too noisy to
@@ -639,10 +670,15 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
       }
     }
 
-    if (!note && !reply.threat && !habit) return setCoachNote(null);
+    // Opening-transfer chip (recognition / departure) — computed after the
+    // habit nudges so the once-per-game flags advance even on quiet moves.
+    const book = bookMessage(hist);
+
+    if (!note && !reply.threat && !habit && !book) return setCoachNote(null);
     setCoachNote({
       kind: note ? note.kind : 'warn',
       text: note ? note.text : '',
+      book,
       // Retrieval practice: a missed tactic first shows the CLAIM without the
       // answer (tease); "Show me" reveals the move + line. Generation beats
       // being told — she gets a beat to hunt for it herself.
@@ -1199,6 +1235,11 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
                   {coachNote.habit && (
                     <div className="rounded-cc-lg px-3 py-2 text-sm font-bold bg-surface text-frost ring-1 ring-edge animate-pop">
                       🧭 {coachNote.habit}
+                    </div>
+                  )}
+                  {coachNote.book && (
+                    <div className="rounded-cc-lg px-3 py-2 text-sm font-bold bg-white/[0.06] text-frost ring-1 ring-edge animate-pop">
+                      {coachNote.book}
                     </div>
                   )}
                 </div>
