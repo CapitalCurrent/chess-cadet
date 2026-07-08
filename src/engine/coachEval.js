@@ -122,6 +122,11 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   }
   const best = moveInfo(beforeFen, cands[0].move);
   const bestMotifs = motifsOfMove(beforeFen, cands[0].move);
+  // How far the best move stands above the SECOND-best (null without multipv).
+  // Carried on warn verdicts: the Coach's Notebook only deposits a position as
+  // a puzzle when the answer is UNIQUELY best — a "find THE move" puzzle, not
+  // "find one of five fine moves" (that's what makes a puzzle feel like one).
+  const gap = cands.length >= 2 ? bestCp - scoreNum(cands[1]) : null;
   const missedName = bestMotifs.includes('fork')
     ? 'fork'
     : bestMotifs.includes('discovered')
@@ -149,7 +154,7 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
       tease: br
         ? `♟️ You had a forced mate in ${bestMateN} here! Hint: look at their back rank. Try to spot it, then peek.`
         : `♟️ You had a forced mate in ${bestMateN} here! Look for forcing checks, then peek.`,
-      best: bestRef,
+      best: bestRef, bestCp, gap,
       motif: 'mate',
       loss,
       mateIn: bestMateN,
@@ -162,17 +167,17 @@ export function evaluateMove(beforeFen, uci, afterFen, { cands, herCp, humanSugg
   const pinWin = winningMiss ? pinnedDefenderWin(beforeFen, cands[0].move) : null;
   // The pin/skewer texts already teach WITHOUT naming the move — they double as
   // their own tease (only the move + line stay behind the reveal).
-  if (pinWin) { const t = pinnedDefenderText(pinWin, { missed: true }); return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: t, tease: t, best: bestRef, motif: 'pin', loss }; }
+  if (pinWin) { const t = pinnedDefenderText(pinWin, { missed: true }); return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: t, tease: t, best: bestRef, bestCp, gap, motif: 'pin', loss }; }
   const skWin = winningMiss ? skewerWin(beforeFen, cands[0].pv) : null;
-  if (skWin) { const t = skewerText(skWin, { missed: true }); return { kind: 'warn', icon: '🍢', label: 'Missed skewer', text: t, tease: t, best: bestRef, motif: 'skewer', loss }; }
+  if (skWin) { const t = skewerText(skWin, { missed: true }); return { kind: 'warn', icon: '🍢', label: 'Missed skewer', text: t, tease: t, best: bestRef, bestCp, gap, motif: 'skewer', loss }; }
   const workPin = winningMiss ? workingPinWin(beforeFen, cands[0].pv) : null;
-  if (workPin) { const t = workingPinText(workPin, { missed: true }); return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: t, tease: t, best: bestRef, motif: 'pin', loss }; }
-  if (missedTactic && missedName) return { kind: 'warn', icon: '💥', label: `Missed ${missedName}`, text: `💥 You missed a ${missedName}! ${best.san} was winning.`, tease: `💥 You missed a ${missedName} here! Try to find it — check captures and checks first — then peek.`, best: bestRef, motif: missedName, loss };
-  if (missedTactic && herCp > -50) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 You missed a tactic! ${best.san} wins material. Tip: check captures & checks first.`, tease: '💥 There was a tactic here that wins material! Check every capture and check, then peek.', best: bestRef, motif: null, loss };
-  if (missedTactic) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 Ouch — ${best.san} won material there. Look for captures & checks!`, tease: '💥 A capture or check won material there. Can you find it? Then peek.', best: bestRef, motif: null, loss };
+  if (workPin) { const t = workingPinText(workPin, { missed: true }); return { kind: 'warn', icon: '📌', label: 'Missed pin win', text: t, tease: t, best: bestRef, bestCp, gap, motif: 'pin', loss }; }
+  if (missedTactic && missedName) return { kind: 'warn', icon: '💥', label: `Missed ${missedName}`, text: `💥 You missed a ${missedName}! ${best.san} was winning.`, tease: `💥 You missed a ${missedName} here! Try to find it — check captures and checks first — then peek.`, best: bestRef, bestCp, gap, motif: missedName, loss };
+  if (missedTactic && herCp > -50) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 You missed a tactic! ${best.san} wins material. Tip: check captures & checks first.`, tease: '💥 There was a tactic here that wins material! Check every capture and check, then peek.', best: bestRef, bestCp, gap, motif: null, loss };
+  if (missedTactic) return { kind: 'warn', icon: '💥', label: 'Missed tactic', text: `💥 Ouch — ${best.san} won material there. Look for captures & checks!`, tease: '💥 A capture or check won material there. Can you find it? Then peek.', best: bestRef, bestCp, gap, motif: null, loss };
   const sug = humanSuggestSan || best.san;
-  if (loss <= 350) return { kind: 'warn', icon: '🤔', label: 'Inaccuracy', text: `🤔 A little loose — ${sug} keeps you better.`, best: bestRef, motif: null, loss };
-  return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.`, best: bestRef, motif: null, loss };
+  if (loss <= 350) return { kind: 'warn', icon: '🤔', label: 'Inaccuracy', text: `🤔 A little loose — ${sug} keeps you better.`, best: bestRef, bestCp, gap, motif: null, loss };
+  return { kind: 'warn', icon: '⚠️', label: 'Mistake', text: `⚠️ Careful — that gives a lot away. Safer was ${sug}.`, best: bestRef, bestCp, gap, motif: null, loss };
 }
 
 // Pure: frame a line for display. Candidates come from HER side to move, so a

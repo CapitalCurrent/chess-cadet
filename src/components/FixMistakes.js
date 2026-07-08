@@ -4,6 +4,7 @@ import PlayLayout from './PlayLayout';
 import { newGame } from '../engine/chessEngine';
 import { analyze } from '../engine/stockfishEngine';
 import { comboSteps, comboLineText } from '../engine/comboSteps';
+import { puzzleWhy, linePayoff } from '../engine/puzzleWhy';
 import { puzzleQueue, recordAttempt } from '../state/notebook';
 import { recordLessonEvent } from '../state/dailyLesson';
 import { IconNotebook, IconStar } from './icons';
@@ -64,6 +65,25 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
   const isCombo = steps.length > 1;
   const curStep = steps[stepIdx] || steps[0] || null;
 
+  // The lesson behind the answer — stored at deposit time (v0.43.0+) or derived
+  // from the saved line for older entries. Shown on solve AND reveal so the
+  // puzzle explains WHY the move is better, not just which move it was.
+  const why = useMemo(() => {
+    if (!cur) return null;
+    return cur.why || puzzleWhy({ fen: cur.fen, pv: cur.pv || null, motif: cur.motif || null, mateIn: cur.mateIn || null });
+  }, [cur]);
+
+  // The GOAL, stated up front like a real puzzle ("win a rook", "find the
+  // fork") — "find the stronger move" gives her nothing to aim at.
+  const goal = useMemo(() => {
+    if (!cur) return null;
+    if (cur.motif && MOTIF_PROMPTS[cur.motif]) return MOTIF_PROMPTS[cur.motif];
+    const p = linePayoff(cur.fen, cur.pv || null);
+    if (p.mate) return MOTIF_PROMPTS.mate;
+    if (p.phrase) return `You can win ${p.phrase} here — find the move!`;
+    return `Find the strongest move for ${sideName}.`;
+  }, [cur, sideName]);
+
   function resetTo(i) {
     const m = queue[i];
     setIdx(i);
@@ -82,13 +102,14 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
     recordLessonEvent(profileId, 'puzzle');
     rewardMove && rewardMove(clean ? 2 : 1);
     setPhase('solved');
+    const lesson = why ? ` ${why}` : '';
     setNote({
       kind: 'good',
       text: exact
         ? isCombo
-          ? `⭐ The WHOLE combination — ${comboLineText(steps)}! That's the sequence you missed in your game.${clean ? ' Clean solve!' : ''}`
-          : `⭐ That's it! ${cur.best.san} — the move you missed in your game.${clean ? ' Clean solve!' : ''}`
-        : `👍 ${altSan} works too! The coach's line started with ${cur.best.san}.`,
+          ? `⭐ The WHOLE combination — ${comboLineText(steps)}!${lesson}${clean ? ' Clean solve!' : ''}`
+          : `⭐ That's it! ${cur.best.san} — the move you missed in your game.${lesson}${clean ? ' Clean solve!' : ''}`
+        : `👍 ${altSan} works too! The coach's line started with ${cur.best.san}.${lesson}`,
     });
   }
 
@@ -187,7 +208,8 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
     setLastMove({ from: curStep.expectUci.slice(0, 2), to: curStep.expectUci.slice(2, 4) });
     setPhase('revealed');
     const line = isCombo ? ` The full line: ${comboLineText(steps, stepIdx)}.` : '';
-    setNote({ kind: 'warn', text: `The move was ${curStep.expectSan}.${line} ${(stepIdx === 0 && cur.text) || ''} It'll come back later — you'll get it!` });
+    const lesson = why || (stepIdx === 0 && cur.text) || '';
+    setNote({ kind: 'warn', text: `The move was ${curStep.expectSan}.${line} ${lesson} It'll come back later — you'll get it!` });
   }
 
   const boardHighlights = curStep && hint >= 1 && solving ? [curStep.expectUci.slice(0, 2)] : [];
@@ -270,7 +292,7 @@ export default function FixMistakes({ profileId, pieceSet, boardTheme, moveStyle
               )}
             </p>
             <div className="mt-2 text-sm md:text-lg text-grass font-bold">
-              👉 {(cur.motif && MOTIF_PROMPTS[cur.motif]) || `Find the stronger move for ${sideName}.`}
+              👉 {goal}
             </div>
             {isCombo && (
               <div className="mt-2 flex items-center gap-2">

@@ -11,6 +11,7 @@ import { motifsOfMove } from '../engine/tactics';
 import { scoreNum, evaluateMove, pickSuggestionUci, winningLine, lineFraming } from '../engine/coachEval';
 import { mateLineBackRank } from '../engine/backRank';
 import { lineSteps } from '../engine/pvLine';
+import { puzzleWhy } from '../engine/puzzleWhy';
 import { explainWarn, samePieceNudge, castleNudge } from '../engine/principles';
 import { newGame, tryMove, notationGaps, notationHint } from '../engine/chessEngine';
 import { topMoves, shallowMove, levelWeakening, pickWeakened, levelTier, levelEloLabel, levelElo, initEngine, analyze } from '../engine/stockfishEngine';
@@ -602,18 +603,35 @@ export default function FreePlay({ pieceSet, boardTheme, moveStyle, focusBoard, 
   // Deposit a coach-flagged blunder/missed tactic into the Coach's Notebook so
   // Fix Mistakes can replay it later. Inaccuracies are skipped (too noisy to
   // drill); dedup inside addMistake keeps coach + review from double-saving.
+  //
+  // PUZZLE-WORTHINESS GATE: a puzzle must have ONE clearly-best answer that
+  // clearly WINS. A big eval drop alone doesn't make the position a puzzle —
+  // after a blunder there are often five equally-fine moves (or the game is
+  // lost and "best" is just least-bad). Deposit only when the answer is
+  // winning (bestCp) AND uniquely best (gap over the #2 candidate); a forced
+  // mate always qualifies (finding ANY mate is the skill — the alternative
+  // checker in Fix Mistakes accepts a second mating move).
   function captureMistake(beforeFen, move, v, source) {
     if (!profileId || !v || v.kind !== 'warn' || !v.best) return;
     if (!/^Missed/.test(v.label) && v.label !== 'Mistake') return;
+    if (v.motif !== 'mate') {
+      if (typeof v.bestCp !== 'number' || v.bestCp < 150) return;
+      if (typeof v.gap !== 'number' || v.gap < 150) return;
+    }
     addMistake(profileId, {
       fen: beforeFen,
       played: { san: move.san, uci: move.from + move.to + (move.promotion || '') },
       best: v.best,
       label: v.label,
       motif: v.motif || null,
+      mateIn: v.mateIn || null,
       lossCp: v.loss,
+      gap: typeof v.gap === 'number' ? v.gap : null,
       text: v.text,
       pv: v.pv || null, // full missed line → Fix Mistakes replays it as a combination
+      // The lesson: what the answer DOES (validated from the line) — shown on
+      // solve/reveal so the puzzle teaches, not just quizzes.
+      why: puzzleWhy({ fen: beforeFen, pv: v.pv || null, motif: v.motif || null, mateIn: v.mateIn || null }),
       source,
     });
   }

@@ -64,8 +64,17 @@ export function addMistake(profileId, entry) {
   return true;
 }
 
+// Puzzle-worthiness (v0.43.0). Entries deposited BEFORE the capture-time gate
+// carry no `gap` and can be "find one of five fine moves" chores — exactly what
+// a puzzle must not be. Serve a legacy entry only when it names a validated
+// motif (one concrete idea to find); everything deposited from v0.43.0 on
+// passed the uniquely-best-and-winning gate and carries `gap`.
+function puzzleWorthy(m) {
+  return !!m.motif || typeof m.gap === 'number';
+}
+
 export function activeMistakes(profileId) {
-  return read(profileId).mistakes.filter((m) => !m.retired);
+  return read(profileId).mistakes.filter((m) => !m.retired && puzzleWorthy(m));
 }
 
 export function notebookCount(profileId) {
